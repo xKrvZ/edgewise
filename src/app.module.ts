@@ -8,6 +8,7 @@ import sqlConfig from "@/config/sql.config";
 import redisConfig from "@/config/redis.config";
 import { SocketModule } from "@/modules/socket/socket.module";
 import { PlayerModule } from "@/modules/player/player.module";
+import { EmailModule } from "@/modules/email/email.module";
 import { AllExceptionFilter } from "@/filters/all-exception.filter";
 import cookieConfig from "@/config/cookie.config";
 import { CacheModule } from "@nestjs/cache-manager";
@@ -38,6 +39,7 @@ import { betterAuth } from "better-auth";
         registerAs('cookie', () => cookieConfig),
         registerAs('sql', () => sqlConfig), 
         registerAs('redis', () => redisConfig),
+        registerAs('email', () => require('@/config/email.config').default),
       ],
     }),
     EventEmitterModule.forRoot(),
@@ -87,6 +89,7 @@ import { betterAuth } from "better-auth";
     }),
     SocketModule,
     PlayerModule,
+    EmailModule,
   ],
   providers: [
     {
