@@ -67,7 +67,16 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup("api/reference", app, document);
+  SwaggerModule.setup("api/reference", app, document, {
+    swaggerOptions: {
+      urls: [
+        {
+          url: '/api/reference-json',
+          name: 'JSON',
+        }
+      ],
+    },
+  });
 
   app.setGlobalPrefix("api");
 

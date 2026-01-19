@@ -8,16 +8,22 @@ export class PlayerDto {
   id: string;
 
   @ApiProperty({
-    description: 'Hytale ID of the player',
-    example: 'hytale-12345',
+    description: 'External ID of the player',
+    example: 'external-12345',
   })
-  hytaleId: string;
+  externalId: string;
 
   @ApiProperty({
     description: 'Last known username of the player',
     example: 'PlayerName',
   })
   lastKnownUsername: string;
+
+  @ApiProperty({
+    description: 'Game identifier for the player',
+    example: 'hytale',
+  })
+  game: string;
 
   @ApiProperty({
     description: 'Timestamp when the player was created',

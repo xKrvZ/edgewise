@@ -3,12 +3,12 @@ import { IsString, IsNotEmpty } from 'class-validator';
 
 export class SyncPlayerDto {
   @ApiProperty({
-    description: 'Hytale ID of the player',
-    example: 'hytale-12345',
+    description: 'External ID of the player',
+    example: 'external-12345',
   })
   @IsString()
   @IsNotEmpty()
-  hytaleId: string;
+  externalId: string;
 
   @ApiProperty({
     description: 'Last known username of the player',
@@ -17,4 +17,12 @@ export class SyncPlayerDto {
   @IsString()
   @IsNotEmpty()
   lastKnownUsername: string;
+
+  @ApiProperty({
+    description: 'Game identifier for the player',
+    example: 'hytale',
+  })
+  @IsString()
+  @IsNotEmpty()
+  game: string;
 }

@@ -1,12 +1,14 @@
 import { admin, jwt, emailOTP } from "better-auth/plugins";
 import { oauthProvider } from "@better-auth/oauth-provider";
 import { Pool } from "pg";
-import sqlConfig from "./config/sql.config";
+import sqlConfig from "@/config/sql.config";
 import { betterAuth } from "better-auth";
 import type { BetterAuthOptions } from "better-auth";
-import appConfig from "./config/app.config";
-import authConfig from "./config/auth.config";
-import { sendEmail } from "./modules/email/utils/send-email";
+import appConfig from "@/config/app.config";
+import authConfig from "@/config/auth.config";
+import { sendEmail } from "@/modules/email/utils/send-email";
+import { ROLES } from "@/auth/constants/roles.constants";
+import { ac, roles } from "@/auth/permissions";
 
 export const authOptions: BetterAuthOptions = {
     emailAndPassword: {
@@ -94,7 +96,11 @@ The Dracade Team`,
         appConfig.frontendUrl
     ],
     plugins: [
-        admin(),
+        admin({
+            ac,
+            roles,
+            adminRoles: [ROLES.ADMINISTRATOR]
+        }),
         jwt(),
         emailOTP({
             // Override default email verification to use OTP instead of links

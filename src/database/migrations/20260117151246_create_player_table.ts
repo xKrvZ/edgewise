@@ -6,8 +6,10 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('id', 'uuid', (col) =>
       col.primaryKey().defaultTo(sql`gen_random_uuid()`),
     )
-    .addColumn('hytaleId', 'varchar', (col) => col.notNull().unique())
+    .addColumn('externalId', 'varchar', (col) => col.notNull())
     .addColumn('lastKnownUsername', 'varchar', (col) => col.notNull())
+    .addColumn('game', 'varchar', (col) => col.notNull())
+    .addUniqueConstraint('player_external_id_game_unique', ['externalId', 'game'])
     .addColumn('createdAt', 'timestamp', (col) =>
       col.defaultTo(sql`now()`).notNull(),
     )

@@ -299,6 +299,19 @@ export interface _TimescaledbInternalHypertableChunkLocalSize {
   total_bytes: Int8 | null;
 }
 
+export interface AbuseReport {
+  actionTaken: string | null;
+  createdAt: Generated<Timestamp>;
+  description: string | null;
+  id: Generated<string>;
+  metadata: Json | null;
+  punishmentId: string | null;
+  reason: string;
+  reportedPlayerId: string;
+  reportingPlayerId: string;
+  status: string;
+}
+
 export interface Account {
   accessToken: string | null;
   accessTokenExpiresAt: Timestamp | null;
@@ -313,6 +326,15 @@ export interface Account {
   scope: string | null;
   updatedAt: Timestamp;
   userId: string;
+}
+
+export interface Appeal {
+  id: Generated<string>;
+  playerId: string;
+  punishmentId: string;
+  reviewedById: string | null;
+  status: string;
+  submittedAt: Generated<Timestamp>;
 }
 
 export interface Jwks {
@@ -392,16 +414,34 @@ export interface OauthRefreshToken {
 
 export interface Player {
   createdAt: Generated<Timestamp>;
-  hytaleId: string;
+  externalId: string;
+  game: string;
   id: Generated<string>;
   lastKnownUsername: string;
   updatedAt: Generated<Timestamp>;
+}
+
+export interface Punishment {
+  banType: string | null;
+  createdAt: Generated<Timestamp>;
+  expiry: Timestamp | null;
+  externalId: string | null;
+  id: Generated<string>;
+  issuedById: string | null;
+  lifted: Generated<boolean>;
+  liftedAt: Timestamp | null;
+  liftedById: string | null;
+  playerId: string;
+  punishmentType: string;
+  reason: string;
+  relatedAbuseReportId: string | null;
 }
 
 export interface Session {
   createdAt: Generated<Timestamp>;
   expiresAt: Timestamp;
   id: string;
+  impersonatedBy: string | null;
   ipAddress: string | null;
   token: string;
   updatedAt: Timestamp;
@@ -559,12 +599,16 @@ export interface TimescaledbInformationJobStats {
 }
 
 export interface User {
+  banExpires: Timestamp | null;
+  banned: boolean | null;
+  banReason: string | null;
   createdAt: Generated<Timestamp>;
   email: string;
   emailVerified: boolean;
   id: string;
   image: string | null;
   name: string;
+  role: string | null;
   updatedAt: Generated<Timestamp>;
 }
 
@@ -605,13 +649,16 @@ export interface DB {
   "_timescaledb_internal.bgw_policy_chunk_stats": _TimescaledbInternalBgwPolicyChunkStats;
   "_timescaledb_internal.compressed_chunk_stats": _TimescaledbInternalCompressedChunkStats;
   "_timescaledb_internal.hypertable_chunk_local_size": _TimescaledbInternalHypertableChunkLocalSize;
+  abuse_report: AbuseReport;
   account: Account;
+  appeal: Appeal;
   jwks: Jwks;
   oauthAccessToken: OauthAccessToken;
   oauthClient: OauthClient;
   oauthConsent: OauthConsent;
   oauthRefreshToken: OauthRefreshToken;
   player: Player;
+  punishment: Punishment;
   session: Session;
   "timescaledb_experimental.policies": TimescaledbExperimentalPolicies;
   "timescaledb_information.chunk_compression_settings": TimescaledbInformationChunkCompressionSettings;

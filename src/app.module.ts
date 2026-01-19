@@ -9,6 +9,9 @@ import redisConfig from "@/config/redis.config";
 import { SocketModule } from "@/modules/socket/socket.module";
 import { PlayerModule } from "@/modules/player/player.module";
 import { EmailModule } from "@/modules/email/email.module";
+import { PunishmentModule } from "@/modules/punishment/punishment.module";
+import { AbuseReportModule } from "@/modules/abuse-report/abuse-report.module";
+import { AppealModule } from "@/modules/appeal/appeal.module";
 import { AllExceptionFilter } from "@/filters/all-exception.filter";
 import cookieConfig from "@/config/cookie.config";
 import { CacheModule } from "@nestjs/cache-manager";
@@ -90,6 +93,9 @@ import { betterAuth } from "better-auth";
     SocketModule,
     PlayerModule,
     EmailModule,
+    PunishmentModule,
+    AbuseReportModule,
+    AppealModule,
   ],
   providers: [
     {

@@ -7,17 +7,23 @@ import {
   HttpCode,
   HttpStatus,
   SerializeOptions,
+  Query,
 } from '@nestjs/common';
 import {
   ApiOperation,
   ApiResponse,
   ApiParam,
   ApiTags,
+  getSchemaPath,
 } from '@nestjs/swagger';
 import { PlayerService } from '../services/player.service';
 import { PlayerDto } from '../dtos/player.dto';
 import { SyncPlayerDto } from '../dtos/sync-player.dto';
-import { Session, UserSession } from '@thallesp/nestjs-better-auth';
+import { PlayerQueryDto } from '../dtos/player-query.dto';
+import { PaginatedDto } from '@/database/dtos/paginated.dto';
+import { Roles, Session, UserSession } from '@thallesp/nestjs-better-auth';
+import { createPaginatedSchema } from '@/database/utils/paginated-schema.util';
+import { ROLES } from '@/auth/constants/roles.constants';
 
 @ApiTags('player')
 @Controller('player')
@@ -25,22 +31,26 @@ import { Session, UserSession } from '@thallesp/nestjs-better-auth';
 export class PlayerController {
   constructor(private readonly playerService: PlayerService) {}
 
+  // ==================== Query Endpoints ====================
+
   @Get()
+  @Roles([ROLES.MODERATOR])
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Get all players',
-    description: 'Retrieves a list of all players in the system',
+    summary: 'List all players',
+    description: 'Retrieves a paginated list of all players with optional filters, ordering, and cursor-based pagination',
   })
   @ApiResponse({
     status: 200,
-    description: 'List of players retrieved successfully',
-    type: [PlayerDto],
+    description: 'Paginated list of players retrieved successfully',
+    schema: createPaginatedSchema(getSchemaPath(PlayerDto)),
   })
-  async getAll(): Promise<PlayerDto[]> {
-    return await this.playerService.getAll();
+  async getAll(@Query() queryDto: PlayerQueryDto): Promise<PaginatedDto<PlayerDto>> {
+    return await this.playerService.getAllPaginated(queryDto);
   }
 
   @Get(':id')
+  @Roles(['mod'])
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get player by ID',
@@ -65,12 +75,15 @@ export class PlayerController {
     return await this.playerService.findById(id);
   }
 
+  // ==================== Mutation Endpoints ====================
+
   @Post('sync')
+  @Roles([ROLES.MODERATOR])
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Sync player',
     description:
-      'Creates a new player or updates the last known username for an existing player based on their Hytale ID',
+      'Creates a new player or updates the last known username for an existing player based on their external ID',
   })
   @ApiResponse({
     status: 200,
