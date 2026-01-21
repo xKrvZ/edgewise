@@ -24,7 +24,7 @@ import { AbuseReportQueryDto } from '../dtos/abuse-report-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { Roles, Session, UserSession } from '@thallesp/nestjs-better-auth';
 import { createPaginatedSchema } from '@/database/utils/paginated-schema.util';
-import { ROLES } from '@/auth/constants/roles.constants';
+import { ROLES, STAFF_ROLES } from '@/auth/constants/roles.constants';
 
 @ApiTags('abuse-report')
 @Controller('abuse-report')
@@ -70,7 +70,7 @@ export class AbuseReportController {
   // ==================== Query Endpoints ====================
 
   @Get()
-  @Roles([ROLES.MODERATOR])
+  @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'List all abuse reports',
@@ -90,7 +90,7 @@ export class AbuseReportController {
   }
 
   @Get(':id')
-  @Roles([ROLES.MODERATOR])
+  @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get abuse report by ID',
@@ -123,7 +123,7 @@ export class AbuseReportController {
   // ==================== Mutation Endpoints ====================
 
   @Patch(':id/review')
-  @Roles(['mod'])
+  @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Review an abuse report',

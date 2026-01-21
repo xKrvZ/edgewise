@@ -26,6 +26,7 @@ export class AppealDao extends KyselyDao<AppealDao> {
           'punishmentId',
           'submittedAt',
           'status',
+          'description',
           'reviewedById',
           // Always include punishmentType as it's required by the DTO
           eb
@@ -69,6 +70,7 @@ export class AppealDao extends KyselyDao<AppealDao> {
       punishmentType: row.punishmentType!,
       submittedAt: row.submittedAt.toISOString(),
       status: row.status as AppealStatus,
+      description: row.description ?? undefined,
       reviewedBy: includeUser ? row.reviewedBy ?? undefined : undefined,
     } as AppealDto;
   }
@@ -158,24 +160,19 @@ export class AppealDao extends KyselyDao<AppealDao> {
     const filters = this.extractFilters(queryDto);
     const cursorField = this.getCursorField(queryDto);
 
-    const result = await this.paginateWithCursor(this.buildBaseQuery(includes), {
-      cursor: queryDto.cursor,
-      limit: queryDto.limit,
-      direction: 'forward',
-      cursorField: cursorField,
-      filters,
-      orderBy: queryDto.orderBy,
-      mapField: (field: string) => this.mapOrderByField(field),
-      applyFilters: this.buildFilterFunction(filters),
-    });
-
-    const items = result.items.map((row: any) => this.mapRowToDto(row, includes));
-
-    return new PaginatedDto<AppealDto>({
-      items,
-      nextCursor: result.nextCursor,
-      hasMore: result.hasMore,
-    });
+    return await this.paginateWithCursor<AppealDto>(
+      this.buildBaseQuery(includes),
+      {
+        cursor: queryDto.cursor,
+        limit: queryDto.limit,
+        direction: 'forward',
+        cursorField: cursorField,
+        filters,
+        orderBy: queryDto.orderBy,
+        mapField: (field: string) => this.mapOrderByField(field),
+        applyFilters: this.buildFilterFunction(filters),
+      },
+    );
   }
 
   async findById(id: string, includes?: Set<string>): Promise<AppealDto | null> {

@@ -329,6 +329,7 @@ export interface Account {
 }
 
 export interface Appeal {
+  description: string | null;
   id: Generated<string>;
   playerId: string;
   punishmentId: string;
@@ -343,6 +344,16 @@ export interface Jwks {
   id: string;
   privateKey: string;
   publicKey: string;
+}
+
+export interface Note {
+  createdAt: Generated<Timestamp>;
+  createdById: string;
+  entityId: string;
+  entityType: string;
+  id: Generated<string>;
+  text: string;
+  updatedAt: Generated<Timestamp>;
 }
 
 export interface OauthAccessToken {
@@ -653,6 +664,7 @@ export interface DB {
   account: Account;
   appeal: Appeal;
   jwks: Jwks;
+  note: Note;
   oauthAccessToken: OauthAccessToken;
   oauthClient: OauthClient;
   oauthConsent: OauthConsent;

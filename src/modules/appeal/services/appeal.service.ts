@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { AppealDao } from '../daos/appeal.dao';
 import { PunishmentDao } from '../../punishment/daos/punishment.dao';
+import { NoteDao } from '../../note/daos/note.dao';
 import { AppealDto, AppealStatus } from '../dtos/appeal.dto';
 import { ReviewAppealDto } from '../dtos/review-appeal.dto';
 import { AppealQueryDto } from '../dtos/appeal-query.dto';
@@ -11,6 +12,7 @@ export class AppealService {
   constructor(
     private readonly appealDao: AppealDao,
     private readonly punishmentDao: PunishmentDao,
+    private readonly noteDao: NoteDao,
   ) {}
 
   // ==================== Query Methods ====================
@@ -68,10 +70,11 @@ export class AppealService {
       throw new BadRequestException('Appeal has already been reviewed');
     }
 
-    // Use transaction to update appeal and lift punishment if accepted
+    // Use transaction to update appeal, create note, and lift punishment if accepted
     return await this.appealDao.transaction(async (trx) => {
       const appealDao = this.appealDao.transacting(trx);
       const punishmentDao = this.punishmentDao.transacting(trx);
+      const noteDao = this.noteDao.transacting(trx);
 
       // Update appeal status
       const updatedAppeal = await appealDao.updateStatus(
@@ -84,6 +87,17 @@ export class AppealService {
       if (!updatedAppeal) {
         throw new NotFoundException(`Failed to update appeal with ID ${id}`);
       }
+
+      // Create note for the appeal review
+      await noteDao.create(
+        {
+          entityId: id,
+          entityType: 'Appeal',
+          text: reviewAppealDto.note,
+        },
+        reviewedById,
+        false,
+      );
 
       // If accepted, lift the punishment
       if (reviewAppealDto.status === 'accepted') {

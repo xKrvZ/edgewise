@@ -12,6 +12,11 @@ export const ROLES = {
 } as const;
 
 /**
+ * Staff roles that have elevated permissions (moderators and administrators)
+ */
+export const STAFF_ROLES: Role[] = [ROLES.MODERATOR, ROLES.ADMINISTRATOR];
+
+/**
  * Type for role values
  */
 export type Role = (typeof ROLES)[keyof typeof ROLES];
@@ -42,7 +47,7 @@ export function hasRole(
  */
 export function hasAnyRole(
   userRole: string | string[] | null | undefined,
-  requiredRoles: Role[],
+  requiredRoles: readonly Role[] | Role[],
 ): boolean {
   if (!userRole) {
     return false;

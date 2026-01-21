@@ -26,7 +26,7 @@ import { PunishmentQueryDto } from '../dtos/punishment-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { Roles, Session, UserSession } from '@thallesp/nestjs-better-auth';
 import { createPaginatedSchema } from '@/database/utils/paginated-schema.util';
-import { ROLES, hasRole } from '@/auth/constants/roles.constants';
+import { ROLES, STAFF_ROLES, hasRole } from '@/auth/constants/roles.constants';
 
 @ApiTags('punishment')
 @Controller('punishment')
@@ -75,7 +75,7 @@ export class PunishmentController {
   // ==================== Query Endpoints ====================
 
   @Get()
-  @Roles([ROLES.MODERATOR])
+  @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'List all punishments',
@@ -95,7 +95,7 @@ export class PunishmentController {
   }
 
   @Get('issued-by/:issuedById')
-  @Roles(['mod'])
+  @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get punishments issued by a user',
@@ -121,7 +121,7 @@ export class PunishmentController {
   }
 
   @Get('player/:playerId')
-  @Roles([ROLES.MODERATOR])
+  @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get punishments by player ID',
@@ -147,7 +147,7 @@ export class PunishmentController {
   }
 
   @Get(':id')
-  @Roles([ROLES.MODERATOR])
+  @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get punishment by ID',
@@ -179,7 +179,7 @@ export class PunishmentController {
   // ==================== Mutation Endpoints ====================
 
   @Post()
-  @Roles([ROLES.MODERATOR])
+  @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a punishment',
@@ -233,7 +233,7 @@ export class PunishmentController {
   }
 
   @Post('lift-bulk')
-  @Roles([ROLES.MODERATOR])
+  @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Lift multiple punishments',

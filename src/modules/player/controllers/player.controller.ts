@@ -23,7 +23,7 @@ import { PlayerQueryDto } from '../dtos/player-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { Roles, Session, UserSession } from '@thallesp/nestjs-better-auth';
 import { createPaginatedSchema } from '@/database/utils/paginated-schema.util';
-import { ROLES } from '@/auth/constants/roles.constants';
+import { ROLES, STAFF_ROLES } from '@/auth/constants/roles.constants';
 
 @ApiTags('player')
 @Controller('player')
@@ -34,7 +34,7 @@ export class PlayerController {
   // ==================== Query Endpoints ====================
 
   @Get()
-  @Roles([ROLES.MODERATOR])
+  @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'List all players',
@@ -49,8 +49,30 @@ export class PlayerController {
     return await this.playerService.getAllPaginated(queryDto);
   }
 
+  @Get('games')
+  @Roles(STAFF_ROLES)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get all games supported by the platform',
+    description: 'Retrieves a list of all unique games from the players table',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of games retrieved successfully',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+      example: ['hytale', 'minecraft', 'terraria'],
+    },
+  })
+  async getGameTypes(): Promise<string[]> {
+    return await this.playerService.getGameTypes();
+  }
+
   @Get(':id')
-  @Roles(['mod'])
+  @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get player by ID',
@@ -78,7 +100,7 @@ export class PlayerController {
   // ==================== Mutation Endpoints ====================
 
   @Post('sync')
-  @Roles([ROLES.MODERATOR])
+  @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Sync player',

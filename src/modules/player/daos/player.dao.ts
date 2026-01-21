@@ -83,22 +83,19 @@ export class PlayerDao extends KyselyDao<PlayerDao> {
     const filters = this.extractFilters(queryDto);
     const cursorField = this.getCursorField(queryDto);
 
-    const result = await this.paginateWithCursor(this.buildBaseQuery(), {
-      cursor: queryDto.cursor,
-      limit: queryDto.limit,
-      direction: 'forward',
-      cursorField,
-      filters,
-      orderBy: queryDto.orderBy,
-      mapField: (field: string) => this.mapOrderByField(field),
-      applyFilters: this.buildFilterFunction(filters),
-    });
-
-    return new PaginatedDto<PlayerDto>({
-      items: result.items as PlayerDto[],
-      nextCursor: result.nextCursor,
-      hasMore: result.hasMore,
-    });
+    return await this.paginateWithCursor<any>(
+      this.buildBaseQuery(),
+      {
+        cursor: queryDto.cursor,
+        limit: queryDto.limit,
+        direction: 'forward',
+        cursorField,
+        filters,
+        orderBy: queryDto.orderBy,
+        mapField: (field: string) => this.mapOrderByField(field),
+        applyFilters: this.buildFilterFunction(filters),
+      },
+    ) as PaginatedDto<PlayerDto>;
   }
 
   async findById(id: string): Promise<PlayerDto | null> {
@@ -141,6 +138,17 @@ export class PlayerDao extends KyselyDao<PlayerDao> {
     }
 
     return playerMap;
+  }
+
+  async getDistinctGameTypes(): Promise<string[]> {
+    const results = await this.kysely
+      .selectFrom(PlayerDao.TABLE)
+      .select('game')
+      .distinct()
+      .orderBy('game', 'asc')
+      .execute();
+
+    return results.map((row) => row.game as string).filter((game) => game != null);
   }
 
   // ==================== Public Mutation Methods ====================

@@ -5,7 +5,7 @@ import { NestExpressApplication } from "@nestjs/platform-express";
 import { SocketIOAdapter } from "./socketio.adapter";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { REDIS_CLIENT } from "./redis/constants/redis.constants";
-import { ConsoleLogger, ValidationPipe, HttpException } from "@nestjs/common";
+import { ConsoleLogger, ValidationPipe } from "@nestjs/common";
 import appConfig from "./config/app.config";
 
 async function bootstrap() {
@@ -27,20 +27,6 @@ async function bootstrap() {
       transform: true, // Automatically transform payloads to DTO instances
       transformOptions: {
         enableImplicitConversion: true, // Enable implicit type conversion
-      },
-      exceptionFactory: (errors) => {
-        // Custom exception factory to ensure proper 400 status code
-        const messages = errors.map((error) => {
-          return Object.values(error.constraints || {}).join(", ");
-        });
-        return new HttpException(
-          {
-            statusCode: 400,
-            message: messages.length > 0 ? messages : "Validation failed",
-            error: "Bad Request",
-          },
-          400,
-        );
       },
     }),
   );

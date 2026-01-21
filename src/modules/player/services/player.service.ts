@@ -31,6 +31,10 @@ export class PlayerService {
     return result;
   }
 
+  async getGameTypes(): Promise<string[]> {
+    return await this.playerDao.getDistinctGameTypes();
+  }
+
   // ==================== Mutation Methods ====================
 
   async sync(syncPlayerDto: SyncPlayerDto): Promise<PlayerDto> {

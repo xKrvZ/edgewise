@@ -7,7 +7,7 @@ import { PaginatedDto } from '../dtos/paginated.dto';
 import { CursorEncoder, CursorData } from '../utils/cursor-encoder';
 import { OrderByDto } from '../dtos/filter.dto';
 
-export interface CursorPaginationOptions<T> {
+export interface CursorPaginationOptions<T, DTO = T> {
   cursor?: string;
   limit?: number;
   direction?: 'forward' | 'backward';
@@ -73,12 +73,12 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
    * @param options - Pagination options including filters and ordering
    * @returns Paginated results with encoded cursor that preserves filters
    */
-  protected async paginateWithCursor<O extends keyof DB, TB extends keyof DB, R>(
+  protected async paginateWithCursor<DTO, TB extends keyof DB = any, R = any>(
     queryBuilder: SelectQueryBuilder<DB, TB, R>,
-    options: CursorPaginationOptions<R> & {
+    options: CursorPaginationOptions<R, DTO> & {
     applyFilters?: (query: SelectQueryBuilder<DB, any, any>) => SelectQueryBuilder<DB, any, any>;
   },
-  ): Promise<PaginatedDto<R>> {
+  ): Promise<PaginatedDto<DTO>> {
     const {
       cursor,
       limit = 20,
@@ -193,8 +193,8 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
           })
         : null;
 
-    return new PaginatedDto<R>({
-      items: resultItems as R[],
+    return new PaginatedDto<DTO>({
+      items: resultItems as DTO[],
       nextCursor,
       hasMore,
     });

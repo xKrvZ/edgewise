@@ -1,28 +1,33 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 import { PunishmentType } from '../../punishment/dtos/punishment.dto';
 import { UserDto } from '@/modules/user/dtos/user.dto';
 
 export type AppealStatus = 'pending' | 'accepted' | 'denied';
 
 export class AppealDto {
+  @Expose()
   @ApiProperty({
     description: 'Unique identifier for the appeal',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
   id: string;
 
+  @Expose()
   @ApiProperty({
     description: 'Player ID who submitted the appeal',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
   playerId: string;
 
+  @Expose()
   @ApiProperty({
     description: 'Punishment ID being appealed',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
   punishmentId: string;
 
+  @Expose()
   @ApiProperty({
     description: 'Type of punishment being appealed',
     enum: ['ban', 'mute', 'kick'],
@@ -30,12 +35,14 @@ export class AppealDto {
   })
   punishmentType: PunishmentType;
 
+  @Expose()
   @ApiProperty({
     description: 'Timestamp when the appeal was submitted',
     example: '2025-01-19T18:00:00.000Z',
   })
   submittedAt: string;
 
+  @Expose()
   @ApiProperty({
     description: 'Status of the appeal',
     enum: ['pending', 'accepted', 'denied'],
@@ -43,6 +50,14 @@ export class AppealDto {
   })
   status: AppealStatus;
 
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Description/reason provided by the player when submitting the appeal',
+    example: 'I believe this punishment was issued in error. I was not online at the time of the incident.',
+  })
+  description?: string;
+
+  @Expose()
   @ApiPropertyOptional({
     description: 'User who reviewed the appeal',
     type: UserDto,

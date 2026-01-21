@@ -166,24 +166,19 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
     const filters = this.extractFilters(queryDto);
     const cursorField = this.getCursorField(queryDto);
 
-    const result = await this.paginateWithCursor(this.buildBaseQuery(includes), {
-      cursor: queryDto.cursor,
-      limit: queryDto.limit,
-      direction: 'forward',
-      cursorField: cursorField,
-      filters,
-      orderBy: queryDto.orderBy,
-      mapField: (field: string) => this.mapOrderByField(field),
-      applyFilters: this.buildFilterFunction(filters),
-    });
-
-    const items = result.items.map((row: any) => this.mapRowToDto(row, includes));
-
-    return new PaginatedDto<AbuseReportDto>({
-      items,
-      nextCursor: result.nextCursor,
-      hasMore: result.hasMore,
-    });
+    return await this.paginateWithCursor<AbuseReportDto>(
+      this.buildBaseQuery(includes),
+      {
+        cursor: queryDto.cursor,
+        limit: queryDto.limit,
+        direction: 'forward',
+        cursorField: cursorField,
+        filters,
+        orderBy: queryDto.orderBy,
+        mapField: (field: string) => this.mapOrderByField(field),
+        applyFilters: this.buildFilterFunction(filters),
+      },
+    );
   }
 
   async findById(id: string, includes?: Set<string>): Promise<AbuseReportDto | null> {

@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, getSchemaPath } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 
 /**
  * Generic paginated response DTO for cursor-based pagination
@@ -29,12 +30,14 @@ import { ApiProperty, ApiPropertyOptional, getSchemaPath } from '@nestjs/swagger
  * ```
  */
 export class PaginatedDto<T> {
+  @Expose()
   @ApiProperty({
     description: 'Array of items in the current page',
     isArray: true,
   })
   items: T[];
 
+  @Expose()
   @ApiPropertyOptional({
     description: 'Cursor for the next page. Use this value in the next request to fetch the next page.',
     example: '123e4567-e89b-12d3-a456-426614174000',
@@ -47,6 +50,7 @@ export class PaginatedDto<T> {
   })
   nextCursor: string | number | Date | null;
 
+  @Expose()
   @ApiProperty({
     description: 'Whether there are more items available after the current page',
     example: true,

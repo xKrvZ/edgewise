@@ -24,7 +24,7 @@ import { AppealQueryDto } from '../dtos/appeal-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { Roles, Session, UserSession } from '@thallesp/nestjs-better-auth';
 import { createPaginatedSchema } from '@/database/utils/paginated-schema.util';
-import { ROLES, hasRole } from '@/auth/constants/roles.constants';
+import { ROLES, STAFF_ROLES, hasRole } from '@/auth/constants/roles.constants';
 
 @ApiTags('appeal')
 @Controller('appeal')
@@ -73,7 +73,7 @@ export class AppealController {
   // ==================== Query Endpoints ====================
 
   @Get()
-  @Roles(['mod'])
+  @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'List all appeals',
@@ -93,7 +93,7 @@ export class AppealController {
   }
 
   @Get('player/:playerId')
-  @Roles([ROLES.MODERATOR])
+  @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get appeals by player ID',
@@ -120,7 +120,7 @@ export class AppealController {
   }
 
   @Get('punishment/:punishmentId')
-  @Roles([ROLES.MODERATOR])
+  @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get appeals by punishment ID',
@@ -147,7 +147,7 @@ export class AppealController {
   }
 
   @Get(':id')
-  @Roles(['mod'])
+  @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get appeal by ID',
@@ -180,7 +180,7 @@ export class AppealController {
   // ==================== Mutation Endpoints ====================
 
   @Patch(':id/review')
-  @Roles([ROLES.MODERATOR])
+  @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Review an appeal',
