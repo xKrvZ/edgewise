@@ -89,6 +89,14 @@ export class PunishmentDto {
 
   @Expose()
   @ApiPropertyOptional({
+    description: 'Reason why the punishment was lifted',
+    nullable: true,
+    example: 'Appeal accepted',
+  })
+  liftReason?: string | null;
+
+  @Expose()
+  @ApiPropertyOptional({
     description: 'Related abuse report ID',
     nullable: true,
   })

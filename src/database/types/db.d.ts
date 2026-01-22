@@ -442,6 +442,7 @@ export interface Punishment {
   lifted: Generated<boolean>;
   liftedAt: Timestamp | null;
   liftedById: string | null;
+  liftReason: string | null;
   playerId: string;
   punishmentType: string;
   reason: string;

@@ -67,13 +67,31 @@ export class PunishmentService {
     return await this.punishmentDao.create(createPunishmentDto, issuedById, includes);
   }
 
-  async lift(id: string, liftedById: string, includes?: Set<string>): Promise<PunishmentDto> {
-    const result = await this.punishmentDao.lift(id, liftedById, includes);
+  async lift(
+    id: string,
+    liftedById: string,
+    liftReason?: string | null,
+    includes?: Set<string>,
+  ): Promise<PunishmentDto> {
+    // First, check if the punishment exists
+    const punishment = await this.punishmentDao.findById(id, includes);
+
+    if (!punishment) {
+      throw new NotFoundException(`Punishment with ID ${id} not found`);
+    }
+
+    // Check if the punishment is already lifted
+    if (punishment.lifted) {
+      throw new BadRequestException(
+        `Punishment with ID ${id} has already been lifted`,
+      );
+    }
+
+    // Attempt to lift the punishment
+    const result = await this.punishmentDao.lift(id, liftedById, liftReason, includes);
 
     if (!result) {
-      throw new NotFoundException(
-        `Punishment with ID ${id} not found or already lifted`,
-      );
+      throw new NotFoundException(`Punishment with ID ${id} not found`);
     }
 
     return result;

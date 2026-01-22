@@ -30,18 +30,17 @@ export function createPaginatedSchema(itemSchemaRef: string) {
         type: 'array',
         items: { $ref: itemSchemaRef },
       },
-      nextCursor: {
-        oneOf: [
-          { type: 'string' },
-          { type: 'number' },
-          { type: 'string', format: 'date-time' },
-        ],
+      previousCursor: {
+        type: 'string',
+        description: 'Base64 encoded cursor for the previous page',
         nullable: true,
       },
-      hasMore: {
-        type: 'boolean',
+      nextCursor: {
+        type: 'string',
+        description: 'Base64 encoded cursor for the next page',
+        nullable: true,
       },
     },
-    required: ['items', 'hasMore'],
+    required: ['items'],
   };
 }

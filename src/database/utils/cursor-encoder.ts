@@ -4,7 +4,8 @@
  */
 
 export interface CursorData {
-  value: string | number | Date;
+  value: string | number | Date | null;
+  direction?: 'forward' | 'backward';
   filters?: Record<string, any>;
   orderBy?: {
     field: string;
@@ -17,8 +18,15 @@ export class CursorEncoder {
    * Encode cursor data to a base64 string
    */
   static encode(data: CursorData): string {
+    const serializeValue = (value: string | number | Date | null | undefined): string | number | null => {
+      if (value === null || value === undefined) return null;
+      if (value instanceof Date) return value.toISOString();
+      return value;
+    };
+
     const json = JSON.stringify({
-      value: data.value instanceof Date ? data.value.toISOString() : data.value,
+      value: serializeValue(data.value),
+      direction: data.direction || 'forward',
       filters: data.filters || {},
       orderBy: data.orderBy,
     });
@@ -33,14 +41,18 @@ export class CursorEncoder {
       const json = Buffer.from(cursor, 'base64').toString('utf-8');
       const data = JSON.parse(json);
       
-      // Try to parse value as Date if it looks like an ISO string
-      let value: string | number | Date = data.value;
-      if (typeof data.value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(data.value)) {
-        value = new Date(data.value);
-      }
+      // Helper to parse value as Date if it looks like an ISO string
+      const parseValue = (value: string | number | null | undefined): string | number | Date | null => {
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+          return new Date(value);
+        }
+        return value;
+      };
       
       return {
-        value,
+        value: parseValue(data.value),
+        direction: data.direction || 'forward',
         filters: data.filters || {},
         orderBy: data.orderBy,
       };

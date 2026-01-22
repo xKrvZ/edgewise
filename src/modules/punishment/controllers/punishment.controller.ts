@@ -21,6 +21,7 @@ import {
 import { PunishmentService } from '../services/punishment.service';
 import { PunishmentDto } from '../dtos/punishment.dto';
 import { CreatePunishmentDto } from '../dtos/create-punishment.dto';
+import { LiftPunishmentDto } from '../dtos/lift-punishment.dto';
 import { LiftPunishmentsDto } from '../dtos/lift-punishments.dto';
 import { PunishmentQueryDto } from '../dtos/punishment-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
@@ -178,6 +179,46 @@ export class PunishmentController {
 
   // ==================== Mutation Endpoints ====================
 
+  @Post(':id/lift')
+  @Roles(STAFF_ROLES)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Lift a punishment',
+    description: 'Lifts a specific punishment',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Unique identifier of the punishment',
+    type: String,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Punishment lifted successfully',
+    type: PunishmentDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Punishment not found',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Punishment has already been lifted',
+  })
+  async lift(
+    @Session() session: UserSession,
+    @Param('id') id: string,
+    @Body() liftPunishmentDto?: LiftPunishmentDto,
+    @Query('include') include?: string,
+  ): Promise<PunishmentDto> {
+    const includes = this.validateIncludes(include, session.user.role);
+    return await this.punishmentService.lift(
+      id,
+      session.user.id,
+      liftPunishmentDto?.liftReason,
+      includes,
+    );
+  }
+
   @Post()
   @Roles(STAFF_ROLES)
   @HttpCode(HttpStatus.CREATED)
@@ -201,35 +242,6 @@ export class PunishmentController {
   ): Promise<PunishmentDto> {
     const includes = this.validateIncludes(include, session.user.role);
     return await this.punishmentService.create(createPunishmentDto, session.user.id, includes);
-  }
-
-  @Patch(':id/lift')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Lift a punishment',
-    description: 'Lifts a specific punishment',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Unique identifier of the punishment',
-    type: String,
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Punishment lifted successfully',
-    type: PunishmentDto,
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Punishment not found or already lifted',
-  })
-  async lift(
-    @Session() session: UserSession,
-    @Param('id') id: string,
-    @Query('include') include?: string,
-  ): Promise<PunishmentDto> {
-    const includes = this.validateIncludes(include, session.user.role);
-    return await this.punishmentService.lift(id, session.user.id, includes);
   }
 
   @Post('lift-bulk')

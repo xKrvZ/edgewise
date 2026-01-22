@@ -38,6 +38,7 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
           'createdAt',
           'lifted',
           'liftedAt',
+          'liftReason',
           'relatedAbuseReportId',
           'playerId',
           'issuedById',
@@ -126,6 +127,7 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
       lifted: row.lifted,
       liftedBy: includeUser ? row.liftedBy ?? undefined : undefined,
       liftedAt: row.liftedAt ? row.liftedAt.toISOString() : null,
+      liftReason: row.liftReason ?? null,
       relatedAbuseReportId: row.relatedAbuseReportId ?? null,
     } as PunishmentDto;
   }
@@ -314,13 +316,19 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
     return punishment;
   }
 
-  async lift(id: string, liftedById: string, includes?: Set<string>): Promise<PunishmentDto | null> {
+  async lift(
+    id: string,
+    liftedById: string,
+    liftReason?: string | null,
+    includes?: Set<string>,
+  ): Promise<PunishmentDto | null> {
     await (this.kysely as any)
       .updateTable(PunishmentDao.TABLE)
       .set({
         lifted: true,
         liftedById,
         liftedAt: sql`now()`,
+        liftReason: liftReason ?? null,
       })
       .where('id', '=', id)
       .where('lifted', '=', false)

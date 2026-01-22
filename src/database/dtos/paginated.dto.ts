@@ -18,13 +18,18 @@ import { Expose } from 'class-transformer';
  *         type: 'array',
  *         items: { $ref: getSchemaPath(PunishmentDto) }
  *       },
- *       nextCursor: { 
- *         oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'string', format: 'date-time' }],
+ *       previousCursor: { 
+ *         type: 'string',
+ *         description: 'Base64 encoded cursor for the previous page',
  *         nullable: true 
  *       },
- *       hasMore: { type: 'boolean' }
+ *       nextCursor: { 
+ *         type: 'string',
+ *         description: 'Base64 encoded cursor for the next page',
+ *         nullable: true 
+ *       }
  *     },
- *     required: ['items', 'hasMore']
+ *     required: ['items']
  *   }
  * })
  * ```
@@ -39,27 +44,29 @@ export class PaginatedDto<T> {
 
   @Expose()
   @ApiPropertyOptional({
-    description: 'Cursor for the next page. Use this value in the next request to fetch the next page.',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    description: 'Base64 encoded cursor for the previous page. Use this to navigate to the previous page.',
+    example: 'eyJ2YWx1ZSI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImZpbHRlcnMiOnt9fQ==',
     nullable: true,
-    oneOf: [
-      { type: 'string' },
-      { type: 'number' },
-      { type: 'string', format: 'date-time' },
-    ],
+    type: String,
   })
-  nextCursor: string | number | Date | null;
+  previousCursor: string | null;
 
   @Expose()
-  @ApiProperty({
-    description: 'Whether there are more items available after the current page',
-    example: true,
+  @ApiPropertyOptional({
+    description: 'Base64 encoded cursor for the next page. Use this to navigate to the next page.',
+    example: 'eyJ2YWx1ZSI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMiIsImZpbHRlcnMiOnt9fQ==',
+    nullable: true,
+    type: String,
   })
-  hasMore: boolean;
+  nextCursor: string | null;
 
-  constructor(data: { items: T[]; nextCursor: string | number | Date | null; hasMore: boolean }) {
+  constructor(data: { 
+    items: T[]; 
+    previousCursor: string | null; 
+    nextCursor: string | null;
+  }) {
     this.items = data.items;
+    this.previousCursor = data.previousCursor;
     this.nextCursor = data.nextCursor;
-    this.hasMore = data.hasMore;
   }
 }
