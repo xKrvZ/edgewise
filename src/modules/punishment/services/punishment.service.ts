@@ -1,14 +1,22 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { PunishmentDao } from '../daos/punishment.dao';
+import { NoteDao } from '@/modules/note/daos/note.dao';
+import { AppealDao } from '@/modules/appeal/daos/appeal.dao';
 import { PunishmentDto } from '../dtos/punishment.dto';
 import { CreatePunishmentDto } from '../dtos/create-punishment.dto';
 import { LiftPunishmentsDto } from '../dtos/lift-punishments.dto';
 import { PunishmentQueryDto } from '../dtos/punishment-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
+import { LiftReason } from '../constants/lift-reason.constants';
 
 @Injectable()
 export class PunishmentService {
-  constructor(private readonly punishmentDao: PunishmentDao) {}
+  constructor(
+    private readonly punishmentDao: PunishmentDao,
+    private readonly noteDao: NoteDao,
+    @Inject(forwardRef(() => AppealDao))
+    private readonly appealDao: AppealDao,
+  ) {}
 
   // ==================== Query Methods ====================
 
@@ -64,13 +72,19 @@ export class PunishmentService {
     issuedById: string,
     includes?: Set<string>,
   ): Promise<PunishmentDto> {
-    return await this.punishmentDao.create(createPunishmentDto, issuedById, includes);
+    return await this.punishmentDao.create(
+      createPunishmentDto,
+      issuedById,
+      createPunishmentDto.note,
+      includes,
+    );
   }
 
   async lift(
     id: string,
     liftedById: string,
-    liftReason?: string | null,
+    liftReason?: LiftReason | null,
+    note?: string,
     includes?: Set<string>,
   ): Promise<PunishmentDto> {
     // First, check if the punishment exists
@@ -87,14 +101,50 @@ export class PunishmentService {
       );
     }
 
-    // Attempt to lift the punishment
-    const result = await this.punishmentDao.lift(id, liftedById, liftReason, includes);
-
-    if (!result) {
-      throw new NotFoundException(`Punishment with ID ${id} not found`);
+    // Check if there's a pending appeal for this punishment
+    const appeals = await this.appealDao.findByPunishmentId(id);
+    const pendingAppeal = appeals?.find((appeal) => appeal.status === 'pending');
+    if (pendingAppeal) {
+      throw new BadRequestException(
+        `Cannot lift punishment with ID ${id} because there is a pending appeal. Please review the appeal first.`,
+      );
     }
 
-    return result;
+    // Use transaction to create note and lift punishment
+    return await this.punishmentDao.transaction(async (trx) => {
+      const punishmentDao = this.punishmentDao.transacting(trx);
+      const noteDao = this.noteDao.transacting(trx);
+
+      // Create note for the punishment lift if provided
+      let liftNoteId: string | undefined;
+      if (note) {
+        const createdNote = await noteDao.create(
+          {
+            entityId: id,
+            entityType: 'Punishment',
+            text: note,
+          },
+          liftedById,
+          false,
+        );
+        liftNoteId = createdNote.id;
+      }
+
+      // Lift the punishment with liftNoteId
+      const result = await punishmentDao.lift(
+        id,
+        liftedById,
+        liftReason,
+        liftNoteId,
+        includes,
+      );
+
+      if (!result) {
+        throw new NotFoundException(`Punishment with ID ${id} not found`);
+      }
+
+      return result;
+    });
   }
 
   async liftBulk(

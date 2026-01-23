@@ -5,6 +5,9 @@ import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { AppealQueryDto } from '../dtos/appeal-query.dto';
 import { PunishmentDao } from '@/modules/punishment/daos/punishment.dao';
 import { UserDao } from '@/modules/user/daos/user.dao';
+import { NoteDao } from '@/modules/note/daos/note.dao';
+import { AppealAcceptanceReason } from '../constants/appeal-acceptance-reason.constants';
+import { AppealRejectionReason } from '../constants/appeal-rejection-reason.constants';
 import { DB } from '@/database/types/db';
 import { sql } from 'kysely';
 
@@ -16,6 +19,7 @@ export class AppealDao extends KyselyDao<AppealDao> {
 
   private buildBaseQuery(includes?: Set<string>) {
     const includeUser = includes?.has('user') ?? false;
+    const includeNote = includes?.has('note') ?? false;
 
     return (this.kysely as any)
       .selectFrom(AppealDao.TABLE)
@@ -28,6 +32,9 @@ export class AppealDao extends KyselyDao<AppealDao> {
           'status',
           'description',
           'reviewedById',
+          'reviewNoteId',
+          'acceptanceReason',
+          'rejectionReason',
           // Always include punishmentType as it's required by the DTO
           eb
             .selectFrom(PunishmentDao.TABLE)
@@ -56,12 +63,59 @@ export class AppealDao extends KyselyDao<AppealDao> {
           );
         }
 
+        // Conditionally include note subquery (reviewNote)
+        if (includeNote) {
+          selects.push(
+            eb
+              .selectFrom(NoteDao.TABLE)
+              .select((eb) => [
+                eb.fn('json_build_object', [
+                  sql.lit('id'),
+                  eb.ref('note.id'),
+                  sql.lit('entityId'),
+                  eb.ref('note.entityId'),
+                  sql.lit('entityType'),
+                  eb.ref('note.entityType'),
+                  sql.lit('text'),
+                  eb.ref('note.text'),
+                  sql.lit('createdAt'),
+                  eb.ref('note.createdAt'),
+                  sql.lit('updatedAt'),
+                  eb.ref('note.updatedAt'),
+                ]),
+              ])
+              .where('note.id', '=', eb.ref('appeal.reviewNoteId'))
+              .as('reviewNote'),
+          );
+        }
+
         return selects;
       });
   }
 
   private mapRowToDto(row: any, includes?: Set<string>): AppealDto {
     const includeUser = includes?.has('user') ?? false;
+    const includeNote = includes?.has('note') ?? false;
+
+    // Helper to convert timestamp to ISO string
+    const toISOString = (value: any): string => {
+      if (!value) return value;
+      if (typeof value === 'string') return value;
+      if (value instanceof Date) return value.toISOString();
+      // If it's already an ISO string or other format, return as is
+      return String(value);
+    };
+
+    const reviewNote = includeNote && row.reviewNote
+      ? {
+          id: row.reviewNote.id,
+          entityId: row.reviewNote.entityId,
+          entityType: row.reviewNote.entityType,
+          text: row.reviewNote.text,
+          createdAt: toISOString(row.reviewNote.createdAt),
+          updatedAt: toISOString(row.reviewNote.updatedAt),
+        }
+      : undefined;
 
     return {
       id: row.id,
@@ -72,6 +126,9 @@ export class AppealDao extends KyselyDao<AppealDao> {
       status: row.status as AppealStatus,
       description: row.description ?? undefined,
       reviewedBy: includeUser ? row.reviewedBy ?? undefined : undefined,
+      reviewNote,
+      acceptanceReason: row.acceptanceReason ?? null,
+      rejectionReason: row.rejectionReason ?? null,
     } as AppealDto;
   }
 
@@ -219,6 +276,9 @@ export class AppealDao extends KyselyDao<AppealDao> {
     id: string,
     status: AppealStatus,
     reviewedById: string,
+    reviewNoteId?: string,
+    acceptanceReason?: AppealAcceptanceReason | null,
+    rejectionReason?: AppealRejectionReason | null,
     includes?: Set<string>,
   ): Promise<AppealDto | null> {
     await (this.kysely as any)
@@ -226,6 +286,9 @@ export class AppealDao extends KyselyDao<AppealDao> {
       .set({
         status,
         reviewedById,
+        reviewNoteId: reviewNoteId ?? undefined,
+        acceptanceReason: acceptanceReason ?? null,
+        rejectionReason: rejectionReason ?? null,
       })
       .where('id', '=', id)
       .execute();

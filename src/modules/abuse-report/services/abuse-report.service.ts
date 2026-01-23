@@ -5,6 +5,8 @@ import { AbuseReportDto, ReportStatus } from '../dtos/abuse-report.dto';
 import { ReviewAbuseReportDto } from '../dtos/review-abuse-report.dto';
 import { AbuseReportQueryDto } from '../dtos/abuse-report-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
+import { PunishmentReason } from '../../punishment/constants/punishment-reason.constants';
+import { CreatePunishmentDto } from '../../punishment/dtos/create-punishment.dto';
 
 @Injectable()
 export class AbuseReportService {
@@ -43,6 +45,7 @@ export class AbuseReportService {
   async review(
     id: string,
     reviewAbuseReportDto: ReviewAbuseReportDto,
+    createPunishmentDto: CreatePunishmentDto | null,
     reviewedById: string,
     includes?: Set<string>,
   ): Promise<AbuseReportDto> {
@@ -60,13 +63,12 @@ export class AbuseReportService {
       throw new BadRequestException('Abuse report has already been reviewed');
     }
 
-    // If action is "no-punishment", just update the report
-    if (reviewAbuseReportDto.actionTaken === 'no-punishment') {
+    // If no punishment is provided, just update the report (no-punishment)
+    if (!createPunishmentDto) {
       const updatedReport = await this.abuseReportDao.updateReview(
         id,
         reviewAbuseReportDto.status,
-        reviewAbuseReportDto.actionTaken,
-        undefined,
+        undefined, // No punishment ID
         includes,
       );
 
@@ -77,50 +79,50 @@ export class AbuseReportService {
       return updatedReport;
     }
 
-    // If action is "punishment", require punishment data and create it in transaction
-    if (reviewAbuseReportDto.actionTaken === 'punishment') {
-      if (!reviewAbuseReportDto.punishment) {
-        throw new BadRequestException(
-          'Punishment data is required when actionTaken is "punishment"',
-        );
-      }
-
-      if (!report.reportedPlayer) {
-        throw new BadRequestException('Reported player information is required');
-      }
-
-      // Use transaction to create punishment and update report
-      return await this.abuseReportDao.transaction(async (trx) => {
-        const abuseReportDao = this.abuseReportDao.transacting(trx);
-        const punishmentDao = this.punishmentDao.transacting(trx);
-
-        // Create punishment with the reported player as the target
-        const punishment = await punishmentDao.create(
-          {
-            ...reviewAbuseReportDto.punishment!,
-            playerId: report.reportedPlayer!.id,
-            relatedAbuseReportId: id,
-          },
-          reviewedById,
-        );
-
-        // Update report with punishment ID
-        const updatedReport = await abuseReportDao.updateReview(
-          id,
-          reviewAbuseReportDto.status,
-          reviewAbuseReportDto.actionTaken,
-          punishment.id,
-          includes,
-        );
-
-        if (!updatedReport) {
-          throw new NotFoundException(`Failed to update abuse report with ID ${id}`);
-        }
-
-        return updatedReport;
-      });
+    // If punishment is provided, create it in transaction
+    if (!report.reportedPlayer) {
+      throw new BadRequestException('Reported player information is required');
     }
 
-    throw new BadRequestException('Invalid actionTaken value');
+    // Use transaction to create punishment and update report
+    return await this.abuseReportDao.transaction(async (trx) => {
+      const abuseReportDao = this.abuseReportDao.transacting(trx);
+      const punishmentDao = this.punishmentDao.transacting(trx);
+
+      // Create punishment with the reported player as the target
+      // Automatically add ABUSE_REPORT_ACCEPTED to the punishment reasons
+      const punishmentReasons: PunishmentReason[] = [
+        ...(createPunishmentDto.punishmentReasons || []),
+        'ABUSE_REPORT_ACCEPTED' as PunishmentReason,
+      ];
+
+      // Create punishment with all reasons including ABUSE_REPORT_ACCEPTED
+      // We need to cast because CreatePunishmentDto expects ManualPunishmentReason[],
+      // but internally the DAO can handle PunishmentReason[] which includes ABUSE_REPORT_ACCEPTED
+      const punishment = await punishmentDao.create(
+        {
+          ...createPunishmentDto,
+          punishmentReasons: punishmentReasons as any, // Cast to allow ABUSE_REPORT_ACCEPTED
+          playerId: report.reportedPlayer!.id,
+          relatedAbuseReportId: id,
+        } as any,
+        reviewedById,
+        createPunishmentDto.note,
+      );
+
+      // Update report with punishment ID
+      const updatedReport = await abuseReportDao.updateReview(
+        id,
+        reviewAbuseReportDto.status,
+        punishment.id,
+        includes,
+      );
+
+      if (!updatedReport) {
+        throw new NotFoundException(`Failed to update abuse report with ID ${id}`);
+      }
+
+      return updatedReport;
+    });
   }
 }

@@ -1,4 +1,5 @@
 import { PunishmentDto, PunishmentType } from '../dtos/punishment.dto';
+import { PunishmentReason } from '../constants/punishment-reason.constants';
 
 /**
  * Maps punishment data from joined query results to PunishmentDto or partial PunishmentDto
@@ -62,8 +63,7 @@ export class PunishmentMapper {
   static mapFull(row: any, prefix: string = 'punishment'): PunishmentDto | null {
     const id = row[`${prefix}_id`] || row[`${prefix}.id`];
     const punishmentType = row[`${prefix}_punishmentType`] || row[`${prefix}.punishmentType`];
-    const banType = row[`${prefix}_banType`] || row[`${prefix}.banType`];
-    const reason = row[`${prefix}_reason`] || row[`${prefix}.reason`];
+    const punishmentReasons = row[`${prefix}_punishmentReasons`] || row[`${prefix}.punishmentReasons`] || row.punishmentReasons || [];
     const expiry = row[`${prefix}_expiry`] || row[`${prefix}.expiry`];
     const createdAt = row[`${prefix}_createdAt`] || row[`${prefix}.createdAt`];
     const lifted = row[`${prefix}_lifted`] || row[`${prefix}.lifted`];
@@ -75,11 +75,20 @@ export class PunishmentMapper {
       return null;
     }
 
+    // Extract reasons from JSON structure if needed
+    let reasons: PunishmentReason[] = [];
+    if (punishmentReasons) {
+      if (punishmentReasons.reasons && Array.isArray(punishmentReasons.reasons)) {
+        reasons = punishmentReasons.reasons as PunishmentReason[];
+      } else if (Array.isArray(punishmentReasons)) {
+        reasons = punishmentReasons as PunishmentReason[];
+      }
+    }
+
     return {
       id,
       punishmentType: punishmentType as PunishmentType,
-      banType: banType as 'permanent' | 'temporary' | null | undefined,
-      reason: reason!,
+      punishmentReasons: reasons,
       expiry: expiry ? (expiry instanceof Date ? expiry.toISOString() : expiry) : null,
       createdAt: createdAt instanceof Date ? createdAt.toISOString() : createdAt,
       player: row.player, // Should be mapped separately using PlayerMapper

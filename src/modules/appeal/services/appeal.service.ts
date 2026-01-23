@@ -6,6 +6,7 @@ import { AppealDto, AppealStatus } from '../dtos/appeal.dto';
 import { ReviewAppealDto } from '../dtos/review-appeal.dto';
 import { AppealQueryDto } from '../dtos/appeal-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
+import { LiftReason } from '../../punishment/constants/lift-reason.constants';
 
 @Injectable()
 export class AppealService {
@@ -76,11 +77,29 @@ export class AppealService {
       const punishmentDao = this.punishmentDao.transacting(trx);
       const noteDao = this.noteDao.transacting(trx);
 
-      // Update appeal status
+      // Create note for the appeal review if provided
+      let createdNoteId: string | undefined;
+      if (reviewAppealDto.note) {
+        const createdNote = await noteDao.create(
+          {
+            entityId: id,
+            entityType: 'Appeal',
+            text: reviewAppealDto.note,
+          },
+          reviewedById,
+          false,
+        );
+        createdNoteId = createdNote.id;
+      }
+
+      // Update appeal status with reviewNoteId and reasons
       const updatedAppeal = await appealDao.updateStatus(
         id,
         reviewAppealDto.status,
         reviewedById,
+        createdNoteId,
+        reviewAppealDto.status === 'accepted' ? reviewAppealDto.acceptanceReason : null,
+        reviewAppealDto.status === 'denied' ? reviewAppealDto.rejectionReason : null,
         includes,
       );
 
@@ -88,20 +107,14 @@ export class AppealService {
         throw new NotFoundException(`Failed to update appeal with ID ${id}`);
       }
 
-      // Create note for the appeal review
-      await noteDao.create(
-        {
-          entityId: id,
-          entityType: 'Appeal',
-          text: reviewAppealDto.note,
-        },
-        reviewedById,
-        false,
-      );
-
-      // If accepted, lift the punishment
+      // If accepted, lift the punishment with APPEAL_ACCEPTED reason and the review note
       if (reviewAppealDto.status === 'accepted') {
-        await punishmentDao.lift(appeal.punishmentId, reviewedById);
+        await punishmentDao.lift(
+          appeal.punishmentId,
+          reviewedById,
+          'APPEAL_ACCEPTED' as LiftReason,
+          createdNoteId,
+        );
       }
 
       return updatedAppeal;

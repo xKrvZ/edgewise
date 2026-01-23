@@ -15,16 +15,18 @@ import {
   ApiResponse,
   ApiParam,
   ApiTags,
+  ApiBody,
   getSchemaPath,
 } from '@nestjs/swagger';
 import { AbuseReportService } from '../services/abuse-report.service';
 import { AbuseReportDto } from '../dtos/abuse-report.dto';
 import { ReviewAbuseReportDto } from '../dtos/review-abuse-report.dto';
 import { AbuseReportQueryDto } from '../dtos/abuse-report-query.dto';
+import { CreatePunishmentDto } from '../../punishment/dtos/create-punishment.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { Roles, Session, UserSession } from '@thallesp/nestjs-better-auth';
 import { createPaginatedSchema } from '@/database/utils/paginated-schema.util';
-import { ROLES, STAFF_ROLES } from '@/auth/constants/roles.constants';
+import { ROLES, STAFF_ROLES, hasRole } from '@/auth/constants/roles.constants';
 
 @ApiTags('abuse-report')
 @Controller('abuse-report')
@@ -127,12 +129,16 @@ export class AbuseReportController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Review an abuse report',
-    description: 'Reviews an abuse report. If action is "no-punishment", only updates status. If action is "punishment", requires punishment data and creates the punishment in a transaction.',
+    description: 'Reviews an abuse report. If action is "no-punishment", only updates status. If action is "punishment", requires punishment data in the request body and creates the punishment in a transaction.',
   })
   @ApiParam({
     name: 'id',
     description: 'Unique identifier of the abuse report',
     type: String,
+  })
+  @ApiBody({
+    description: 'Review data and optional punishment data. If punishment is provided, a punishment will be created. If not, the report will be marked as reviewed without punishment.',
+    type: ReviewAbuseReportDto,
   })
   @ApiResponse({
     status: 200,
@@ -154,6 +160,27 @@ export class AbuseReportController {
     @Query('include') include?: string,
   ): Promise<AbuseReportDto> {
     const includes = this.validateIncludes(include, session.user.role);
-    return await this.abuseReportService.review(id, reviewAbuseReportDto, session.user.id, includes);
+    
+    const { punishment, ...reviewData } = reviewAbuseReportDto;
+    
+    // If punishment is provided, validate expiry requirement (same as punishment controller)
+    if (punishment) {
+      const isAdmin = hasRole(session.user.role, ROLES.ADMINISTRATOR);
+      
+      // Expiry must be provided unless user is admin
+      if (!isAdmin && !punishment.expiry) {
+        throw new BadRequestException(
+          'Expiry date is required for non-admin users. Only administrators can create permanent punishments.',
+        );
+      }
+    }
+    
+    return await this.abuseReportService.review(
+      id,
+      { status: reviewData.status },
+      punishment || null,
+      session.user.id,
+      includes,
+    );
   }
 }

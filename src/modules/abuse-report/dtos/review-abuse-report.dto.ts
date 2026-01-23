@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
-import { ReportStatus, ActionTaken } from './abuse-report.dto';
+import { IsEnum, IsNotEmpty, IsOptional, ValidateNested, ValidateIf } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
+import { ReportStatus } from './abuse-report.dto';
 import { CreatePunishmentDto } from '../../punishment/dtos/create-punishment.dto';
 
 export class ReviewAbuseReportDto {
@@ -14,21 +14,29 @@ export class ReviewAbuseReportDto {
   @IsNotEmpty()
   status: ReportStatus;
 
-  @ApiProperty({
-    description: 'Action taken on the report',
-    enum: ['punishment', 'no-punishment'],
-    example: 'punishment',
-  })
-  @IsEnum(['punishment', 'no-punishment'])
-  @IsNotEmpty()
-  actionTaken: ActionTaken;
-
   @ApiPropertyOptional({
-    description: 'Punishment data (required if actionTaken is "punishment")',
+    description: 'Punishment data (optional). If provided, a punishment will be created and linked to the report.',
     type: CreatePunishmentDto,
   })
   @IsOptional()
-  @ValidateNested()
+  @Transform(({ value }) => {
+    // Return undefined if value is null, undefined, or empty object
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    if (typeof value === 'object' && Object.keys(value).length === 0) {
+      return undefined;
+    }
+    return value;
+  })
+  @ValidateIf((o) => {
+    // Only validate if punishment is provided and is an object with at least one property
+    return o.punishment !== undefined && 
+           o.punishment !== null && 
+           typeof o.punishment === 'object' &&
+           Object.keys(o.punishment).length > 0;
+  })
+  @ValidateNested({ each: false })
   @Type(() => CreatePunishmentDto)
   punishment?: CreatePunishmentDto;
 }

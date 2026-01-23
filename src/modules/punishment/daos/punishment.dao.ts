@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { InjectKysely } from 'nestjs-kysely';
 import { KyselyDao } from '@/database/kysely/kysely.dao';
 import { PunishmentDto } from '../dtos/punishment.dto';
 import { CreatePunishmentDto } from '../dtos/create-punishment.dto';
@@ -6,12 +7,22 @@ import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { PunishmentQueryDto } from '../dtos/punishment-query.dto';
 import { PlayerDao } from '@/modules/player/daos/player.dao';
 import { UserDao } from '@/modules/user/daos/user.dao';
-import { sql } from 'kysely';
+import { NoteDao } from '@/modules/note/daos/note.dao';
+import { LiftReason } from '../constants/lift-reason.constants';
+import { PunishmentReason } from '../constants/punishment-reason.constants';
+import { sql, Kysely } from 'kysely';
 import { DB } from '@/database/types/db';
 
 @Injectable()
 export class PunishmentDao extends KyselyDao<PunishmentDao> {
   static readonly TABLE = 'punishment' as keyof DB;
+
+  constructor(
+    @InjectKysely() kysely: Kysely<DB>,
+    private readonly noteDao: NoteDao,
+  ) {
+    super(kysely);
+  }
 
   // ==================== Private Helper Methods ====================
 
@@ -25,6 +36,7 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
   private buildBaseQuery(includes?: Set<string>) {
     const includePlayer = includes?.has('player') ?? false;
     const includeUser = includes?.has('user') ?? false;
+    const includeNote = includes?.has('note') ?? false;
 
     return (this.kysely as any)
       .selectFrom(PunishmentDao.TABLE)
@@ -32,17 +44,28 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
         const selects: any[] = [
           'id',
           'punishmentType',
-          'banType',
-          'reason',
           'expiry',
           'createdAt',
           'lifted',
           'liftedAt',
           'liftReason',
+          'liftNoteId',
+          'punishmentNoteId',
           'relatedAbuseReportId',
           'playerId',
           'issuedById',
           'liftedById',
+          // Always include punishment reasons as JSON array
+          eb
+            .selectFrom('punishment_reasons')
+            .select((eb) => [
+              eb.fn('COALESCE', [
+                eb.fn('json_agg', [eb.ref('punishment_reasons.punishmentReason')]),
+                sql`'[]'::json`,
+              ]).as('reasons'),
+            ])
+            .whereRef('punishment_reasons.punishmentId', '=', 'punishment.id')
+            .as('punishmentReasons'),
         ];
 
         // Conditionally include player subquery
@@ -101,6 +124,54 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
           );
         }
 
+        // Conditionally include note subqueries (liftNote and punishmentNote)
+        if (includeNote) {
+          selects.push(
+            eb
+              .selectFrom(NoteDao.TABLE)
+              .select((eb) => [
+                eb.fn('json_build_object', [
+                  sql.lit('id'),
+                  eb.ref('note.id'),
+                  sql.lit('entityId'),
+                  eb.ref('note.entityId'),
+                  sql.lit('entityType'),
+                  eb.ref('note.entityType'),
+                  sql.lit('text'),
+                  eb.ref('note.text'),
+                  sql.lit('createdAt'),
+                  eb.ref('note.createdAt'),
+                  sql.lit('updatedAt'),
+                  eb.ref('note.updatedAt'),
+                ]),
+              ])
+              .where('note.id', '=', eb.ref('punishment.liftNoteId'))
+              .as('liftNote'),
+          );
+          selects.push(
+            eb
+              .selectFrom(NoteDao.TABLE)
+              .select((eb) => [
+                eb.fn('json_build_object', [
+                  sql.lit('id'),
+                  eb.ref('note.id'),
+                  sql.lit('entityId'),
+                  eb.ref('note.entityId'),
+                  sql.lit('entityType'),
+                  eb.ref('note.entityType'),
+                  sql.lit('text'),
+                  eb.ref('note.text'),
+                  sql.lit('createdAt'),
+                  eb.ref('note.createdAt'),
+                  sql.lit('updatedAt'),
+                  eb.ref('note.updatedAt'),
+                ]),
+              ])
+              .where('note.id', '=', eb.ref('punishment.punishmentNoteId'))
+              .as('punishmentNote'),
+          );
+        }
+
         return selects;
       });
   }
@@ -108,12 +179,57 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
   private mapRowToDto(row: any, includes?: Set<string>): PunishmentDto {
     const includePlayer = includes?.has('player') ?? false;
     const includeUser = includes?.has('user') ?? false;
+    const includeNote = includes?.has('note') ?? false;
+
+    // Helper to convert timestamp to ISO string
+    const toISOString = (value: any): string => {
+      if (!value) return value;
+      if (typeof value === 'string') return value;
+      if (value instanceof Date) return value.toISOString();
+      // If it's already an ISO string or other format, return as is
+      return String(value);
+    };
+
+    const liftNote = includeNote && row.liftNote
+      ? {
+          id: row.liftNote.id,
+          entityId: row.liftNote.entityId,
+          entityType: row.liftNote.entityType,
+          text: row.liftNote.text,
+          createdAt: toISOString(row.liftNote.createdAt),
+          updatedAt: toISOString(row.liftNote.updatedAt),
+        }
+      : undefined;
+
+    const punishmentNote = includeNote && row.punishmentNote && row.punishmentNote.id
+      ? {
+          id: row.punishmentNote.id,
+          entityId: row.punishmentNote.entityId,
+          entityType: row.punishmentNote.entityType,
+          text: row.punishmentNote.text,
+          createdAt: toISOString(row.punishmentNote.createdAt),
+          updatedAt: toISOString(row.punishmentNote.updatedAt),
+        }
+      : undefined;
+
+    // Extract punishment reasons from JSON array
+    let punishmentReasons: PunishmentReason[] = [];
+    if (row.punishmentReasons) {
+      if (row.punishmentReasons.reasons) {
+        // If it's an object with a 'reasons' property (from json_agg)
+        punishmentReasons = Array.isArray(row.punishmentReasons.reasons)
+          ? row.punishmentReasons.reasons
+          : [];
+      } else if (Array.isArray(row.punishmentReasons)) {
+        // If it's already an array
+        punishmentReasons = row.punishmentReasons;
+      }
+    }
 
     return {
       id: row.id,
       punishmentType: row.punishmentType as 'ban' | 'mute' | 'kick',
-      banType: row.banType as 'permanent' | 'temporary' | null | undefined,
-      reason: row.reason,
+      punishmentReasons,
       expiry: row.expiry ? row.expiry.toISOString() : null,
       createdAt: row.createdAt.toISOString(),
       player: includePlayer && row.player
@@ -128,6 +244,8 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
       liftedBy: includeUser ? row.liftedBy ?? undefined : undefined,
       liftedAt: row.liftedAt ? row.liftedAt.toISOString() : null,
       liftReason: row.liftReason ?? null,
+      liftNote,
+      punishmentNote,
       relatedAbuseReportId: row.relatedAbuseReportId ?? null,
     } as PunishmentDto;
   }
@@ -138,6 +256,7 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
       lifted?: boolean;
       playerId?: string;
       issuedById?: string;
+      punishmentReason?: PunishmentReason[];
     },
   ) {
     return (query: any) => {
@@ -157,6 +276,19 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
 
       if (filters.issuedById) {
         filteredQuery = filteredQuery.where('issuedById', '=', filters.issuedById);
+      }
+
+      if (filters.punishmentReason && filters.punishmentReason.length > 0) {
+        // Filter by punishment reason(s) using EXISTS subquery with IN clause
+        filteredQuery = filteredQuery.where((eb) =>
+          eb.exists(
+            eb
+              .selectFrom('punishment_reasons')
+              .select('punishment_reasons.id')
+              .whereRef('punishment_reasons.punishmentId', '=', 'punishment.id')
+              .where('punishment_reasons.punishmentReason', 'in', filters.punishmentReason!),
+          ),
+        );
       }
 
       return filteredQuery;
@@ -188,6 +320,9 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
     }
     if (queryDto.issuedById) {
       filters.issuedById = queryDto.issuedById;
+    }
+    if (queryDto.punishmentReason) {
+      filters.punishmentReason = queryDto.punishmentReason;
     }
 
     return filters;
@@ -291,35 +426,76 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
   async create(
     data: CreatePunishmentDto,
     issuedById: string,
+    note?: string,
     includes?: Set<string>,
   ): Promise<PunishmentDto> {
-    const result = await (this.kysely as any)
-      .insertInto(PunishmentDao.TABLE)
-      .values({
-        punishmentType: data.punishmentType,
-        banType: data.banType ?? null,
-        reason: data.reason,
-        expiry: data.expiry ? new Date(data.expiry) : null,
-        playerId: data.playerId,
-        externalId: data.externalId ?? null,
-        issuedById,
-        relatedAbuseReportId: data.relatedAbuseReportId ?? null,
-        lifted: false,
-      })
-      .returning(['id'])
-      .executeTakeFirstOrThrow();
+    return await this.transaction(async (trx) => {
+      const punishmentDao = this.transacting(trx);
+      const noteDao = this.noteDao.transacting(trx);
 
-    const punishment = await this.findById(result.id, includes);
-    if (!punishment) {
-      throw new Error('Failed to retrieve created punishment');
-    }
-    return punishment;
+      // Create the punishment first
+      const result = await (punishmentDao.kysely as any)
+        .insertInto(PunishmentDao.TABLE)
+        .values({
+          punishmentType: data.punishmentType,
+          expiry: data.expiry ? new Date(data.expiry) : null,
+          playerId: data.playerId,
+          externalId: data.externalId ?? null,
+          issuedById,
+          relatedAbuseReportId: data.relatedAbuseReportId ?? null,
+          lifted: false,
+        })
+        .returning(['id'])
+        .executeTakeFirstOrThrow();
+
+      // Create note for the punishment if "OTHER" is selected and note is provided
+      let punishmentNoteId: string | undefined;
+      if (data.punishmentReasons.includes('OTHER' as any) && note) {
+        const createdNote = await noteDao.create(
+          {
+            entityId: result.id,
+            entityType: 'Punishment',
+            text: note,
+          },
+          issuedById,
+          false,
+        );
+        punishmentNoteId = createdNote.id;
+
+        // Update punishment with note ID
+        await (punishmentDao.kysely as any)
+          .updateTable(PunishmentDao.TABLE)
+          .set({ punishmentNoteId })
+          .where('id', '=', result.id)
+          .execute();
+      }
+
+      // Insert punishment reasons into junction table
+      if (data.punishmentReasons && data.punishmentReasons.length > 0) {
+        await (punishmentDao.kysely as any)
+          .insertInto('punishment_reasons')
+          .values(
+            data.punishmentReasons.map((reason: PunishmentReason) => ({
+              punishmentId: result.id,
+              punishmentReason: reason,
+            })),
+          )
+          .execute();
+      }
+
+      const punishment = await punishmentDao.findById(result.id, includes);
+      if (!punishment) {
+        throw new Error('Failed to retrieve created punishment');
+      }
+      return punishment;
+    });
   }
 
   async lift(
     id: string,
     liftedById: string,
-    liftReason?: string | null,
+    liftReason?: LiftReason | null,
+    liftNoteId?: string,
     includes?: Set<string>,
   ): Promise<PunishmentDto | null> {
     await (this.kysely as any)
@@ -329,6 +505,7 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
         liftedById,
         liftedAt: sql`now()`,
         liftReason: liftReason ?? null,
+        liftNoteId: liftNoteId ?? undefined,
       })
       .where('id', '=', id)
       .where('lifted', '=', false)

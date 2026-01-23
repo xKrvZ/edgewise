@@ -5,7 +5,7 @@ import { NestExpressApplication } from "@nestjs/platform-express";
 import { SocketIOAdapter } from "./socketio.adapter";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { REDIS_CLIENT } from "./redis/constants/redis.constants";
-import { ConsoleLogger, ValidationPipe } from "@nestjs/common";
+import { ConsoleLogger, ValidationPipe, BadRequestException } from "@nestjs/common";
 import appConfig from "./config/app.config";
 
 async function bootstrap() {
@@ -20,6 +20,28 @@ async function bootstrap() {
     }),
   });
 
+  // Add early request logging middleware for debugging
+  app.use((req: any, res: any, next: any) => {
+    if (req.path?.includes('/abuse-report') && req.method === 'PATCH') {
+      console.log('[EarlyMiddleware] Request received:', {
+        method: req.method,
+        path: req.path,
+        url: req.url,
+        hasBody: !!req.body,
+        bodyKeys: req.body ? Object.keys(req.body) : [],
+      });
+      // Log raw body if available
+      if (req.body) {
+        try {
+          console.log('[EarlyMiddleware] Request body:', JSON.stringify(req.body, null, 2));
+        } catch (e) {
+          console.log('[EarlyMiddleware] Could not stringify body');
+        }
+      }
+    }
+    next();
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true, // Strip properties that don't have decorators
@@ -27,6 +49,20 @@ async function bootstrap() {
       transform: true, // Automatically transform payloads to DTO instances
       transformOptions: {
         enableImplicitConversion: true, // Enable implicit type conversion
+      },
+      exceptionFactory: (errors) => {
+        // Custom exception factory to ensure we can log before throwing
+        console.error('[ValidationPipe] Validation errors detected:', JSON.stringify(errors, null, 2));
+        console.error('[ValidationPipe] Error count:', errors.length);
+        errors.forEach((error, index) => {
+          console.error(`[ValidationPipe] Error ${index + 1}:`, {
+            property: error.property,
+            value: error.value,
+            constraints: error.constraints,
+            children: error.children,
+          });
+        });
+        return new BadRequestException(errors);
       },
     }),
   );

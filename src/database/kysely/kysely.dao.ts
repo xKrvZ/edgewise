@@ -238,7 +238,7 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
   private buildPaginatedQuery<TB extends keyof DB = any, R = any>(
     queryBuilder: SelectQueryBuilder<DB, TB, R>,
     applyFilters: ((query: SelectQueryBuilder<DB, any, any>) => SelectQueryBuilder<DB, any, any>) | undefined,
-    orderConfig: { field: any; queryDirection: 'asc' | 'desc' },
+    orderConfig: { field: any; baseDirection: 'asc' | 'desc'; queryDirection: 'asc' | 'desc' },
     cursorValue: string | number | Date | undefined,
     direction: 'forward' | 'backward',
   ): SelectQueryBuilder<DB, TB, R> {

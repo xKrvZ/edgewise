@@ -34,8 +34,8 @@ export class AppealController {
 
   /**
    * Validates and filters includes based on user role
-   * - Moderators: no includes allowed (reviewedBy is admin-only)
-   * - Admins: can include 'user' for reviewedBy
+   * - Moderators: can include 'note' for reviewNote
+   * - Admins: can include 'user' for reviewedBy and 'note' for reviewNote
    */
   private validateIncludes(
     include?: string,
@@ -53,7 +53,8 @@ export class AppealController {
     const isAdmin = hasRole(userRole, ROLES.ADMINISTRATOR);
 
     // Allowed includes based on role
-    const allowedIncludes = isAdmin ? ['user'] : [];
+    // Note: 'note' is available to all staff, 'user' is admin-only
+    const allowedIncludes: string[] = isAdmin ? ['user', 'note'] : ['note'];
 
     // Filter out any includes that aren't allowed
     const validatedIncludes = new Set<string>();
@@ -210,6 +211,7 @@ export class AppealController {
     @Body() reviewAppealDto: ReviewAppealDto,
     @Query('include') include?: string,
   ): Promise<AppealDto> {
+    console.log(reviewAppealDto);
     const includes = this.validateIncludes(include, session.user.role);
     return await this.appealService.review(id, reviewAppealDto, session.user.id, includes);
   }

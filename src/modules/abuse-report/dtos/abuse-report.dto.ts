@@ -1,9 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { PlayerDto } from '@/modules/player/dtos/player.dto';
+import { ReportReason, REPORT_REASONS } from '../constants/report-reason.constants';
 
 export type ReportStatus = 'pending' | 'reviewed';
-export type ActionTaken = 'punishment' | 'no-punishment';
 
 export class AbuseReportDto {
   @Expose()
@@ -29,10 +29,12 @@ export class AbuseReportDto {
 
   @Expose()
   @ApiProperty({
-    description: 'Reason for the report',
-    example: 'Harassment',
+    description: 'Reasons for the report',
+    type: [String],
+    enum: REPORT_REASONS,
+    example: ['HARASSMENT_BULLYING_OR_TARGETTED_ABUSE', 'CHAT_SPAMMING'],
   })
-  reason: string;
+  reportReasons: ReportReason[];
 
   @Expose()
   @ApiPropertyOptional({
@@ -51,15 +53,7 @@ export class AbuseReportDto {
 
   @Expose()
   @ApiPropertyOptional({
-    description: 'Action taken on the report',
-    enum: ['punishment', 'no-punishment'],
-    nullable: true,
-  })
-  actionTaken: ActionTaken | null;
-
-  @Expose()
-  @ApiPropertyOptional({
-    description: 'Punishment ID if action was taken',
+    description: 'Punishment ID if action was taken. If null, no punishment was issued.',
     nullable: true,
   })
   punishmentId: string | null;

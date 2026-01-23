@@ -37,8 +37,8 @@ export class PunishmentController {
 
   /**
    * Validates and filters includes based on user role
-   * - Moderators can only include 'player'
-   * - Admins can include 'player' and 'user'
+   * - Moderators can include 'player' and 'note'
+   * - Admins can include 'player', 'user', and 'note'
    */
   private validateIncludes(
     include?: string,
@@ -56,7 +56,8 @@ export class PunishmentController {
     const isAdmin = hasRole(userRole, ROLES.ADMINISTRATOR);
 
     // Allowed includes based on role
-    const allowedIncludes = isAdmin ? ['player', 'user'] : ['player'];
+    // Note: 'note' is available to all staff, 'user' is admin-only
+    const allowedIncludes: string[] = isAdmin ? ['player', 'user', 'note'] : ['player', 'note'];
 
     // Filter out any includes that aren't allowed
     const validatedIncludes = new Set<string>();
@@ -210,11 +211,13 @@ export class PunishmentController {
     @Body() liftPunishmentDto?: LiftPunishmentDto,
     @Query('include') include?: string,
   ): Promise<PunishmentDto> {
+    console.log(liftPunishmentDto);
     const includes = this.validateIncludes(include, session.user.role);
     return await this.punishmentService.lift(
       id,
       session.user.id,
       liftPunishmentDto?.liftReason,
+      liftPunishmentDto?.note,
       includes,
     );
   }
@@ -241,6 +244,17 @@ export class PunishmentController {
     @Query('include') include?: string,
   ): Promise<PunishmentDto> {
     const includes = this.validateIncludes(include, session.user.role);
+    
+    // Check if user is admin
+    const isAdmin = hasRole(session.user.role, ROLES.ADMINISTRATOR);
+    
+    // Expiry must be provided unless user is admin
+    if (!isAdmin && !createPunishmentDto.expiry) {
+      throw new BadRequestException(
+        'Expiry date is required for non-admin users. Only administrators can create permanent punishments.',
+      );
+    }
+    
     return await this.punishmentService.create(createPunishmentDto, session.user.id, includes);
   }
 

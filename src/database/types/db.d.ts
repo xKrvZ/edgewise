@@ -300,16 +300,20 @@ export interface _TimescaledbInternalHypertableChunkLocalSize {
 }
 
 export interface AbuseReport {
-  actionTaken: string | null;
   createdAt: Generated<Timestamp>;
   description: string | null;
   id: Generated<string>;
   metadata: Json | null;
   punishmentId: string | null;
-  reason: string;
   reportedPlayerId: string;
   reportingPlayerId: string;
   status: string;
+}
+
+export interface AbuseReportReason {
+  abuseReportId: string;
+  id: Generated<string>;
+  reportReason: string;
 }
 
 export interface Account {
@@ -329,11 +333,14 @@ export interface Account {
 }
 
 export interface Appeal {
+  acceptanceReason: string | null;
   description: string | null;
   id: Generated<string>;
   playerId: string;
   punishmentId: string;
+  rejectionReason: string | null;
   reviewedById: string | null;
+  reviewNoteId: string | null;
   status: string;
   submittedAt: Generated<Timestamp>;
 }
@@ -433,7 +440,6 @@ export interface Player {
 }
 
 export interface Punishment {
-  banType: string | null;
   createdAt: Generated<Timestamp>;
   expiry: Timestamp | null;
   externalId: string | null;
@@ -442,11 +448,19 @@ export interface Punishment {
   lifted: Generated<boolean>;
   liftedAt: Timestamp | null;
   liftedById: string | null;
+  liftNoteId: string | null;
   liftReason: string | null;
   playerId: string;
+  punishmentNoteId: string | null;
   punishmentType: string;
-  reason: string;
   relatedAbuseReportId: string | null;
+}
+
+export interface PunishmentReasons {
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  punishmentId: string;
+  punishmentReason: string;
 }
 
 export interface Session {
@@ -662,6 +676,7 @@ export interface DB {
   "_timescaledb_internal.compressed_chunk_stats": _TimescaledbInternalCompressedChunkStats;
   "_timescaledb_internal.hypertable_chunk_local_size": _TimescaledbInternalHypertableChunkLocalSize;
   abuse_report: AbuseReport;
+  abuse_report_reason: AbuseReportReason;
   account: Account;
   appeal: Appeal;
   jwks: Jwks;
@@ -672,6 +687,7 @@ export interface DB {
   oauthRefreshToken: OauthRefreshToken;
   player: Player;
   punishment: Punishment;
+  punishment_reasons: PunishmentReasons;
   session: Session;
   "timescaledb_experimental.policies": TimescaledbExperimentalPolicies;
   "timescaledb_information.chunk_compression_settings": TimescaledbInformationChunkCompressionSettings;

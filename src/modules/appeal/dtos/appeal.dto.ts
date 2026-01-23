@@ -2,6 +2,9 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { PunishmentType } from '../../punishment/dtos/punishment.dto';
 import { UserDto } from '@/modules/user/dtos/user.dto';
+import { NoteDto } from '@/modules/note/dtos/note.dto';
+import { AppealAcceptanceReason } from '../constants/appeal-acceptance-reason.constants';
+import { AppealRejectionReason } from '../constants/appeal-rejection-reason.constants';
 
 export type AppealStatus = 'pending' | 'accepted' | 'denied';
 
@@ -63,4 +66,46 @@ export class AppealDto {
     type: UserDto,
   })
   reviewedBy?: UserDto;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Note created when reviewing the appeal',
+    type: NoteDto,
+  })
+  reviewNote?: NoteDto;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Reason for accepting the appeal',
+    enum: [
+      'INCONCLUSIVE_EVIDENCE',
+      'PROVIDES_PROOF_THAT_CONTRADICTS_PUNISHMENT',
+      'ISSUED_IN_ERROR',
+      'ISSUED_EXCESSIVELY',
+      'ACKNOWLEDGED_AND_REFORMED',
+      'MISIDENTIFICATION',
+      'FALSE_POSITIVE',
+      'OTHER',
+    ],
+    nullable: true,
+    example: 'INCONCLUSIVE_EVIDENCE',
+  })
+  acceptanceReason?: AppealAcceptanceReason | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Reason for rejecting the appeal',
+    enum: [
+      'STRONG_EVIDENCE',
+      'PLAYER_ADMITS_GUILT',
+      'REPEAT_OFFENSE',
+      'LYING_HOSTILE_OR_RUDE',
+      'FAILURE_TO_RECOGNISE_ACCOUNTABILITY',
+      'LOW_EFFORT_APPEAL',
+      'OTHER',
+    ],
+    nullable: true,
+    example: 'STRONG_EVIDENCE',
+  })
+  rejectionReason?: AppealRejectionReason | null;
 }

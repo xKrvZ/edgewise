@@ -2,6 +2,9 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { PlayerDto } from '@/modules/player/dtos/player.dto';
 import { UserDto } from '@/modules/user/dtos/user.dto';
+import { NoteDto } from '@/modules/note/dtos/note.dto';
+import { LiftReason, LIFT_REASONS } from '../constants/lift-reason.constants';
+import { PunishmentReason, PUNISHMENT_REASONS } from '../constants/punishment-reason.constants';
 
 export type PunishmentType = 'ban' | 'mute' | 'kick';
 
@@ -22,19 +25,13 @@ export class PunishmentDto {
   punishmentType: PunishmentType;
 
   @Expose()
-  @ApiPropertyOptional({
-    description: 'Type of ban (only for ban punishments)',
-    enum: ['permanent', 'temporary'],
-    nullable: true,
-  })
-  banType?: 'permanent' | 'temporary' | null;
-
-  @Expose()
   @ApiProperty({
-    description: 'Reason for the punishment',
-    example: 'Cheating',
+    description: 'Reasons for the punishment',
+    type: [String],
+    enum: PUNISHMENT_REASONS,
+    example: ['CHEATING', 'CHAT_SPAMMING'],
   })
-  reason: string;
+  punishmentReasons: PunishmentReason[];
 
   @Expose()
   @ApiPropertyOptional({
@@ -90,10 +87,25 @@ export class PunishmentDto {
   @Expose()
   @ApiPropertyOptional({
     description: 'Reason why the punishment was lifted',
+    enum: LIFT_REASONS,
     nullable: true,
-    example: 'Appeal accepted',
+    example: 'INCONCLUSIVE_EVIDENCE',
   })
-  liftReason?: string | null;
+  liftReason?: LiftReason | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Note created when lifting the punishment',
+    type: NoteDto,
+  })
+  liftNote?: NoteDto;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Note created when punishment reason includes "OTHER"',
+    type: NoteDto,
+  })
+  punishmentNote?: NoteDto;
 
   @Expose()
   @ApiPropertyOptional({

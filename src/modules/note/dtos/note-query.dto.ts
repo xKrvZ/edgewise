@@ -27,8 +27,12 @@ export class NoteQueryDto extends PaginationDto {
     if (typeof stringValue !== 'string' || stringValue.length === 0) {
       return undefined;
     }
-    // Normalize: capitalize first letter, rest lowercase
-    return stringValue.charAt(0).toUpperCase() + stringValue.slice(1).toLowerCase();
+    // Find matching supported type (case-insensitive) and return the exact matched type
+    const matchedType = SUPPORTED_ENTITY_TYPES.find(
+      (type) => type.toLowerCase() === stringValue.toLowerCase(),
+    );
+    // Return the exact supported type (preserves camelCase like "AbuseReport")
+    return matchedType || stringValue;
   })
   @IsOptional()
   @IsString()

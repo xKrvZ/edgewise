@@ -4,6 +4,7 @@ import { AbuseReportDto, ReportStatus } from '../dtos/abuse-report.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { AbuseReportQueryDto } from '../dtos/abuse-report-query.dto';
 import { PlayerDao } from '@/modules/player/daos/player.dao';
+import { ReportReason } from '../constants/report-reason.constants';
 import { DB } from '@/database/types/db';
 import { sql } from 'kysely';
 
@@ -21,15 +22,24 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
       .select((eb) => {
         const selects: any[] = [
           'id',
-          'reason',
           'description',
           'status',
-          'actionTaken',
           'punishmentId',
           'metadata',
           'createdAt',
           'reportingPlayerId',
           'reportedPlayerId',
+          // Always include report reasons as JSON array
+          eb
+            .selectFrom('abuse_report_reason')
+            .select((eb) => [
+              eb.fn('COALESCE', [
+                eb.fn('json_agg', [eb.ref('abuse_report_reason.reportReason')]),
+                sql`'[]'::json`,
+              ]).as('reasons'),
+            ])
+            .whereRef('abuse_report_reason.abuseReportId', '=', 'abuse_report.id')
+            .as('reportReasons'),
         ];
 
         // Conditionally include player subqueries
@@ -69,14 +79,27 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
   private mapRowToDto(row: any, includes?: Set<string>): AbuseReportDto {
     const includePlayer = includes?.has('player') ?? false;
 
+    // Extract report reasons from JSON array
+    let reportReasons: ReportReason[] = [];
+    if (row.reportReasons) {
+      if (row.reportReasons.reasons) {
+        // If it's an object with a 'reasons' property (from json_agg)
+        reportReasons = Array.isArray(row.reportReasons.reasons)
+          ? (row.reportReasons.reasons as ReportReason[])
+          : [];
+      } else if (Array.isArray(row.reportReasons)) {
+        // If it's already an array
+        reportReasons = row.reportReasons as ReportReason[];
+      }
+    }
+
     return {
       id: row.id,
       reportingPlayer: includePlayer ? row.reportingPlayer ?? undefined : undefined,
       reportedPlayer: includePlayer ? row.reportedPlayer ?? undefined : undefined,
-      reason: row.reason,
+      reportReasons,
       description: row.description ?? undefined,
       status: row.status as ReportStatus,
-      actionTaken: row.actionTaken as 'punishment' | 'no-punishment' | null,
       punishmentId: row.punishmentId ?? null,
       metadata: row.metadata as { chatLogs?: string[] } | undefined,
       createdAt: row.createdAt.toISOString(),
@@ -88,6 +111,7 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
       status?: ReportStatus;
       reportingPlayerId?: string;
       reportedPlayerId?: string;
+      reportReason?: ReportReason[];
     },
   ) {
     return (query: any) => {
@@ -103,6 +127,19 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
 
       if (filters.reportedPlayerId) {
         filteredQuery = filteredQuery.where('reportedPlayerId', '=', filters.reportedPlayerId);
+      }
+
+      if (filters.reportReason && filters.reportReason.length > 0) {
+        // Filter by report reason(s) using EXISTS subquery with IN clause
+        filteredQuery = filteredQuery.where((eb) =>
+          eb.exists(
+            eb
+              .selectFrom('abuse_report_reason')
+              .select('abuse_report_reason.id')
+              .whereRef('abuse_report_reason.abuseReportId', '=', 'abuse_report.id')
+              .where('abuse_report_reason.reportReason', 'in', filters.reportReason!),
+          ),
+        );
       }
 
       return filteredQuery;
@@ -129,6 +166,9 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
     }
     if (queryDto.reportedPlayerId) {
       filters.reportedPlayerId = queryDto.reportedPlayerId;
+    }
+    if (queryDto.reportReason) {
+      filters.reportReason = queryDto.reportReason;
     }
 
     return filters;
@@ -198,7 +238,6 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
   async updateReview(
     id: string,
     status: ReportStatus,
-    actionTaken: 'punishment' | 'no-punishment',
     punishmentId?: string | null,
     includes?: Set<string>,
   ): Promise<AbuseReportDto | null> {
@@ -206,7 +245,6 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
       .updateTable(AbuseReportDao.TABLE)
       .set({
         status,
-        actionTaken,
         punishmentId: punishmentId ?? null,
       })
       .where('id', '=', id)

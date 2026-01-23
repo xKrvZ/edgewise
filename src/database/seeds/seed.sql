@@ -4,7 +4,9 @@
 
 -- Clear existing data (in reverse order of dependencies)
 DELETE FROM appeal;
+DELETE FROM punishment_reasons;
 DELETE FROM punishment;
+DELETE FROM abuse_report_reason;
 DELETE FROM abuse_report;
 DELETE FROM player;
 -- Note: We don't delete users as they're managed by Better Auth
@@ -36,14 +38,14 @@ ON CONFLICT DO NOTHING;
 
 -- ==================== Seed Abuse Reports ====================
 -- Note: Abuse reports must be inserted before punishments since punishments can reference them
+-- Note: reportReasons are now stored in abuse_report_reason junction table (many-to-many)
+-- Note: actionTaken has been removed - it can be inferred from whether punishmentId is null or not
 INSERT INTO abuse_report (
   id,
   "reportingPlayerId",
   "reportedPlayerId",
-  reason,
   description,
   status,
-  "actionTaken",
   "punishmentId",
   metadata,
   "createdAt"
@@ -54,10 +56,8 @@ VALUES
     '770e8400-e29b-41d4-a716-446655440001',
     '550e8400-e29b-41d4-a716-446655440001',
     '550e8400-e29b-41d4-a716-446655440002',
-    'Harassment',
     'Player was repeatedly sending offensive messages in chat',
     'pending',
-    NULL,
     NULL,
     '{"chatLogs": ["Message 1", "Message 2", "Message 3"]}'::jsonb,
     NOW() - INTERVAL '1 day'
@@ -66,10 +66,8 @@ VALUES
     '770e8400-e29b-41d4-a716-446655440004',
     '550e8400-e29b-41d4-a716-446655440006',
     '550e8400-e29b-41d4-a716-446655440007',
-    'Griefing',
     'Player destroyed my build without permission',
     'pending',
-    NULL,
     NULL,
     '{"screenshots": ["screenshot1.png"], "location": "spawn area"}'::jsonb,
     NOW() - INTERVAL '3 hours'
@@ -78,10 +76,8 @@ VALUES
     '770e8400-e29b-41d4-a716-446655440005',
     '550e8400-e29b-41d4-a716-446655440008',
     '550e8400-e29b-41d4-a716-446655440009',
-    'Scamming',
     'Player promised items but never delivered',
     'pending',
-    NULL,
     NULL,
     NULL,
     NOW() - INTERVAL '12 hours'
@@ -91,10 +87,8 @@ VALUES
     '770e8400-e29b-41d4-a716-446655440002',
     '550e8400-e29b-41d4-a716-446655440003',
     '550e8400-e29b-41d4-a716-446655440004',
-    'Cheating',
     'Player was using unauthorized mods',
     'reviewed',
-    'punishment',
     NULL, -- Will be set to '660e8400-e29b-41d4-a716-446655440001' after punishments are inserted
     NULL,
     NOW() - INTERVAL '5 days'
@@ -103,23 +97,19 @@ VALUES
     '770e8400-e29b-41d4-a716-446655440006',
     '550e8400-e29b-41d4-a716-446655440010',
     '550e8400-e29b-41d4-a716-446655440001',
-    'Harassment',
     'Repeated toxic messages and personal attacks',
     'reviewed',
-    'punishment',
     NULL, -- Will be set to '660e8400-e29b-41d4-a716-446655440006' after punishments are inserted
     '{"chatLogs": ["toxic message 1", "toxic message 2"]}'::jsonb,
     NOW() - INTERVAL '4 days'
   ),
-  -- Reviewed reports without punishment
+  -- Reviewed reports without punishment (punishmentId is NULL)
   (
     '770e8400-e29b-41d4-a716-446655440003',
     '550e8400-e29b-41d4-a716-446655440005',
     '550e8400-e29b-41d4-a716-446655440001',
-    'Griefing',
     'Player was destroying other players builds',
     'reviewed',
-    'no-punishment',
     NULL,
     NULL,
     NOW() - INTERVAL '3 days'
@@ -128,22 +118,44 @@ VALUES
     '770e8400-e29b-41d4-a716-446655440007',
     '550e8400-e29b-41d4-a716-446655440002',
     '550e8400-e29b-41d4-a716-446655440003',
-    'Cheating',
     'False report - player was not cheating',
     'reviewed',
-    'no-punishment',
     NULL,
     NULL,
     NOW() - INTERVAL '6 days'
   )
 ON CONFLICT DO NOTHING;
 
+-- ==================== Seed Abuse Report Reasons (Junction Table) ====================
+-- Note: Report reasons are now stored in a many-to-many relationship
+-- Multiple reasons can be associated with a single abuse report
+INSERT INTO abuse_report_reason ("abuseReportId", "reportReason")
+VALUES
+  -- Report 1: Harassment
+  ('770e8400-e29b-41d4-a716-446655440001', 'HARASSMENT_BULLYING_OR_TARGETTED_ABUSE'),
+  -- Report 2: Cheating
+  ('770e8400-e29b-41d4-a716-446655440002', 'CHEATING'),
+  -- Report 3: Bug abuse
+  ('770e8400-e29b-41d4-a716-446655440003', 'BUG_ABUSE'),
+  -- Report 4: Bug abuse (different report)
+  ('770e8400-e29b-41d4-a716-446655440004', 'BUG_ABUSE'),
+  -- Report 5: Scamming
+  ('770e8400-e29b-41d4-a716-446655440005', 'SCAMMING'),
+  -- Report 6: Harassment and chat spamming (multiple reasons)
+  ('770e8400-e29b-41d4-a716-446655440006', 'HARASSMENT_BULLYING_OR_TARGETTED_ABUSE'),
+  ('770e8400-e29b-41d4-a716-446655440006', 'CHAT_SPAMMING'),
+  -- Report 7: Cheating
+  ('770e8400-e29b-41d4-a716-446655440007', 'CHEATING')
+ON CONFLICT DO NOTHING;
+
 -- ==================== Seed Punishments ====================
+-- Note: banType has been removed (temporary/permanent is inferred from expiry)
+-- Note: reason has been moved to punishment_reasons junction table
+-- Note: liftReason now uses enum values (LIFT_REASONS)
+-- Note: liftNoteId and punishmentNoteId are added for note references
 INSERT INTO punishment (
   id,
   "punishmentType",
-  "banType",
-  reason,
   expiry,
   "playerId",
   "externalId",
@@ -152,6 +164,8 @@ INSERT INTO punishment (
   "liftedById",
   "liftedAt",
   "liftReason",
+  "liftNoteId",
+  "punishmentNoteId",
   "relatedAbuseReportId",
   "createdAt"
 )
@@ -160,13 +174,13 @@ VALUES
   (
     '660e8400-e29b-41d4-a716-446655440001',
     'ban',
-    'temporary',
-    'Cheating detected',
     NOW() + INTERVAL '30 days',
     '550e8400-e29b-41d4-a716-446655440001',
     'punishment_ext_1',
     NULL, -- issuedById - replace with actual user ID
     false,
+    NULL,
+    NULL,
     NULL,
     NULL,
     NULL,
@@ -176,13 +190,13 @@ VALUES
   (
     '660e8400-e29b-41d4-a716-446655440002',
     'ban',
-    'permanent',
-    'Repeated violations',
-    NULL,
+    NULL, -- Permanent ban (no expiry)
     '550e8400-e29b-41d4-a716-446655440002',
     'punishment_ext_2',
     NULL, -- issuedById - replace with actual user ID
     false,
+    NULL,
+    NULL,
     NULL,
     NULL,
     NULL,
@@ -192,8 +206,6 @@ VALUES
   (
     '660e8400-e29b-41d4-a716-446655440003',
     'mute',
-    NULL,
-    'Inappropriate language',
     NOW() + INTERVAL '7 days',
     '550e8400-e29b-41d4-a716-446655440003',
     'punishment_ext_3',
@@ -203,13 +215,13 @@ VALUES
     NULL,
     NULL,
     NULL,
+    NULL,
+    NULL,
     NOW() - INTERVAL '2 days'
   ),
   (
     '660e8400-e29b-41d4-a716-446655440005',
     'ban',
-    'temporary',
-    'Suspicious activity',
     NOW() + INTERVAL '14 days',
     '550e8400-e29b-41d4-a716-446655440005',
     'punishment_ext_5',
@@ -219,18 +231,20 @@ VALUES
     NULL,
     NULL,
     NULL,
+    NULL,
+    NULL,
     NOW() - INTERVAL '1 day'
   ),
   (
     '660e8400-e29b-41d4-a716-446655440006',
     'mute',
-    NULL,
-    'Spamming chat',
     NOW() + INTERVAL '3 days',
     '550e8400-e29b-41d4-a716-446655440006',
     NULL,
     NULL,
     false,
+    NULL,
+    NULL,
     NULL,
     NULL,
     NULL,
@@ -241,12 +255,12 @@ VALUES
     '660e8400-e29b-41d4-a716-446655440007',
     'kick',
     NULL,
-    'AFK timeout',
-    NULL,
     '550e8400-e29b-41d4-a716-446655440007',
     NULL,
     NULL,
     false,
+    NULL,
+    NULL,
     NULL,
     NULL,
     NULL,
@@ -256,8 +270,6 @@ VALUES
   (
     '660e8400-e29b-41d4-a716-446655440008',
     'ban',
-    'temporary',
-    'Exploiting game mechanics',
     NOW() + INTERVAL '60 days',
     '550e8400-e29b-41d4-a716-446655440008',
     'punishment_ext_8',
@@ -267,14 +279,14 @@ VALUES
     NULL,
     NULL,
     NULL,
+    NULL,
+    NULL,
     NOW() - INTERVAL '7 days'
   ),
-  -- Lifted punishments (with lift reasons)
+  -- Lifted punishments (with lift reasons using enum values)
   (
     '660e8400-e29b-41d4-a716-446655440004',
     'kick',
-    NULL,
-    'Disruptive behavior',
     NULL,
     '550e8400-e29b-41d4-a716-446655440004',
     NULL,
@@ -282,15 +294,15 @@ VALUES
     true,
     NULL, -- liftedById - replace with actual user ID
     NOW() - INTERVAL '1 day',
-    'Appeal accepted - misunderstanding resolved',
+    'APPEAL_ACCEPTED',
+    NULL, -- liftNoteId - would reference a note if one was created
+    NULL,
     NULL,
     NOW() - INTERVAL '3 days'
   ),
   (
     '660e8400-e29b-41d4-a716-446655440009',
     'ban',
-    'temporary',
-    'Account compromise',
     NOW() + INTERVAL '7 days',
     '550e8400-e29b-41d4-a716-446655440009',
     'punishment_ext_9',
@@ -298,15 +310,15 @@ VALUES
     true,
     NULL,
     NOW() - INTERVAL '12 hours',
-    'Account security restored - ban lifted',
+    'ACCOUNT_COMPROMISED',
+    NULL, -- liftNoteId - would reference a note if one was created
+    NULL,
     NULL,
     NOW() - INTERVAL '2 days'
   ),
   (
     '660e8400-e29b-41d4-a716-446655440010',
     'mute',
-    NULL,
-    'Toxic behavior',
     NOW() + INTERVAL '14 days',
     '550e8400-e29b-41d4-a716-446655440010',
     NULL,
@@ -314,31 +326,31 @@ VALUES
     true,
     NULL,
     NOW() - INTERVAL '6 hours',
-    'Player demonstrated improved behavior',
+    'ACKNOWLEDGED_REFORMED',
+    NULL, -- liftNoteId - would reference a note if one was created
+    NULL,
     NULL,
     NOW() - INTERVAL '5 days'
   ),
   (
     '660e8400-e29b-41d4-a716-446655440011',
     'ban',
-    'permanent',
-    'Severe rule violation',
-    NULL,
+    NULL, -- Permanent ban (no expiry)
     '550e8400-e29b-41d4-a716-446655440001',
     'punishment_ext_11',
     NULL,
     true,
     NULL,
     NOW() - INTERVAL '3 days',
-    'Appeal accepted - case reviewed and overturned',
+    'APPEAL_ACCEPTED',
+    NULL, -- liftNoteId - would reference a note if one was created
+    NULL,
     NULL,
     NOW() - INTERVAL '20 days'
   ),
   (
     '660e8400-e29b-41d4-a716-446655440012',
     'ban',
-    'temporary',
-    'Suspected botting',
     NOW() + INTERVAL '30 days',
     '550e8400-e29b-41d4-a716-446655440002',
     'punishment_ext_12',
@@ -348,11 +360,50 @@ VALUES
     NOW() - INTERVAL '1 day',
     NULL, -- No reason provided
     NULL,
+    NULL,
+    NULL,
     NOW() - INTERVAL '8 days'
   )
 ON CONFLICT DO NOTHING;
 
+-- ==================== Seed Punishment Reasons (Junction Table) ====================
+-- Note: Punishment reasons are now stored in a many-to-many relationship
+-- Multiple reasons can be associated with a single punishment
+INSERT INTO punishment_reasons ("punishmentId", "punishmentReason")
+VALUES
+  -- Punishment 1: Cheating (from abuse report, so includes ABUSE_REPORT_ACCEPTED)
+  ('660e8400-e29b-41d4-a716-446655440001', 'CHEATING'),
+  ('660e8400-e29b-41d4-a716-446655440001', 'ABUSE_REPORT_ACCEPTED'),
+  -- Punishment 2: Multiple violations
+  ('660e8400-e29b-41d4-a716-446655440002', 'HARASSMENT_BULLYING_OR_TARGETTED_ABUSE'),
+  ('660e8400-e29b-41d4-a716-446655440002', 'HATE_SPEECH_SLURS_OR_BAD_LANGUAGE'),
+  -- Punishment 3: Inappropriate language
+  ('660e8400-e29b-41d4-a716-446655440003', 'HATE_SPEECH_SLURS_OR_BAD_LANGUAGE'),
+  -- Punishment 5: Suspicious activity
+  ('660e8400-e29b-41d4-a716-446655440005', 'CHEATING'),
+  -- Punishment 6: Spamming (from abuse report, so includes ABUSE_REPORT_ACCEPTED)
+  ('660e8400-e29b-41d4-a716-446655440006', 'CHAT_SPAMMING'),
+  ('660e8400-e29b-41d4-a716-446655440006', 'ABUSE_REPORT_ACCEPTED'),
+  -- Punishment 7: AFK timeout (no specific reason, could use OTHER)
+  ('660e8400-e29b-41d4-a716-446655440007', 'OTHER'),
+  -- Punishment 8: Bug abuse
+  ('660e8400-e29b-41d4-a716-446655440008', 'BUG_ABUSE'),
+  -- Punishment 4: Disruptive behavior (lifted)
+  ('660e8400-e29b-41d4-a716-446655440004', 'HARASSMENT_BULLYING_OR_TARGETTED_ABUSE'),
+  -- Punishment 9: Account compromise (lifted)
+  ('660e8400-e29b-41d4-a716-446655440009', 'ACCOUNT_SHARING'),
+  -- Punishment 10: Toxic behavior (lifted)
+  ('660e8400-e29b-41d4-a716-446655440010', 'HARASSMENT_BULLYING_OR_TARGETTED_ABUSE'),
+  -- Punishment 11: Severe rule violation (lifted)
+  ('660e8400-e29b-41d4-a716-446655440011', 'CHEATING'),
+  -- Punishment 12: Suspected botting (lifted)
+  ('660e8400-e29b-41d4-a716-446655440012', 'CHEATING')
+ON CONFLICT DO NOTHING;
+
 -- ==================== Seed Appeals ====================
+-- Note: acceptanceReason and rejectionReason have been added
+-- acceptanceReason is set when status is 'accepted'
+-- rejectionReason is set when status is 'denied'
 INSERT INTO appeal (
   id,
   "playerId",
@@ -360,7 +411,9 @@ INSERT INTO appeal (
   "submittedAt",
   status,
   description,
-  "reviewedById"
+  "reviewedById",
+  "acceptanceReason",
+  "rejectionReason"
 )
 VALUES
   -- Pending appeals
@@ -371,6 +424,8 @@ VALUES
     NOW() - INTERVAL '2 days',
     'pending',
     'I was falsely accused of cheating. I have video evidence showing I was not using any mods.',
+    NULL,
+    NULL,
     NULL
   ),
   (
@@ -380,6 +435,8 @@ VALUES
     NOW() - INTERVAL '5 hours',
     'pending',
     'I understand I made a mistake. I have learned from this and would like a second chance.',
+    NULL,
+    NULL,
     NULL
   ),
   (
@@ -389,6 +446,8 @@ VALUES
     NOW() - INTERVAL '12 hours',
     'pending',
     'My account was compromised at the time of the violation. I have since secured my account.',
+    NULL,
+    NULL,
     NULL
   ),
   -- Accepted appeals
@@ -399,7 +458,9 @@ VALUES
     NOW() - INTERVAL '1 day',
     'accepted',
     'I was muted for inappropriate language, but I was actually quoting a movie line. I apologize for the confusion.',
-    NULL -- reviewedById - replace with actual user ID
+    NULL, -- reviewedById - replace with actual user ID
+    'MISIDENTIFICATION',
+    NULL
   ),
   (
     '880e8400-e29b-41d4-a716-446655440006',
@@ -408,6 +469,8 @@ VALUES
     NOW() - INTERVAL '3 days',
     'accepted',
     'My account was hacked and the hacker was the one who violated the rules. I have proof of the security breach.',
+    NULL,
+    'PROVIDES_PROOF_THAT_CONTRADICTS_PUNISHMENT',
     NULL
   ),
   -- Denied appeals
@@ -418,7 +481,9 @@ VALUES
     NOW() - INTERVAL '8 days',
     'denied',
     'I think the ban was too harsh for what I did. I only did it once.',
-    NULL -- reviewedById - replace with actual user ID
+    NULL, -- reviewedById - replace with actual user ID
+    NULL,
+    'STRONG_EVIDENCE'
   ),
   (
     '880e8400-e29b-41d4-a716-446655440007',
@@ -427,7 +492,9 @@ VALUES
     NOW() - INTERVAL '6 days',
     'denied',
     'I was just joking around, I did not mean to be toxic.',
-    NULL
+    NULL,
+    NULL,
+    'LOW_EFFORT_APPEAL'
   )
 ON CONFLICT DO NOTHING;
 

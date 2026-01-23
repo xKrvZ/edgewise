@@ -1,6 +1,20 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, IsDateString } from 'class-validator';
+import {
+  IsArray,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  IsDateString,
+  ArrayMinSize,
+  ValidateIf,
+} from 'class-validator';
 import { PunishmentType } from './punishment.dto';
+import {
+  ManualPunishmentReason,
+  MANUAL_PUNISHMENT_REASONS,
+} from '../constants/punishment-reason.constants';
 
 export class CreatePunishmentDto {
   @ApiProperty({
@@ -12,22 +26,26 @@ export class CreatePunishmentDto {
   @IsNotEmpty()
   punishmentType: PunishmentType;
 
+  @ApiProperty({
+    description: 'Reasons for the punishment',
+    type: [String],
+    enum: MANUAL_PUNISHMENT_REASONS,
+    example: ['CHEATING', 'CHAT_SPAMMING'],
+  })
+  @IsArray()
+  @ArrayMinSize(1, { message: 'At least one punishment reason must be provided' })
+  @IsEnum(MANUAL_PUNISHMENT_REASONS, { each: true })
+  punishmentReasons: ManualPunishmentReason[];
+
   @ApiPropertyOptional({
-    description: 'Type of ban (only for ban punishments)',
-    enum: ['permanent', 'temporary'],
-    nullable: true,
+    description: 'Note to be created when punishment reason includes "OTHER". Required if punishmentReasons includes "OTHER"',
+    example: 'Additional context about the punishment',
   })
   @IsOptional()
-  @IsEnum(['permanent', 'temporary'])
-  banType?: 'permanent' | 'temporary' | null;
-
-  @ApiProperty({
-    description: 'Reason for the punishment',
-    example: 'Cheating',
-  })
+  @ValidateIf((o) => o.punishmentReasons?.includes('OTHER'))
+  @IsNotEmpty({ message: 'Note is required when punishmentReasons includes "OTHER"' })
   @IsString()
-  @IsNotEmpty()
-  reason: string;
+  note?: string;
 
   @ApiPropertyOptional({
     description: 'Expiry date of the punishment (ISO 8601)',

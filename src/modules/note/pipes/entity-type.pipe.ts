@@ -12,7 +12,7 @@ import {
 
 /**
  * Pipe that normalizes and validates entity type path parameters
- * Normalizes: "player" -> "Player", "USER" -> "User", etc.
+ * Performs case-insensitive matching and returns the exact supported type
  */
 @Injectable()
 export class EntityTypePipe implements PipeTransform<string, string> {
@@ -21,23 +21,25 @@ export class EntityTypePipe implements PipeTransform<string, string> {
       throw new BadRequestException('Entity type is required');
     }
 
-    // Normalize: capitalize first letter, rest lowercase
-    const normalized = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+    // Find matching supported type (case-insensitive)
+    const matchedType = SUPPORTED_ENTITY_TYPES.find(
+      (type) => type.toLowerCase() === value.toLowerCase(),
+    );
 
-    // Validate against supported types
-    if (!isSupportedEntityType(normalized)) {
+    if (!matchedType) {
       throw new BadRequestException(
         `Unsupported entity type: ${value}. Supported types are: ${SUPPORTED_ENTITY_TYPES.join(', ')}`,
       );
     }
 
-    return normalized;
+    // Return the exact supported type (preserves camelCase like "AbuseReport")
+    return matchedType;
   }
 }
 
 /**
  * Pipe that normalizes and validates optional entity type query parameters
- * Normalizes: "player" -> "Player", "USER" -> "User", etc.
+ * Performs case-insensitive matching and returns the exact supported type
  * Returns undefined if value is not provided
  */
 @Injectable()
@@ -55,16 +57,18 @@ export class OptionalEntityTypePipe implements PipeTransform<string | undefined,
       return undefined;
     }
 
-    // Normalize: capitalize first letter, rest lowercase
-    const normalized = stringValue.charAt(0).toUpperCase() + stringValue.slice(1).toLowerCase();
+    // Find matching supported type (case-insensitive)
+    const matchedType = SUPPORTED_ENTITY_TYPES.find(
+      (type) => type.toLowerCase() === stringValue.toLowerCase(),
+    );
 
-    // Validate against supported types
-    if (!isSupportedEntityType(normalized)) {
+    if (!matchedType) {
       throw new BadRequestException(
         `Unsupported entity type: ${stringValue}. Supported types are: ${SUPPORTED_ENTITY_TYPES.join(', ')}`,
       );
     }
 
-    return normalized;
+    // Return the exact supported type (preserves camelCase like "AbuseReport")
+    return matchedType;
   }
 }
