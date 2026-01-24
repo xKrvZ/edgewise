@@ -21,7 +21,7 @@ export async function up(db: Kysely<any>): Promise<void> {
       col.defaultTo(sql`now()`).notNull(),
     )
     .addColumn('status', 'varchar', (col) => col.notNull())
-    .addColumn('reviewedById', 'varchar', (col) =>
+    .addColumn('reviewedBy', 'varchar', (col) =>
       col.references('user.id').onDelete('set null'),
     )
     .addColumn('reviewNoteId', 'uuid', (col) =>

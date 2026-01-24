@@ -180,7 +180,6 @@ INSERT INTO punishment (
   "liftReason",
   "liftNoteId",
   "punishmentNoteId",
-  "relatedAbuseReportId",
   "appealLocked",
   "createdAt",
   "updatedAt"
@@ -200,7 +199,6 @@ VALUES
     NULL,
     NULL,
     NULL,
-    '770e8400-e29b-41d4-a716-446655440002',
     false, -- appealLocked
     NOW() - INTERVAL '5 days',
     NOW() - INTERVAL '5 days' -- updatedAt
@@ -217,8 +215,7 @@ VALUES
     NULL,
     NULL,
     NULL,
-    NULL,
-    NULL,
+    NULL, -- punishmentNoteId
     false, -- appealLocked
     NOW() - INTERVAL '10 days',
     NOW() - INTERVAL '10 days' -- updatedAt
@@ -236,7 +233,6 @@ VALUES
     NULL, -- liftReason
     NULL, -- liftNoteId
     NULL, -- punishmentNoteId
-    NULL, -- relatedAbuseReportId
     false, -- appealLocked
     NOW() - INTERVAL '2 days', -- createdAt
     NOW() - INTERVAL '2 days' -- updatedAt
@@ -249,7 +245,6 @@ VALUES
     '550e8400-e29b-41d4-a716-446655440005',
     NULL, -- issuedById - replace with actual user ID
     false,
-    NULL,
     NULL,
     NULL,
     NULL,
@@ -272,7 +267,6 @@ VALUES
     NULL, -- liftReason
     NULL, -- liftNoteId
     NULL, -- punishmentNoteId
-    NULL, -- relatedAbuseReportId
     false, -- appealLocked
     NOW() - INTERVAL '4 hours', -- createdAt
     NOW() - INTERVAL '4 hours' -- updatedAt
@@ -290,7 +284,6 @@ VALUES
     NULL, -- liftReason
     NULL, -- liftNoteId
     NULL, -- punishmentNoteId
-    NULL, -- relatedAbuseReportId
     false, -- appealLocked
     NOW() - INTERVAL '2 hours', -- createdAt
     NOW() - INTERVAL '2 hours' -- updatedAt
@@ -308,7 +301,6 @@ VALUES
     NULL, -- liftReason
     NULL, -- liftNoteId
     NULL, -- punishmentNoteId
-    NULL, -- relatedAbuseReportId
     false, -- appealLocked
     NOW() - INTERVAL '7 days', -- createdAt
     NOW() - INTERVAL '7 days' -- updatedAt
@@ -327,7 +319,6 @@ VALUES
     'APPEAL_ACCEPTED', -- liftReason
     NULL, -- liftNoteId - would reference a note if one was created
     NULL, -- punishmentNoteId
-    NULL, -- relatedAbuseReportId
     false, -- appealLocked
     NOW() - INTERVAL '3 days', -- createdAt
     NOW() - INTERVAL '1 day' -- updatedAt
@@ -345,7 +336,6 @@ VALUES
     'ACCOUNT_COMPROMISED', -- liftReason
     NULL, -- liftNoteId - would reference a note if one was created
     NULL, -- punishmentNoteId
-    NULL, -- relatedAbuseReportId
     false, -- appealLocked
     NOW() - INTERVAL '2 days', -- createdAt
     NOW() - INTERVAL '12 hours' -- updatedAt
@@ -363,7 +353,6 @@ VALUES
     'ACKNOWLEDGED_REFORMED', -- liftReason
     NULL, -- liftNoteId - would reference a note if one was created
     NULL, -- punishmentNoteId
-    NULL, -- relatedAbuseReportId
     false, -- appealLocked
     NOW() - INTERVAL '5 days', -- createdAt
     NOW() - INTERVAL '6 hours' -- updatedAt
@@ -381,7 +370,6 @@ VALUES
     'APPEAL_ACCEPTED', -- liftReason
     NULL, -- liftNoteId - would reference a note if one was created
     NULL, -- punishmentNoteId
-    NULL, -- relatedAbuseReportId
     false, -- appealLocked
     NOW() - INTERVAL '20 days', -- createdAt
     NOW() - INTERVAL '3 days' -- updatedAt
@@ -399,7 +387,6 @@ VALUES
     NULL, -- No reason provided (liftReason)
     NULL, -- liftNoteId
     NULL, -- punishmentNoteId
-    NULL, -- relatedAbuseReportId
     false, -- appealLocked
     NOW() - INTERVAL '8 days', -- createdAt
     NOW() - INTERVAL '1 day' -- updatedAt
@@ -453,7 +440,7 @@ INSERT INTO appeal (
   "submittedAt",
   status,
   description,
-  "reviewedById",
+  "reviewedBy",
   "acceptanceReason",
   "rejectionReason"
 )
@@ -504,7 +491,7 @@ VALUES
     NOW() - INTERVAL '1 day',
     'accepted',
     'I was muted for inappropriate language, but I was actually quoting a movie line. I apologize for the confusion.',
-    NULL, -- reviewedById - replace with actual user ID
+    NULL, -- reviewedBy - replace with actual user ID
     'MISIDENTIFICATION',
     NULL
   ),
@@ -529,7 +516,7 @@ VALUES
     NOW() - INTERVAL '8 days',
     'denied',
     'I think the ban was too harsh for what I did. I only did it once.',
-    NULL, -- reviewedById - replace with actual user ID
+    NULL, -- reviewedBy - replace with actual user ID
     NULL,
     'STRONG_EVIDENCE'
   ),

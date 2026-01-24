@@ -120,11 +120,4 @@ export class PunishmentDto {
     type: NoteDto,
   })
   punishmentNote?: NoteDto;
-
-  @Expose()
-  @ApiPropertyOptional({
-    description: 'Related abuse report ID',
-    nullable: true,
-  })
-  relatedAbuseReportId?: string | null;
 }

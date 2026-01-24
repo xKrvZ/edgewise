@@ -92,8 +92,11 @@ export class PunishmentService {
     includes?: Set<string>,
   ): Promise<PunishmentDto> {
     // Check if punishment is being created from an abuse report review
+    // If punishment reasons include ABUSE_REPORT_ACCEPTED, it's from an abuse report review
     // If not, validate that player has no pending abuse reports
-    if (!createPunishmentDto.relatedAbuseReportId) {
+    const isFromAbuseReport = createPunishmentDto.punishmentReasons.includes('ABUSE_REPORT_ACCEPTED' as any);
+    
+    if (!isFromAbuseReport) {
       const pendingReports = await this.abuseReportDao.findPendingByReportedPlayerId(
         createPunishmentDto.playerId,
       );

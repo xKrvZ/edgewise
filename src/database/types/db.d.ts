@@ -343,7 +343,7 @@ export interface Appeal {
   playerId: string;
   punishmentId: string;
   rejectionReason: string | null;
-  reviewedById: string | null;
+  reviewedBy: string | null;
   reviewNoteId: string | null;
   status: string;
   submittedAt: Generated<Timestamp>;
@@ -458,7 +458,6 @@ export interface Punishment {
   playerId: string;
   punishmentNoteId: string | null;
   punishmentType: string;
-  relatedAbuseReportId: string | null;
   shortCodeId: string;
   updatedAt: Generated<Timestamp>;
 }

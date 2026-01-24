@@ -113,7 +113,7 @@ export class AppealService {
   async review(
     id: string,
     reviewAppealDto: ReviewAppealDto,
-    reviewedById: string,
+    reviewedBy: string,
     includes?: Set<string>,
   ): Promise<AppealDto> {
     const appeal = await this.appealDao.findById(id, includes);
@@ -141,7 +141,7 @@ export class AppealService {
             entityType: 'Appeal',
             text: reviewAppealDto.note,
           },
-          reviewedById,
+          reviewedBy,
           false,
         );
         createdNoteId = createdNote.id;
@@ -151,7 +151,7 @@ export class AppealService {
       const updatedAppeal = await appealDao.updateStatus(
         id,
         reviewAppealDto.status,
-        reviewedById,
+        reviewedBy,
         createdNoteId,
         reviewAppealDto.status === 'accepted' ? reviewAppealDto.acceptanceReason : null,
         reviewAppealDto.status === 'denied' ? reviewAppealDto.rejectionReason : null,
@@ -166,7 +166,7 @@ export class AppealService {
       if (reviewAppealDto.status === 'accepted') {
         await punishmentDao.lift(
           appeal.punishmentId,
-          reviewedById,
+          reviewedBy,
           'APPEAL_ACCEPTED' as LiftReason,
           createdNoteId,
         );

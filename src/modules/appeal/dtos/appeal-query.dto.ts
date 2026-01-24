@@ -28,6 +28,14 @@ export class AppealQueryDto extends PaginationDto {
   punishmentId?: string;
 
   @ApiPropertyOptional({
+    description: 'Filter by reviewer user ID',
+    type: String,
+  })
+  @IsOptional()
+  @IsString()
+  reviewedBy?: string;
+
+  @ApiPropertyOptional({
     description: 'Comma-separated list of related data to include (e.g., "user")',
     example: 'user',
     type: String,

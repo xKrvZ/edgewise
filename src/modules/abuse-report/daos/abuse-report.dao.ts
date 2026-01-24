@@ -136,8 +136,10 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
   private buildFilterFunction(
     filters: {
       status?: ReportStatus;
-      reportingPlayerId?: string;
+      reporter?: string;
       reportedPlayerId?: string;
+      punishmentId?: string;
+      reviewedBy?: string;
       reportReason?: ReportReason[];
     },
   ) {
@@ -148,12 +150,20 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
         filteredQuery = filteredQuery.where('status', '=', filters.status);
       }
 
-      if (filters.reportingPlayerId) {
-        filteredQuery = filteredQuery.where('reportingPlayerId', '=', filters.reportingPlayerId);
+      if (filters.reporter) {
+        filteredQuery = filteredQuery.where('reporter', '=', filters.reporter);
       }
 
       if (filters.reportedPlayerId) {
         filteredQuery = filteredQuery.where('reportedPlayerId', '=', filters.reportedPlayerId);
+      }
+
+      if (filters.punishmentId) {
+        filteredQuery = filteredQuery.where('punishmentId', '=', filters.punishmentId);
+      }
+
+      if (filters.reviewedBy) {
+        filteredQuery = filteredQuery.where('reviewedBy', '=', filters.reviewedBy);
       }
 
       if (filters.reportReason && filters.reportReason.length > 0) {
@@ -193,6 +203,12 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
     }
     if (queryDto.reportedPlayerId) {
       filters.reportedPlayerId = queryDto.reportedPlayerId;
+    }
+    if (queryDto.punishmentId) {
+      filters.punishmentId = queryDto.punishmentId;
+    }
+    if (queryDto.reviewedBy) {
+      filters.reviewedBy = queryDto.reviewedBy;
     }
     if (queryDto.reportReason) {
       filters.reportReason = queryDto.reportReason;
@@ -335,5 +351,28 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
       .execute();
 
     return await this.findById(id, includes);
+  }
+
+  async updateBulkReview(
+    reportIds: string[],
+    status: ReportStatus,
+    punishmentId: string,
+    reviewedById: string,
+  ): Promise<number> {
+    if (reportIds.length === 0) {
+      return 0;
+    }
+
+    const result = await this.updateWithTimestamp(AbuseReportDao.TABLE)
+      .set({
+        status,
+        punishmentId,
+        reviewedBy: reviewedById,
+      })
+      .where('id', 'in', reportIds)
+      .where('status', '=', 'pending') // Only update pending reports
+      .execute();
+
+    return Number((result as any).numUpdatedRows || 0);
   }
 }

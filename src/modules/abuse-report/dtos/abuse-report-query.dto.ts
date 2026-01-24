@@ -30,6 +30,22 @@ export class AbuseReportQueryDto extends PaginationDto {
   reportedPlayerId?: string;
 
   @ApiPropertyOptional({
+    description: 'Filter by punishment ID',
+    type: String,
+  })
+  @IsOptional()
+  @IsString()
+  punishmentId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filter by reviewer user ID',
+    type: String,
+  })
+  @IsOptional()
+  @IsString()
+  reviewedBy?: string;
+
+  @ApiPropertyOptional({
     description: 'Filter by report reason(s). Can be a single reason or comma-separated list of reasons',
     enum: REPORT_REASONS,
     example: 'HARASSMENT_BULLYING_OR_TARGETTED_ABUSE',

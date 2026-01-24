@@ -5,10 +5,12 @@ import { NoteDao } from '@/modules/note/daos/note.dao';
 import { AbuseReportDto, ReportStatus } from '../dtos/abuse-report.dto';
 import { CreateAbuseReportDto } from '../dtos/create-abuse-report.dto';
 import { ReviewAbuseReportDto } from '../dtos/review-abuse-report.dto';
+import { BulkReviewAbuseReportsDto } from '../dtos/bulk-review-abuse-reports.dto';
 import { AbuseReportQueryDto } from '../dtos/abuse-report-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { PunishmentReason } from '../../punishment/constants/punishment-reason.constants';
 import { CreatePunishmentDto } from '../../punishment/dtos/create-punishment.dto';
+import { PunishmentDto } from '../../punishment/dtos/punishment.dto';
 
 @Injectable()
 export class AbuseReportService {
@@ -105,6 +107,11 @@ export class AbuseReportService {
       throw new BadRequestException('Reported player information is required');
     }
 
+    // Check if we need to create a note (before creating punishment)
+    const needsNote =
+      createPunishmentDto.punishmentReasons.includes('OTHER' as any) &&
+      createPunishmentDto.note;
+
     // Use transaction to create punishment and update report
     return await this.abuseReportDao.transaction(async (trx) => {
       const abuseReportDao = this.abuseReportDao.transacting(trx);
@@ -124,24 +131,26 @@ export class AbuseReportService {
           ...createPunishmentDto,
           punishmentReasons: punishmentReasons as any, // Cast to allow ABUSE_REPORT_ACCEPTED
           playerId: report.reportedPlayer!.id,
-          relatedAbuseReportId: id,
         } as any,
         reviewedById,
         undefined, // No note ID yet
         undefined, // includes
       );
 
-      // Create note for the punishment if "OTHER" is selected and note is provided
-      if (createPunishmentDto.punishmentReasons.includes('OTHER' as any) && createPunishmentDto.note) {
+      // Create note and update punishment if needed
+      let punishmentNoteId: string | undefined = undefined;
+      if (needsNote) {
         const createdNote = await noteDao.create(
           {
             entityId: punishment.id,
             entityType: 'Punishment',
-            text: createPunishmentDto.note,
+            text: createPunishmentDto.note!,
           },
           reviewedById,
           false,
         );
+
+        punishmentNoteId = createdNote.id;
 
         // Update punishment with note ID
         await punishmentDao.updatePunishment(punishment.id, {
@@ -163,6 +172,91 @@ export class AbuseReportService {
       }
 
       return updatedReport;
+    });
+  }
+
+  async bulkReviewByPlayerId(
+    bulkReviewDto: BulkReviewAbuseReportsDto,
+    reviewedById: string,
+  ): Promise<{ punishment: PunishmentDto; reportsUpdated: number }> {
+    // Find all pending abuse reports for the player
+    const pendingReports = await this.abuseReportDao.findPendingByReportedPlayerId(
+      bulkReviewDto.playerId,
+    );
+
+    if (pendingReports.length === 0) {
+      throw new BadRequestException(
+        `No pending abuse reports found for player with ID ${bulkReviewDto.playerId}`,
+      );
+    }
+
+    // Use transaction to create punishment and update all reports
+    return await this.abuseReportDao.transaction(async (trx) => {
+      const abuseReportDao = this.abuseReportDao.transacting(trx);
+      const punishmentDao = this.punishmentDao.transacting(trx);
+      const noteDao = this.noteDao.transacting(trx);
+
+      // Create punishment with the player as the target
+      // Automatically add ABUSE_REPORT_ACCEPTED to the punishment reasons
+      const punishmentReasons: PunishmentReason[] = [
+        ...(bulkReviewDto.punishment.punishmentReasons || []),
+        'ABUSE_REPORT_ACCEPTED' as PunishmentReason,
+      ];
+
+      // Create punishment first (without note ID)
+      let punishment: PunishmentDto | null = await punishmentDao.create(
+        {
+          ...bulkReviewDto.punishment,
+          punishmentReasons: punishmentReasons as any, // Cast to allow ABUSE_REPORT_ACCEPTED
+          playerId: bulkReviewDto.playerId,
+        } as any,
+        reviewedById,
+        undefined, // No note ID yet
+        undefined, // includes
+      );
+
+      // Create note and update punishment if needed
+      if (bulkReviewDto.punishment.punishmentReasons.includes('OTHER' as any) &&
+      bulkReviewDto.punishment.note) {
+        const createdNote = await noteDao.create(
+          {
+            entityId: punishment.id,
+            entityType: 'Punishment',
+            text: bulkReviewDto.punishment.note!,
+          },
+          reviewedById,
+          false,
+        );
+
+        // Update punishment with note ID
+        await punishmentDao.updatePunishment(punishment.id, {
+          punishmentNoteId: createdNote.id,
+        });
+      }
+
+      // Reload punishment to include the note ID (if note was created)
+      punishment = await punishmentDao.findById(
+        punishment.id,
+        undefined,
+      );
+
+      if (!punishment) {
+        throw new Error('Failed to retrieve created punishment');
+      }
+
+      // Update all pending reports with punishment ID and reviewedById
+      const reportIds = pendingReports.map((report) => report.id);
+      const reportsUpdated = await abuseReportDao.updateBulkReview(
+        reportIds,
+        'reviewed',
+        punishment.id,
+        reviewedById,
+      );
+
+      return {
+        punishment,
+        reportsUpdated,
+      };
     });
   }
 }

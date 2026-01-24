@@ -33,7 +33,7 @@ export class AppealDao extends KyselyDao<AppealDao> {
           'submittedAt',
           'status',
           'description',
-          'reviewedById',
+          'reviewedBy',
           'reviewNoteId',
           'acceptanceReason',
           'rejectionReason',
@@ -75,7 +75,7 @@ export class AppealDao extends KyselyDao<AppealDao> {
                   eb.fn('COALESCE', [eb.ref('user.role'), sql.lit('')]),
                 ]),
               ])
-              .where('user.id', '=', eb.ref('appeal.reviewedById'))
+              .where('user.id', '=', eb.ref('appeal.reviewedBy'))
               .as('reviewedBy'),
           );
         }
@@ -155,6 +155,7 @@ export class AppealDao extends KyselyDao<AppealDao> {
       status?: AppealStatus;
       playerId?: string;
       punishmentId?: string;
+      reviewedBy?: string;
     },
   ) {
     return (query: any) => {
@@ -170,6 +171,10 @@ export class AppealDao extends KyselyDao<AppealDao> {
 
       if (filters.punishmentId) {
         filteredQuery = filteredQuery.where('punishmentId', '=', filters.punishmentId);
+      }
+
+      if (filters.reviewedBy) {
+        filteredQuery = filteredQuery.where('reviewedBy', '=', filters.reviewedBy);
       }
 
       return filteredQuery;
@@ -198,6 +203,9 @@ export class AppealDao extends KyselyDao<AppealDao> {
     }
     if (queryDto.punishmentId) {
       filters.punishmentId = queryDto.punishmentId;
+    }
+    if (queryDto.reviewedBy) {
+      filters.reviewedBy = queryDto.reviewedBy;
     }
 
     return filters;
@@ -364,7 +372,7 @@ export class AppealDao extends KyselyDao<AppealDao> {
   async updateStatus(
     id: string,
     status: AppealStatus,
-    reviewedById: string,
+    reviewedBy: string,
     reviewNoteId?: string,
     acceptanceReason?: AppealAcceptanceReason | null,
     rejectionReason?: AppealRejectionReason | null,
@@ -373,7 +381,7 @@ export class AppealDao extends KyselyDao<AppealDao> {
     await this.updateWithTimestamp(AppealDao.TABLE)
       .set({
         status,
-        reviewedById,
+        reviewedBy,
         reviewNoteId: reviewNoteId ?? undefined,
         acceptanceReason: acceptanceReason ?? null,
         rejectionReason: rejectionReason ?? null,

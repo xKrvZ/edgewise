@@ -58,7 +58,6 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
           'liftReason',
           'liftNoteId',
           'punishmentNoteId',
-          'relatedAbuseReportId',
           'playerId',
           'issuedById',
           'liftedById',
@@ -257,7 +256,6 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
       liftReason: row.liftReason ?? null,
       liftNote,
       punishmentNote,
-      relatedAbuseReportId: row.relatedAbuseReportId ?? null,
       appealLocked: row.appealLocked ?? false,
     } as PunishmentDto;
   }
@@ -529,7 +527,6 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
           expiry: data.expiry ? new Date(data.expiry) : null,
           playerId: data.playerId,
           issuedById,
-          relatedAbuseReportId: data.relatedAbuseReportId ?? null,
           punishmentNoteId: punishmentNoteId ?? null,
           lifted: false,
         })

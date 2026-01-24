@@ -63,12 +63,4 @@ export class CreatePunishmentDto {
   @IsUUID()
   @IsNotEmpty()
   playerId: string;
-
-  @ApiPropertyOptional({
-    description: 'Related abuse report ID',
-    nullable: true,
-  })
-  @IsOptional()
-  @IsUUID()
-  relatedAbuseReportId?: string | null;
 }

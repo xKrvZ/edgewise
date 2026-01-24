@@ -271,7 +271,6 @@ export class AppealController {
     @Body() reviewAppealDto: ReviewAppealDto,
     @Query('include') include?: string,
   ): Promise<AppealDto> {
-    console.log(reviewAppealDto);
     const includes = this.validateIncludes(include, session.user.role);
     return await this.appealService.review(id, reviewAppealDto, session.user.id, includes);
   }

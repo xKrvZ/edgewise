@@ -23,8 +23,10 @@ import { AbuseReportService } from '../services/abuse-report.service';
 import { AbuseReportDto } from '../dtos/abuse-report.dto';
 import { CreateAbuseReportDto } from '../dtos/create-abuse-report.dto';
 import { ReviewAbuseReportDto } from '../dtos/review-abuse-report.dto';
+import { BulkReviewAbuseReportsDto } from '../dtos/bulk-review-abuse-reports.dto';
 import { AbuseReportQueryDto } from '../dtos/abuse-report-query.dto';
 import { CreatePunishmentDto } from '../../punishment/dtos/create-punishment.dto';
+import { PunishmentDto } from '../../punishment/dtos/punishment.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { Roles, Session, UserSession } from '@thallesp/nestjs-better-auth';
 import { createPaginatedSchema } from '@/database/utils/paginated-schema.util';
@@ -155,6 +157,59 @@ export class AbuseReportController {
       createAbuseReportDto,
       session.user.id,
       includes,
+    );
+  }
+
+  @Post('bulk-review')
+  @Roles(STAFF_ROLES)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Bulk review all pending abuse reports for a player',
+    description: 'Finds all pending abuse reports for a specific player, creates a punishment, and assigns that punishment to all the reports. All reports will be marked as reviewed.',
+  })
+  @ApiBody({
+    description: 'Player ID and punishment data. All pending abuse reports for the player will be reviewed and linked to the created punishment.',
+    type: BulkReviewAbuseReportsDto,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'All abuse reports reviewed successfully and punishment created',
+    schema: {
+      type: 'object',
+      properties: {
+        punishment: {
+          $ref: getSchemaPath(PunishmentDto),
+        },
+        reportsUpdated: {
+          type: 'number',
+          description: 'Number of abuse reports that were updated',
+          example: 3,
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request data or no pending reports found for the player',
+  })
+  async bulkReviewByPlayerId(
+    @Session() session: UserSession,
+    @Body() bulkReviewDto: BulkReviewAbuseReportsDto,
+  ): Promise<{ punishment: PunishmentDto; reportsUpdated: number }> {
+    // Validate expiry requirement (same as punishment controller)
+    const isAdmin = hasRole(session.user.role, ROLES.ADMINISTRATOR);
+    
+    // Expiry must be provided unless user is admin or punishment type is "kick"
+    // Kick punishments don't require expiry regardless of role
+    if (!isAdmin && !bulkReviewDto.punishment.expiry && bulkReviewDto.punishment.punishmentType !== 'kick') {
+      throw new BadRequestException(
+        'Expiry date is required for non-admin users. Only administrators can create permanent punishments.',
+      );
+    }
+    
+    return await this.abuseReportService.bulkReviewByPlayerId(
+      bulkReviewDto,
+      session.user.id,
     );
   }
 

@@ -28,7 +28,6 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('punishmentNoteId', 'uuid', (col) =>
       col.references('note.id').onDelete('set null'),
     )
-    .addColumn('relatedAbuseReportId', 'uuid')
     .addColumn('appealLocked', 'boolean', (col) => col.defaultTo(false).notNull())
     .addColumn('createdAt', 'timestamp', (col) =>
       col.defaultTo(sql`now()`).notNull(),
