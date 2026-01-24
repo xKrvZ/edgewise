@@ -72,12 +72,46 @@ export class PunishmentService {
     issuedById: string,
     includes?: Set<string>,
   ): Promise<PunishmentDto> {
-    return await this.punishmentDao.create(
-      createPunishmentDto,
-      issuedById,
-      createPunishmentDto.note,
-      includes,
-    );
+    // Use transaction to create note and punishment
+    return await this.punishmentDao.transaction(async (trx) => {
+      const punishmentDao = this.punishmentDao.transacting(trx);
+      const noteDao = this.noteDao.transacting(trx);
+
+      // Create punishment first (without note ID)
+      const punishment = await punishmentDao.create(
+        createPunishmentDto,
+        issuedById,
+        undefined, // No note ID yet
+        includes,
+      );
+
+      // Create note for the punishment if "OTHER" is selected and note is provided
+      if (createPunishmentDto.punishmentReasons.includes('OTHER' as any) && createPunishmentDto.note) {
+        const createdNote = await noteDao.create(
+          {
+            entityId: punishment.id,
+            entityType: 'Punishment',
+            text: createPunishmentDto.note,
+          },
+          issuedById,
+          false,
+        );
+
+        // Update punishment with note ID
+        await punishmentDao.updatePunishment(punishment.id, {
+          punishmentNoteId: createdNote.id,
+        });
+
+        // Reload punishment to include the note ID
+        const updatedPunishment = await punishmentDao.findById(punishment.id, includes);
+        if (!updatedPunishment) {
+          throw new Error('Failed to retrieve updated punishment');
+        }
+        return updatedPunishment;
+      }
+
+      return punishment;
+    });
   }
 
   async lift(
@@ -177,5 +211,77 @@ export class PunishmentService {
     );
 
     return { count };
+  }
+
+  async updateExpiry(
+    id: string,
+    expiry: string | null,
+    includes?: Set<string>,
+  ): Promise<PunishmentDto> {
+    // First, check if the punishment exists
+    const punishment = await this.punishmentDao.findById(id, includes);
+
+    if (!punishment) {
+      throw new NotFoundException(`Punishment with ID ${id} not found`);
+    }
+
+    // Check if the punishment is already lifted
+    if (punishment.lifted) {
+      throw new BadRequestException(
+        `Cannot update expiry for punishment with ID ${id} because it has already been lifted`,
+      );
+    }
+
+    // Check if punishment has already expired
+    if (punishment.expiry) {
+      const currentExpiry = new Date(punishment.expiry);
+      const now = new Date();
+      if (currentExpiry <= now) {
+        throw new BadRequestException(
+          `Cannot update expiry for punishment with ID ${id} because it has already expired`,
+        );
+      }
+    }
+
+    // Check if punishment type is kick (kicks don't have expiry)
+    if (punishment.punishmentType === 'kick') {
+      throw new BadRequestException(
+        `Cannot update expiry for punishment with ID ${id} because kick punishments do not have an expiry`,
+      );
+    }
+
+    // Handle null expiry (permanent punishment)
+    if (expiry === null || expiry === undefined) {
+      const result = await this.punishmentDao.updateExpiry(id, null, includes);
+      if (!result) {
+        throw new NotFoundException(`Punishment with ID ${id} not found`);
+      }
+      return result;
+    }
+
+    // Validate that the new expiry is in the future
+    const newExpiry = new Date(expiry);
+    const now = new Date();
+    if (newExpiry <= now) {
+      throw new BadRequestException('New expiry date must be in the future');
+    }
+
+    // Validate that the new expiry is different from the current expiry
+    if (punishment.expiry) {
+      const currentExpiry = new Date(punishment.expiry);
+      if (newExpiry.getTime() === currentExpiry.getTime()) {
+        throw new BadRequestException(
+          'New expiry date must be different from the current expiry date',
+        );
+      }
+    }
+
+    const result = await this.punishmentDao.updateExpiry(id, newExpiry, includes);
+
+    if (!result) {
+      throw new NotFoundException(`Punishment with ID ${id} not found`);
+    }
+
+    return result;
   }
 }

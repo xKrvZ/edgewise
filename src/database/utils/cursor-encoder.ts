@@ -9,7 +9,7 @@ export interface CursorData {
   filters?: Record<string, any>;
   orderBy?: {
     field: string;
-    order: 'asc' | 'desc';
+    direction: 'asc' | 'desc';
   };
 }
 

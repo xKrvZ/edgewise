@@ -3,7 +3,6 @@ import {
   ClassSerializerInterceptor,
 } from "@nestjs/common";
 import { APP_INTERCEPTOR } from "@nestjs/core";
-import { BadRequestLoggingInterceptor } from "./interceptors/bad-request-logging.interceptor";
 import { ConfigModule, ConfigService, registerAs } from "@nestjs/config";
 import appConfig from "@/config/app.config";
 import sqlConfig from "@/config/sql.config";
@@ -105,10 +104,6 @@ import { betterAuth } from "better-auth";
     {
       provide: "APP_FILTER",
       useClass: AllExceptionFilter,
-    },
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: BadRequestLoggingInterceptor,
     },
     {
       provide: APP_INTERCEPTOR,

@@ -12,6 +12,11 @@ import { LiftReason } from '../constants/lift-reason.constants';
 import { PunishmentReason } from '../constants/punishment-reason.constants';
 import { sql, Kysely } from 'kysely';
 import { DB } from '@/database/types/db';
+import { customAlphabet } from 'nanoid';
+
+// Custom alphabet: lowercase, uppercase A-Z, and numbers 0-9
+const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const nanoid = customAlphabet(alphabet, 8);
 
 @Injectable()
 export class PunishmentDao extends KyselyDao<PunishmentDao> {
@@ -43,6 +48,7 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
       .select((eb) => {
         const selects: any[] = [
           'id',
+          'shortCodeId',
           'punishmentType',
           'expiry',
           'createdAt',
@@ -228,6 +234,7 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
 
     return {
       id: row.id,
+      shortCodeId: row.shortCodeId,
       punishmentType: row.punishmentType as 'ban' | 'mute' | 'kick',
       punishmentReasons,
       expiry: row.expiry ? row.expiry.toISOString() : null,
@@ -426,53 +433,59 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
   async create(
     data: CreatePunishmentDto,
     issuedById: string,
-    note?: string,
+    punishmentNoteId: string | undefined,
     includes?: Set<string>,
   ): Promise<PunishmentDto> {
     return await this.transaction(async (trx) => {
-      const punishmentDao = this.transacting(trx);
-      const noteDao = this.noteDao.transacting(trx);
+      const dao = this.transacting(trx);
+
+      // Generate a unique shortCodeId (8 characters)
+      // Retry if duplicate exists
+      let shortCodeId: string = '';
+      let attempts = 0;
+      const maxAttempts = 4;
+
+      while (attempts < maxAttempts) {
+        shortCodeId = nanoid();
+        
+        // Check if this shortCodeId already exists
+        const existing = await (dao.kysely as any)
+          .selectFrom(PunishmentDao.TABLE)
+          .select('id')
+          .where('shortCodeId', '=', shortCodeId)
+          .executeTakeFirst();
+
+        if (!existing) {
+          break; // Unique shortCodeId found
+        }
+
+        attempts++;
+      }
+
+      if (attempts >= maxAttempts) {
+        throw new Error('Failed to generate unique shortCodeId after maximum attempts');
+      }
 
       // Create the punishment first
-      const result = await (punishmentDao.kysely as any)
+      const result = await (dao.kysely as any)
         .insertInto(PunishmentDao.TABLE)
         .values({
+          shortCodeId,
           punishmentType: data.punishmentType,
           expiry: data.expiry ? new Date(data.expiry) : null,
           playerId: data.playerId,
           externalId: data.externalId ?? null,
           issuedById,
           relatedAbuseReportId: data.relatedAbuseReportId ?? null,
+          punishmentNoteId: punishmentNoteId ?? null,
           lifted: false,
         })
         .returning(['id'])
         .executeTakeFirstOrThrow();
 
-      // Create note for the punishment if "OTHER" is selected and note is provided
-      let punishmentNoteId: string | undefined;
-      if (data.punishmentReasons.includes('OTHER' as any) && note) {
-        const createdNote = await noteDao.create(
-          {
-            entityId: result.id,
-            entityType: 'Punishment',
-            text: note,
-          },
-          issuedById,
-          false,
-        );
-        punishmentNoteId = createdNote.id;
-
-        // Update punishment with note ID
-        await (punishmentDao.kysely as any)
-          .updateTable(PunishmentDao.TABLE)
-          .set({ punishmentNoteId })
-          .where('id', '=', result.id)
-          .execute();
-      }
-
       // Insert punishment reasons into junction table
       if (data.punishmentReasons && data.punishmentReasons.length > 0) {
-        await (punishmentDao.kysely as any)
+        await (dao.kysely as any)
           .insertInto('punishment_reasons')
           .values(
             data.punishmentReasons.map((reason: PunishmentReason) => ({
@@ -483,12 +496,43 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
           .execute();
       }
 
-      const punishment = await punishmentDao.findById(result.id, includes);
+      const punishment = await dao.findById(result.id, includes);
       if (!punishment) {
         throw new Error('Failed to retrieve created punishment');
       }
       return punishment;
     });
+  }
+
+  async updatePunishment(
+    id: string,
+    updates: {
+      punishmentNoteId?: string | null;
+      liftNoteId?: string | null;
+      expiry?: Date | null;
+      [key: string]: any;
+    },
+  ): Promise<void> {
+    await this.updateWithTimestamp(PunishmentDao.TABLE)
+      .set(updates)
+      .where('id', '=', id)
+      .execute();
+  }
+
+  async updateExpiry(
+    id: string,
+    newExpiry: Date | null,
+    includes?: Set<string>,
+  ): Promise<PunishmentDto | null> {
+    await this.updateWithTimestamp(PunishmentDao.TABLE)
+      .set({
+        expiry: newExpiry,
+      })
+      .where('id', '=', id)
+      .where('lifted', '=', false)
+      .execute();
+
+    return await this.findById(id, includes);
   }
 
   async lift(
@@ -498,8 +542,7 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
     liftNoteId?: string,
     includes?: Set<string>,
   ): Promise<PunishmentDto | null> {
-    await (this.kysely as any)
-      .updateTable(PunishmentDao.TABLE)
+    await this.updateWithTimestamp(PunishmentDao.TABLE)
       .set({
         lifted: true,
         liftedById,
@@ -520,8 +563,7 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
     endDate: Date,
     liftedById: string,
   ): Promise<number> {
-    const result = await (this.kysely as any)
-      .updateTable(PunishmentDao.TABLE)
+    const result = await this.updateWithTimestamp(PunishmentDao.TABLE)
       .set({
         lifted: true,
         liftedById,
@@ -533,6 +575,6 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
       .where('createdAt', '<=', endDate)
       .execute();
 
-    return Number(result.numUpdatedRows || 0);
+    return Number((result as any).numUpdatedRows || 0);
   }
 }

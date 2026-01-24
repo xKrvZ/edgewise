@@ -147,7 +147,7 @@ export class NoteDao extends KyselyDao<NoteDao> {
         direction: 'forward',
         cursorField: cursorField,
         filters,
-        orderBy: queryDto.orderBy || { field: 'createdAt', order: 'desc' },
+        orderBy: queryDto.orderBy || { field: 'createdAt', direction: 'desc' },
         mapField: (field: string) => this.mapOrderByField(field),
         applyFilters: this.buildFilterFunction(filters),
       },

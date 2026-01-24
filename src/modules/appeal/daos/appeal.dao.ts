@@ -281,8 +281,7 @@ export class AppealDao extends KyselyDao<AppealDao> {
     rejectionReason?: AppealRejectionReason | null,
     includes?: Set<string>,
   ): Promise<AppealDto | null> {
-    await (this.kysely as any)
-      .updateTable(AppealDao.TABLE)
+    await this.updateWithTimestamp(AppealDao.TABLE)
       .set({
         status,
         reviewedById,

@@ -14,13 +14,13 @@ export class OrderByDto {
   field?: string;
 
   @ApiPropertyOptional({
-    description: 'Sort order',
+    description: 'Sort direction',
     enum: ['asc', 'desc'],
     example: 'desc',
   })
   @IsOptional()
   @IsEnum(['asc', 'desc'])
-  order?: SortOrder;
+  direction?: SortOrder;
 }
 
 export class PaginationDto {

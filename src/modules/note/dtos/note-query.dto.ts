@@ -18,22 +18,6 @@ export class NoteQueryDto extends PaginationDto {
     example: 'Punishment',
     enum: SUPPORTED_ENTITY_TYPES,
   })
-  @Transform(({ value }) => {
-    if (value === undefined || value === null || value === '') {
-      return undefined;
-    }
-    // Handle array case (query params can be arrays)
-    const stringValue = Array.isArray(value) ? value[0] : value;
-    if (typeof stringValue !== 'string' || stringValue.length === 0) {
-      return undefined;
-    }
-    // Find matching supported type (case-insensitive) and return the exact matched type
-    const matchedType = SUPPORTED_ENTITY_TYPES.find(
-      (type) => type.toLowerCase() === stringValue.toLowerCase(),
-    );
-    // Return the exact supported type (preserves camelCase like "AbuseReport")
-    return matchedType || stringValue;
-  })
   @IsOptional()
   @IsString()
   @IsIn([...SUPPORTED_ENTITY_TYPES], {

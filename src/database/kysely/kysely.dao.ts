@@ -1,10 +1,10 @@
-import { Kysely, Transaction, SelectQueryBuilder } from 'kysely';
+import { Kysely, Transaction, SelectQueryBuilder, UpdateQueryBuilder, sql } from 'kysely';
 import { Injectable } from '@nestjs/common';
 import { InjectKysely } from 'nestjs-kysely';
 import { BaseTransaction } from '@/database/base-transaction';
 import { DB } from '../types/db';
 import { PaginatedDto } from '../dtos/paginated.dto';
-import { CursorEncoder, CursorData } from '../utils/cursor-encoder';
+import { CursorEncoder } from '../utils/cursor-encoder';
 import { OrderByDto } from '../dtos/filter.dto';
 
 export interface CursorPaginationOptions<T, DTO = T> {
@@ -28,10 +28,108 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
   async transaction<R>(
     callback: (transaction: BaseTransaction<Transaction<DB>>) => Promise<R>,
   ): Promise<R> {
+    // Check if we're already in a transaction by checking if constructor name contains "Transaction"
+    // Regular Kysely instances have constructor name 'Kysely'
+    // Transaction instances have "Transaction" in their constructor name
+    const constructorName = this.kysely.constructor?.name || '';
+    const isInTransaction = constructorName.includes('Transaction');
+
+    if (isInTransaction) {
+      // Already in a transaction, wrap this.kysely in BaseTransaction and execute directly
+      const baseTransaction = new BaseTransaction(this.kysely as Transaction<DB>);
+      return await callback(baseTransaction);
+    }
+
+    // Not in a transaction, start a new one
     return await this.kysely.transaction().execute(async (kyselyTransaction) => {
       const baseTransaction = new BaseTransaction(kyselyTransaction);
       return callback(baseTransaction);
     });
+  }
+
+  /**
+   * Applies OrderByDto to a query builder
+   * @param query - The query builder to apply ordering to
+   * @param orderBy - Optional OrderByDto with field and direction
+   * @param defaultField - Default field to order by if orderBy is not provided
+   * @param defaultOrder - Default order direction if orderBy is not provided
+   * @param mapField - Optional function to map DTO field names to DB column names
+   * @returns The query builder with ordering applied
+   */
+  protected applyOrderBy<TB extends keyof DB = any, R = any>(
+    query: SelectQueryBuilder<DB, TB, R>,
+    orderBy?: OrderByDto,
+    defaultField?: string,
+    defaultOrder: 'asc' | 'desc' = 'asc',
+    mapField?: (field: string) => string,
+  ): SelectQueryBuilder<DB, TB, R> {
+    const orderField = orderBy?.field || defaultField;
+    const order = orderBy?.direction || defaultOrder;
+
+    if (!orderField) {
+      return query;
+    }
+
+    // Map the field if mapping function is provided
+    const mappedField = mapField && orderBy?.field ? mapField(orderBy.field) : orderField;
+
+    return query.orderBy(mappedField as any, order) as SelectQueryBuilder<DB, TB, R>;
+  }
+
+  /**
+   * Creates an update query builder that automatically sets updatedAt timestamp
+   * for tables that have an updatedAt column.
+   * 
+   * Tables with updatedAt: note, punishment, appeal, abuse_report
+   * 
+   * @param table - The table name to update
+   * @returns Update query builder with updatedAt automatically included in set operations
+   * 
+   * @example
+   * ```typescript
+   * await this.updateWithTimestamp('punishment')
+   *   .set({ expiry: new Date() })
+   *   .where('id', '=', id)
+   *   .execute();
+   * ```
+   */
+  protected updateWithTimestamp<TB extends keyof DB>(
+    table: TB,
+  ): UpdateQueryBuilder<DB, TB, TB, UpdateQueryBuilder<DB, TB, TB, never>> {
+    const tablesWithUpdatedAt: (keyof DB)[] = ['note', 'punishment', 'appeal', 'abuse_report'];
+    const hasUpdatedAt = tablesWithUpdatedAt.includes(table);
+
+    const query = this.kysely.updateTable(table);
+
+    if (hasUpdatedAt) {
+      // Return a query builder that will automatically merge updatedAt into any .set() call
+      // We use a Proxy to intercept the set method and add updatedAt
+      return new Proxy(query, {
+        get(target, prop) {
+          if (prop === 'set') {
+            // Wrap the set method to automatically include updatedAt
+            return function(updatesOrKey: any, value?: any) {
+              // Handle both overloads: set(updates) and set(key, value)
+              if (value !== undefined) {
+                // Two-argument form: set(key, value)
+                const updates = { [updatesOrKey]: value, updatedAt: sql`now()` };
+                return (target as any).set(updates);
+              } else {
+                // Single-argument form: set(updates)
+                const updatesWithTimestamp = {
+                  ...updatesOrKey,
+                  updatedAt: sql`now()`,
+                };
+                return (target as any).set(updatesWithTimestamp);
+              }
+            };
+          }
+          return (target as any)[prop];
+        },
+      }) as any;
+    }
+
+    return query as any;
   }
 
   transacting(transaction: BaseTransaction<Transaction<DB>>): T {
@@ -55,7 +153,7 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
    *     direction: 'forward',
    *     cursorField: 'id',
    *     filters: { punishmentType: 'ban', lifted: false },
-   *     orderBy: { field: 'createdAt', order: 'desc' },
+     *     orderBy: { field: 'createdAt', direction: 'desc' },
    *     applyFilters: (query) => {
    *       if (filters.punishmentType) {
    *         query = query.where('punishmentType', '=', filters.punishmentType);
@@ -219,7 +317,7 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
     // Map the field if mapping function is provided
     const mappedField = mapField && orderBy?.field ? mapField(orderBy.field) : orderField;
 
-    const baseDirection = orderBy?.order || (direction === 'forward' ? 'asc' : 'desc');
+    const baseDirection = orderBy?.direction || (direction === 'forward' ? 'asc' : 'desc');
     const queryDirection = direction === 'backward'
       ? (baseDirection === 'asc' ? 'desc' : 'asc')
       : baseDirection;
@@ -367,7 +465,7 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
     orderConfig: { columnName: string; baseDirection: 'asc' | 'desc' },
   ): {
     filters: Record<string, any>;
-    orderBy: { field: string; order: 'asc' | 'desc' };
+    orderBy: { field: string; direction: 'asc' | 'desc' };
   } {
     const fieldToStore = originalOrderBy?.field || orderConfig.columnName;
 
@@ -375,7 +473,7 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
       filters,
       orderBy: {
         field: fieldToStore,
-        order: orderConfig.baseDirection,
+        direction: orderConfig.baseDirection,
       },
     };
   }
@@ -388,7 +486,7 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
     firstItemCursor: string | number | Date | null,
     direction: 'forward' | 'backward',
     hasMoreBefore: boolean,
-    cursorContext: { filters: Record<string, any>; orderBy: { field: string; order: 'asc' | 'desc' } },
+    cursorContext: { filters: Record<string, any>; orderBy: { field: string; direction: 'asc' | 'desc' } },
   ): string | null {
     // First page (no cursor) - no previous items
     if (!originalCursor || firstItemCursor === null || firstItemCursor === undefined) {
@@ -416,7 +514,7 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
     direction: 'forward' | 'backward',
     hasMore: boolean,
     hasMoreAfter: boolean,
-    cursorContext: { filters: Record<string, any>; orderBy: { field: string; order: 'asc' | 'desc' } },
+    cursorContext: { filters: Record<string, any>; orderBy: { field: string; direction: 'asc' | 'desc' } },
   ): string | null {
     if (lastItemCursor === null || lastItemCursor === undefined) {
       return null;

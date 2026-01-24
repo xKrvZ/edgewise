@@ -241,8 +241,7 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
     punishmentId?: string | null,
     includes?: Set<string>,
   ): Promise<AbuseReportDto | null> {
-    await (this.kysely as any)
-      .updateTable(AbuseReportDao.TABLE)
+    await this.updateWithTimestamp(AbuseReportDao.TABLE)
       .set({
         status,
         punishmentId: punishmentId ?? null,

@@ -18,6 +18,13 @@ export class PunishmentDto {
 
   @Expose()
   @ApiProperty({
+    description: 'Short code ID for the punishment (8 characters)',
+    example: 'a1b2c3d4',
+  })
+  shortCodeId: string;
+
+  @Expose()
+  @ApiProperty({
     description: 'Type of punishment',
     enum: ['ban', 'mute', 'kick'],
     example: 'ban',

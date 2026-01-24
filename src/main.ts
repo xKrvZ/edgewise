@@ -20,27 +20,7 @@ async function bootstrap() {
     }),
   });
 
-  // Add early request logging middleware for debugging
-  app.use((req: any, res: any, next: any) => {
-    if (req.path?.includes('/abuse-report') && req.method === 'PATCH') {
-      console.log('[EarlyMiddleware] Request received:', {
-        method: req.method,
-        path: req.path,
-        url: req.url,
-        hasBody: !!req.body,
-        bodyKeys: req.body ? Object.keys(req.body) : [],
-      });
-      // Log raw body if available
-      if (req.body) {
-        try {
-          console.log('[EarlyMiddleware] Request body:', JSON.stringify(req.body, null, 2));
-        } catch (e) {
-          console.log('[EarlyMiddleware] Could not stringify body');
-        }
-      }
-    }
-    next();
-  });
+  app.set('query parser', 'extended');
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -49,20 +29,6 @@ async function bootstrap() {
       transform: true, // Automatically transform payloads to DTO instances
       transformOptions: {
         enableImplicitConversion: true, // Enable implicit type conversion
-      },
-      exceptionFactory: (errors) => {
-        // Custom exception factory to ensure we can log before throwing
-        console.error('[ValidationPipe] Validation errors detected:', JSON.stringify(errors, null, 2));
-        console.error('[ValidationPipe] Error count:', errors.length);
-        errors.forEach((error, index) => {
-          console.error(`[ValidationPipe] Error ${index + 1}:`, {
-            property: error.property,
-            value: error.value,
-            constraints: error.constraints,
-            children: error.children,
-          });
-        });
-        return new BadRequestException(errors);
       },
     }),
   );

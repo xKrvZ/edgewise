@@ -14,7 +14,7 @@ DELETE FROM player;
 -- ==================== Seed Players ====================
 INSERT INTO player (id, "externalId", "lastKnownUsername", game, "createdAt", "updatedAt")
 VALUES
-  ('550e8400-e29b-41d4-a716-446655440001', 'player1_ext', 'PlayerOne', 'hytale', NOW(), NOW()),
+  ('550e8400-e29b-41d4-a716-446655440001', '80ff7272-5e2e-4d3f-8a41-56849ce87375', 'KraZ', 'hytale', NOW(), NOW()),
   ('550e8400-e29b-41d4-a716-446655440002', 'player2_ext', 'PlayerTwo', 'hytale', NOW(), NOW()),
   ('550e8400-e29b-41d4-a716-446655440003', 'player3_ext', 'PlayerThree', 'minecraft', NOW(), NOW()),
   ('550e8400-e29b-41d4-a716-446655440004', 'player4_ext', 'PlayerFour', 'minecraft', NOW(), NOW()),
@@ -155,6 +155,7 @@ ON CONFLICT DO NOTHING;
 -- Note: liftNoteId and punishmentNoteId are added for note references
 INSERT INTO punishment (
   id,
+  "shortCodeId",
   "punishmentType",
   expiry,
   "playerId",
@@ -173,6 +174,7 @@ VALUES
   -- Active punishments (not lifted)
   (
     '660e8400-e29b-41d4-a716-446655440001',
+    'AbC123Xy',
     'ban',
     NOW() + INTERVAL '30 days',
     '550e8400-e29b-41d4-a716-446655440001',
@@ -189,6 +191,7 @@ VALUES
   ),
   (
     '660e8400-e29b-41d4-a716-446655440002',
+    'DeF456Gh',
     'ban',
     NULL, -- Permanent ban (no expiry)
     '550e8400-e29b-41d4-a716-446655440002',
@@ -205,6 +208,7 @@ VALUES
   ),
   (
     '660e8400-e29b-41d4-a716-446655440003',
+    'HiJ789Kl',
     'mute',
     NOW() + INTERVAL '7 days',
     '550e8400-e29b-41d4-a716-446655440003',
@@ -221,6 +225,7 @@ VALUES
   ),
   (
     '660e8400-e29b-41d4-a716-446655440005',
+    'MnO012Pq',
     'ban',
     NOW() + INTERVAL '14 days',
     '550e8400-e29b-41d4-a716-446655440005',
@@ -237,6 +242,7 @@ VALUES
   ),
   (
     '660e8400-e29b-41d4-a716-446655440006',
+    'RsT345Uv',
     'mute',
     NOW() + INTERVAL '3 days',
     '550e8400-e29b-41d4-a716-446655440006',
@@ -253,6 +259,7 @@ VALUES
   ),
   (
     '660e8400-e29b-41d4-a716-446655440007',
+    'WxY678Za',
     'kick',
     NULL,
     '550e8400-e29b-41d4-a716-446655440007',
@@ -269,6 +276,7 @@ VALUES
   ),
   (
     '660e8400-e29b-41d4-a716-446655440008',
+    'BcD901Ef',
     'ban',
     NOW() + INTERVAL '60 days',
     '550e8400-e29b-41d4-a716-446655440008',
@@ -286,6 +294,7 @@ VALUES
   -- Lifted punishments (with lift reasons using enum values)
   (
     '660e8400-e29b-41d4-a716-446655440004',
+    'GhI234Jk',
     'kick',
     NULL,
     '550e8400-e29b-41d4-a716-446655440004',
@@ -302,6 +311,7 @@ VALUES
   ),
   (
     '660e8400-e29b-41d4-a716-446655440009',
+    'LmN567Op',
     'ban',
     NOW() + INTERVAL '7 days',
     '550e8400-e29b-41d4-a716-446655440009',
@@ -318,6 +328,7 @@ VALUES
   ),
   (
     '660e8400-e29b-41d4-a716-446655440010',
+    'QrS890Tu',
     'mute',
     NOW() + INTERVAL '14 days',
     '550e8400-e29b-41d4-a716-446655440010',
@@ -334,6 +345,7 @@ VALUES
   ),
   (
     '660e8400-e29b-41d4-a716-446655440011',
+    'VwX123Yz',
     'ban',
     NULL, -- Permanent ban (no expiry)
     '550e8400-e29b-41d4-a716-446655440001',
@@ -350,6 +362,7 @@ VALUES
   ),
   (
     '660e8400-e29b-41d4-a716-446655440012',
+    'AaB456Cc',
     'ban',
     NOW() + INTERVAL '30 days',
     '550e8400-e29b-41d4-a716-446655440002',

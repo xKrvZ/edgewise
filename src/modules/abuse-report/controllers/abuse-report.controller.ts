@@ -167,8 +167,9 @@ export class AbuseReportController {
     if (punishment) {
       const isAdmin = hasRole(session.user.role, ROLES.ADMINISTRATOR);
       
-      // Expiry must be provided unless user is admin
-      if (!isAdmin && !punishment.expiry) {
+      // Expiry must be provided unless user is admin or punishment type is "kick"
+      // Kick punishments don't require expiry regardless of role
+      if (!isAdmin && !punishment.expiry && punishment.punishmentType !== 'kick') {
         throw new BadRequestException(
           'Expiry date is required for non-admin users. Only administrators can create permanent punishments.',
         );

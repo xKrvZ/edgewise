@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { AbuseReportDao } from '../daos/abuse-report.dao';
 import { PunishmentDao } from '../../punishment/daos/punishment.dao';
+import { NoteDao } from '@/modules/note/daos/note.dao';
 import { AbuseReportDto, ReportStatus } from '../dtos/abuse-report.dto';
 import { ReviewAbuseReportDto } from '../dtos/review-abuse-report.dto';
 import { AbuseReportQueryDto } from '../dtos/abuse-report-query.dto';
@@ -13,6 +14,7 @@ export class AbuseReportService {
   constructor(
     private readonly abuseReportDao: AbuseReportDao,
     private readonly punishmentDao: PunishmentDao,
+    private readonly noteDao: NoteDao,
   ) {}
 
   // ==================== Query Methods ====================
@@ -88,6 +90,7 @@ export class AbuseReportService {
     return await this.abuseReportDao.transaction(async (trx) => {
       const abuseReportDao = this.abuseReportDao.transacting(trx);
       const punishmentDao = this.punishmentDao.transacting(trx);
+      const noteDao = this.noteDao.transacting(trx);
 
       // Create punishment with the reported player as the target
       // Automatically add ABUSE_REPORT_ACCEPTED to the punishment reasons
@@ -96,9 +99,7 @@ export class AbuseReportService {
         'ABUSE_REPORT_ACCEPTED' as PunishmentReason,
       ];
 
-      // Create punishment with all reasons including ABUSE_REPORT_ACCEPTED
-      // We need to cast because CreatePunishmentDto expects ManualPunishmentReason[],
-      // but internally the DAO can handle PunishmentReason[] which includes ABUSE_REPORT_ACCEPTED
+      // Create punishment first (without note ID)
       const punishment = await punishmentDao.create(
         {
           ...createPunishmentDto,
@@ -107,8 +108,27 @@ export class AbuseReportService {
           relatedAbuseReportId: id,
         } as any,
         reviewedById,
-        createPunishmentDto.note,
+        undefined, // No note ID yet
+        undefined, // includes
       );
+
+      // Create note for the punishment if "OTHER" is selected and note is provided
+      if (createPunishmentDto.punishmentReasons.includes('OTHER' as any) && createPunishmentDto.note) {
+        const createdNote = await noteDao.create(
+          {
+            entityId: punishment.id,
+            entityType: 'Punishment',
+            text: createPunishmentDto.note,
+          },
+          reviewedById,
+          false,
+        );
+
+        // Update punishment with note ID
+        await punishmentDao.updatePunishment(punishment.id, {
+          punishmentNoteId: createdNote.id,
+        });
+      }
 
       // Update report with punishment ID
       const updatedReport = await abuseReportDao.updateReview(

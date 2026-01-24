@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { OrderByDto, PaginationDto } from '@/database/dtos/filter.dto';
 
 export class PlayerQueryDto extends PaginationDto {

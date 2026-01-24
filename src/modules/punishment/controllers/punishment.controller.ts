@@ -10,6 +10,7 @@ import {
   HttpStatus,
   SerializeOptions,
   BadRequestException,
+  Req,
 } from '@nestjs/common';
 import {
   ApiOperation,
@@ -23,6 +24,7 @@ import { PunishmentDto } from '../dtos/punishment.dto';
 import { CreatePunishmentDto } from '../dtos/create-punishment.dto';
 import { LiftPunishmentDto } from '../dtos/lift-punishment.dto';
 import { LiftPunishmentsDto } from '../dtos/lift-punishments.dto';
+import { UpdatePunishmentExpiryDto } from '../dtos/update-punishment-expiry.dto';
 import { PunishmentQueryDto } from '../dtos/punishment-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { Roles, Session, UserSession } from '@thallesp/nestjs-better-auth';
@@ -248,11 +250,26 @@ export class PunishmentController {
     // Check if user is admin
     const isAdmin = hasRole(session.user.role, ROLES.ADMINISTRATOR);
     
-    // Expiry must be provided unless user is admin
-    if (!isAdmin && !createPunishmentDto.expiry) {
+    // Expiry must be provided unless user is admin or punishment type is "kick"
+    // Kick punishments don't require expiry regardless of role
+    if (!isAdmin && !createPunishmentDto.expiry && createPunishmentDto.punishmentType !== 'kick') {
       throw new BadRequestException(
         'Expiry date is required for non-admin users. Only administrators can create permanent punishments.',
       );
+    }
+
+    // Validate moderator expiry limits (max 1 year from creation)
+    if (!isAdmin && createPunishmentDto.expiry && createPunishmentDto.punishmentType !== 'kick') {
+      const expiryDate = new Date(createPunishmentDto.expiry);
+      const now = new Date();
+      const oneYearFromNow = new Date(now);
+      oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+
+      if (expiryDate > oneYearFromNow) {
+        throw new BadRequestException(
+          'Moderators can only create punishments with expiry up to 1 year from creation.',
+        );
+      }
     }
     
     return await this.punishmentService.create(createPunishmentDto, session.user.id, includes);
@@ -284,5 +301,98 @@ export class PunishmentController {
     @Body() liftPunishmentsDto: LiftPunishmentsDto,
   ): Promise<{ count: number }> {
     return await this.punishmentService.liftBulk(liftPunishmentsDto, session.user.id);
+  }
+
+  @Patch(':id/expiry')
+  @Roles(STAFF_ROLES)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update punishment expiry',
+    description: 'Updates the expiry date of a punishment. Can extend or reduce the expiry. Only works for ban and mute punishments that are not lifted. Moderators can only extend up to 1 year from creation date. Admins can extend indefinitely or set expiry to null for permanent punishments. All users can only reduce to a minimum of 1 hour from now. If the current expiry is less than 1 hour away, reduction is not allowed.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Unique identifier of the punishment',
+    type: String,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Punishment expiry updated successfully',
+    type: PunishmentDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Punishment not found',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request data or punishment cannot be updated',
+  })
+  async updateExpiry(
+    @Session() session: UserSession,
+    @Param('id') id: string,
+    @Body() updatePunishmentExpiryDto: UpdatePunishmentExpiryDto,
+    @Query('include') include?: string,
+  ): Promise<PunishmentDto> {
+    const includes = this.validateIncludes(include, session.user.role);
+    const isAdmin = hasRole(session.user.role, ROLES.ADMINISTRATOR);
+
+    // Get the punishment to check current expiry and creation date
+    const punishment = await this.punishmentService.findById(id, includes);
+
+    // Validate null expiry (permanent punishment - admin only)
+    if (updatePunishmentExpiryDto.expiry === null || updatePunishmentExpiryDto.expiry === undefined) {
+      if (!isAdmin) {
+        throw new BadRequestException(
+          'Only administrators can set punishments to permanent (null expiry)',
+        );
+      }
+      return await this.punishmentService.updateExpiry(id, null, includes);
+    }
+
+    const newExpiry = new Date(updatePunishmentExpiryDto.expiry);
+    const now = new Date();
+    const oneHourFromNow = new Date(now);
+    oneHourFromNow.setHours(oneHourFromNow.getHours() + 1);
+
+    // Determine if we're extending or reducing
+    const currentExpiry = punishment.expiry ? new Date(punishment.expiry) : null;
+    const isExtending = currentExpiry ? newExpiry > currentExpiry : true;
+    const isReducing = currentExpiry ? newExpiry < currentExpiry : false;
+
+    // Validation for extending
+    if (isExtending) {
+      // Validate moderator expiry limits (max 1 year from creation date)
+      if (!isAdmin) {
+        const createdAt = new Date(punishment.createdAt);
+        const oneYearFromCreation = new Date(createdAt);
+        oneYearFromCreation.setFullYear(oneYearFromCreation.getFullYear() + 1);
+
+        if (newExpiry > oneYearFromCreation) {
+          throw new BadRequestException(
+            'Moderators can only extend punishments up to 1 year from the creation date',
+          );
+        }
+      }
+    }
+
+    // Validation for reducing
+    if (isReducing) {
+      // Validate minimum expiry (1 hour from now) - applies to all users
+      if (newExpiry < oneHourFromNow) {
+        throw new BadRequestException(
+          'Cannot reduce punishment below 1 hour from now. The minimum expiry is 1 hour from the current time.',
+        );
+      }
+
+      // Check if current expiry is less than 1 hour from now
+      if (currentExpiry && currentExpiry < oneHourFromNow) {
+        throw new BadRequestException(
+          'Cannot reduce punishment further. The current expiry is less than 1 hour away.',
+        );
+      }
+    }
+
+    return await this.punishmentService.updateExpiry(id, updatePunishmentExpiryDto.expiry, includes);
   }
 }

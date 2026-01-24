@@ -23,8 +23,6 @@ export class AllExceptionFilter extends BaseExceptionFilter {
     @Inject(ConfigService) private readonly config: ConfigService,
   ) {
     super();
-    // Debug: Verify filter is instantiated
-    console.error('[AllExceptionFilter] Filter instantiated');
   }
 
   /**
@@ -152,40 +150,19 @@ export class AllExceptionFilter extends BaseExceptionFilter {
   }
 
   catch(exception: unknown, host: ArgumentsHost) {
-    // Debug: Always log that filter was called
-    console.error('[AllExceptionFilter] Exception filter invoked', {
-      exceptionType: exception?.constructor?.name || typeof exception,
-      isHttpException: exception instanceof HttpException,
-      isBadRequest: exception instanceof BadRequestException,
-      status: exception instanceof HttpException ? exception.getStatus() : 'N/A',
-    });
-
     const ctx = host.switchToHttp();
     const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
 
     // Log 400 errors with request context before processing
     if (exception instanceof BadRequestException) {
-      console.error('[AllExceptionFilter] BadRequestException detected');
       this.logBadRequest(exception, request);
     } else if (exception instanceof HttpException && exception.getStatus() === 400) {
-      console.error('[AllExceptionFilter] HttpException with status 400 detected');
       // Also catch any HttpException with status 400 that isn't BadRequestException
       this.logBadRequest(exception as BadRequestException, request);
     } else {
       // Log other exceptions
       this.logger.error(exception);
-    }
-
-    // Debug: Log that exception filter was called (remove after debugging)
-    if (exception instanceof HttpException && exception.getStatus() === 400) {
-      console.error('[AllExceptionFilter] 400 error caught:', {
-        url: request.url,
-        method: request.method,
-        exceptionType: exception.constructor.name,
-        exceptionMessage: exception.message,
-        exceptionResponse: exception.getResponse(),
-      });
     }
 
     // const eventId = this.sentry.instance().captureException(exception);

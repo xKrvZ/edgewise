@@ -454,6 +454,7 @@ export interface Punishment {
   punishmentNoteId: string | null;
   punishmentType: string;
   relatedAbuseReportId: string | null;
+  shortCodeId: string;
 }
 
 export interface PunishmentReasons {
