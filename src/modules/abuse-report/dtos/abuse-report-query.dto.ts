@@ -15,11 +15,12 @@ export class AbuseReportQueryDto extends PaginationDto {
   status?: ReportStatus;
 
   @ApiPropertyOptional({
-    description: 'Filter by reporting player ID',
+    description: 'Filter by reporter user ID',
     type: String,
   })
   @IsOptional()
-  reportingPlayerId?: string;
+  @IsString()
+  reporter?: string;
 
   @ApiPropertyOptional({
     description: 'Filter by reported player ID',

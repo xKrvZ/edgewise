@@ -65,14 +65,6 @@ export class CreatePunishmentDto {
   playerId: string;
 
   @ApiPropertyOptional({
-    description: 'External ID of the punishment',
-    example: 'external-12345',
-  })
-  @IsOptional()
-  @IsString()
-  externalId?: string;
-
-  @ApiPropertyOptional({
     description: 'Related abuse report ID',
     nullable: true,
   })

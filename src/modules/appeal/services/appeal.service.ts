@@ -3,6 +3,8 @@ import { AppealDao } from '../daos/appeal.dao';
 import { PunishmentDao } from '../../punishment/daos/punishment.dao';
 import { NoteDao } from '../../note/daos/note.dao';
 import { AppealDto, AppealStatus } from '../dtos/appeal.dto';
+import { PublicAppealDto } from '../dtos/public-appeal.dto';
+import { CreateAppealDto } from '../dtos/create-appeal.dto';
 import { ReviewAppealDto } from '../dtos/review-appeal.dto';
 import { AppealQueryDto } from '../dtos/appeal-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
@@ -53,7 +55,60 @@ export class AppealService {
     return results ?? [];
   }
 
+  async findByPunishmentShortCodeId(shortCodeId: string): Promise<PublicAppealDto[]> {
+    const results = await this.appealDao.findByPunishmentShortCodeId(shortCodeId);
+
+    return results ?? [];
+  }
+
   // ==================== Mutation Methods ====================
+
+  /**
+   * Validates that a punishment can be appealed.
+   * This should be called before creating a new appeal.
+   * @throws NotFoundException if punishment is not found
+   * @throws BadRequestException if appeals are locked or punishment is already lifted
+   */
+  async validatePunishmentCanBeAppealed(punishmentId: string): Promise<void> {
+    const punishment = await this.punishmentDao.findById(punishmentId);
+    
+    if (!punishment) {
+      throw new NotFoundException(`Punishment with ID ${punishmentId} not found`);
+    }
+
+    if (punishment.lifted) {
+      throw new BadRequestException(
+        'This punishment has already been lifted. Appeals cannot be created for lifted punishments.',
+      );
+    }
+
+    if (punishment.appealLocked) {
+      throw new BadRequestException(
+        'Appeals are locked for this punishment. New appeals cannot be submitted.',
+      );
+    }
+  }
+
+  async create(
+    createAppealDto: CreateAppealDto,
+    appealedByUserId: string,
+    includes?: Set<string>,
+  ): Promise<AppealDto> {
+    // Validate that the punishment exists, is not lifted, and appeals are not locked
+    await this.validatePunishmentCanBeAppealed(createAppealDto.punishmentId);
+
+    // Check if there are any pending appeals for this punishment
+    const existingAppeals = await this.appealDao.findByPunishmentId(createAppealDto.punishmentId);
+    const pendingAppeal = existingAppeals?.find((appeal) => appeal.status === 'pending');
+
+    if (pendingAppeal) {
+      throw new BadRequestException(
+        'There is already a pending appeal for this punishment. Please wait for it to be reviewed before submitting a new appeal.',
+      );
+    }
+
+    return await this.appealDao.create(createAppealDto, appealedByUserId, includes);
+  }
 
   async review(
     id: string,

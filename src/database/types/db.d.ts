@@ -306,8 +306,10 @@ export interface AbuseReport {
   metadata: Json | null;
   punishmentId: string | null;
   reportedPlayerId: string;
-  reportingPlayerId: string;
+  reporter: string;
+  reviewedBy: string | null;
   status: string;
+  updatedAt: Generated<Timestamp>;
 }
 
 export interface AbuseReportReason {
@@ -334,6 +336,8 @@ export interface Account {
 
 export interface Appeal {
   acceptanceReason: string | null;
+  appealedBy: string;
+  createdAt: Generated<Timestamp>;
   description: string | null;
   id: Generated<string>;
   playerId: string;
@@ -343,6 +347,7 @@ export interface Appeal {
   reviewNoteId: string | null;
   status: string;
   submittedAt: Generated<Timestamp>;
+  updatedAt: Generated<Timestamp>;
 }
 
 export interface Jwks {
@@ -440,9 +445,9 @@ export interface Player {
 }
 
 export interface Punishment {
+  appealLocked: Generated<boolean>;
   createdAt: Generated<Timestamp>;
   expiry: Timestamp | null;
-  externalId: string | null;
   id: Generated<string>;
   issuedById: string | null;
   lifted: Generated<boolean>;
@@ -455,6 +460,7 @@ export interface Punishment {
   punishmentType: string;
   relatedAbuseReportId: string | null;
   shortCodeId: string;
+  updatedAt: Generated<Timestamp>;
 }
 
 export interface PunishmentReasons {

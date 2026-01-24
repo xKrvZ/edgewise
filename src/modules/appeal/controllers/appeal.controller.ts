@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Param,
   Body,
@@ -9,6 +10,7 @@ import {
   HttpStatus,
   SerializeOptions,
   BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   ApiOperation,
@@ -19,6 +21,8 @@ import {
 } from '@nestjs/swagger';
 import { AppealService } from '../services/appeal.service';
 import { AppealDto } from '../dtos/appeal.dto';
+import { PublicAppealDto } from '../dtos/public-appeal.dto';
+import { CreateAppealDto } from '../dtos/create-appeal.dto';
 import { ReviewAppealDto } from '../dtos/review-appeal.dto';
 import { AppealQueryDto } from '../dtos/appeal-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
@@ -72,6 +76,29 @@ export class AppealController {
   }
 
   // ==================== Query Endpoints ====================
+
+  @Get('public/punishment/:shortCodeId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get appeals by punishment short code ID (public)',
+    description: 'Retrieves all appeals for a punishment by its short code ID. This is a public endpoint that does not require authentication.',
+  })
+  @ApiParam({
+    name: 'shortCodeId',
+    description: 'Short code ID of the punishment (12 characters)',
+    type: String,
+    example: 'a1b2c3d4e5f6',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of appeals retrieved successfully',
+    type: [PublicAppealDto],
+  })
+  async findByPunishmentShortCodeId(
+    @Param('shortCodeId') shortCodeId: string,
+  ): Promise<PublicAppealDto[]> {
+    return await this.appealService.findByPunishmentShortCodeId(shortCodeId);
+  }
 
   @Get()
   @Roles(STAFF_ROLES)
@@ -179,6 +206,39 @@ export class AppealController {
   }
 
   // ==================== Mutation Endpoints ====================
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Create an appeal',
+    description: 'Creates a new appeal for a punishment. Requires authentication. Appeals can only be created if there are no pending appeals for the punishment and the punishment is not appeal-locked.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Appeal created successfully',
+    type: AppealDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request data, appeals are locked, or there is already a pending appeal',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Authentication required',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Punishment not found',
+  })
+  async create(
+    @Session() session: UserSession | null,
+    @Body() createAppealDto: CreateAppealDto,
+  ): Promise<AppealDto> {
+    if (!session) {
+      throw new UnauthorizedException('Authentication required to create an appeal');
+    }
+    return await this.appealService.create(createAppealDto, session.user.id);
+  }
 
   @Patch(':id/review')
   @Roles(STAFF_ROLES)

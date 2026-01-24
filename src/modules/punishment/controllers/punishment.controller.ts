@@ -21,10 +21,12 @@ import {
 } from '@nestjs/swagger';
 import { PunishmentService } from '../services/punishment.service';
 import { PunishmentDto } from '../dtos/punishment.dto';
+import { PublicPunishmentDto } from '../dtos/public-punishment.dto';
 import { CreatePunishmentDto } from '../dtos/create-punishment.dto';
 import { LiftPunishmentDto } from '../dtos/lift-punishment.dto';
 import { LiftPunishmentsDto } from '../dtos/lift-punishments.dto';
 import { UpdatePunishmentExpiryDto } from '../dtos/update-punishment-expiry.dto';
+import { UpdateAppealLockedDto } from '../dtos/update-appeal-locked.dto';
 import { PunishmentQueryDto } from '../dtos/punishment-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { Roles, Session, UserSession } from '@thallesp/nestjs-better-auth';
@@ -77,6 +79,33 @@ export class PunishmentController {
   }
 
   // ==================== Query Endpoints ====================
+
+  @Get('public/:shortCodeId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get punishment by short code ID (public)',
+    description: 'Retrieves a punishment by its short code ID. This is a public endpoint that does not require authentication.',
+  })
+  @ApiParam({
+    name: 'shortCodeId',
+    description: 'Short code ID of the punishment (12 characters)',
+    type: String,
+    example: 'a1b2c3d4e5f6',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Punishment retrieved successfully',
+    type: PublicPunishmentDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Punishment not found',
+  })
+  async findByShortCodeId(
+    @Param('shortCodeId') shortCodeId: string,
+  ): Promise<PublicPunishmentDto> {
+    return await this.punishmentService.findByShortCodeId(shortCodeId);
+  }
 
   @Get()
   @Roles(STAFF_ROLES)
@@ -394,5 +423,44 @@ export class PunishmentController {
     }
 
     return await this.punishmentService.updateExpiry(id, updatePunishmentExpiryDto.expiry, includes);
+  }
+
+  @Patch(':id/appeal-locked')
+  @Roles([ROLES.ADMINISTRATOR])
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update punishment appeal lock status',
+    description: 'Locks or unlocks appeals for a punishment. Only administrators can perform this action.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Unique identifier of the punishment',
+    type: String,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Punishment appeal lock status updated successfully',
+    type: PunishmentDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Punishment not found',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Only administrators can update appeal lock status',
+  })
+  async updateAppealLocked(
+    @Session() session: UserSession,
+    @Param('id') id: string,
+    @Body() updateAppealLockedDto: UpdateAppealLockedDto,
+    @Query('include') include?: string,
+  ): Promise<PunishmentDto> {
+    const includes = this.validateIncludes(include, session.user.role);
+    return await this.punishmentService.updateAppealLocked(
+      id,
+      updateAppealLockedDto.appealLocked,
+      includes,
+    );
   }
 }

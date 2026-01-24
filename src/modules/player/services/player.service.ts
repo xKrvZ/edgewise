@@ -1,8 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PlayerDao } from '../daos/player.dao';
 import { PlayerDto } from '../dtos/player.dto';
+import { PublicPlayerDto } from '../dtos/public-player.dto';
 import { SyncPlayerDto } from '../dtos/sync-player.dto';
 import { PlayerQueryDto } from '../dtos/player-query.dto';
+import { PlayerSearchQueryDto } from '../dtos/player-search-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 
 @Injectable()
@@ -29,6 +31,16 @@ export class PlayerService {
     }
 
     return result;
+  }
+
+  async findByUsernamePaginated(queryDto: PlayerSearchQueryDto): Promise<PaginatedDto<PublicPlayerDto>> {
+    return await this.playerDao.findByUsernamePaginated(
+      queryDto.username,
+      queryDto.game,
+      queryDto.cursor,
+      queryDto.limit,
+      queryDto.orderBy,
+    );
   }
 
   async getGameTypes(): Promise<string[]> {

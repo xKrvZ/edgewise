@@ -8,6 +8,7 @@ import {
   HttpStatus,
   SerializeOptions,
   Query,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiOperation,
@@ -18,8 +19,10 @@ import {
 } from '@nestjs/swagger';
 import { PlayerService } from '../services/player.service';
 import { PlayerDto } from '../dtos/player.dto';
+import { PublicPlayerDto } from '../dtos/public-player.dto';
 import { SyncPlayerDto } from '../dtos/sync-player.dto';
 import { PlayerQueryDto } from '../dtos/player-query.dto';
+import { PlayerSearchQueryDto } from '../dtos/player-search-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { Roles, Session, UserSession } from '@thallesp/nestjs-better-auth';
 import { createPaginatedSchema } from '@/database/utils/paginated-schema.util';
@@ -69,6 +72,24 @@ export class PlayerController {
   })
   async getGameTypes(): Promise<string[]> {
     return await this.playerService.getGameTypes();
+  }
+
+  @Get('search')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Search players by username and/or game (Public)',
+    description: 'Public endpoint to search for players by username (optionally filtered by game) with pagination support. Returns limited player information.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated list of players retrieved successfully',
+    schema: createPaginatedSchema(getSchemaPath(PublicPlayerDto)),
+  })
+  async findByUsername(@Query() queryDto: PlayerSearchQueryDto): Promise<PaginatedDto<PublicPlayerDto>> {
+    if (!queryDto.username) {
+      throw new BadRequestException('Username parameter is required');
+    }
+    return await this.playerService.findByUsernamePaginated(queryDto);
   }
 
   @Get(':id')

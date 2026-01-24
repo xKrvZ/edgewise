@@ -4,6 +4,7 @@ import { AbuseReportDto, ReportStatus } from '../dtos/abuse-report.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { AbuseReportQueryDto } from '../dtos/abuse-report-query.dto';
 import { PlayerDao } from '@/modules/player/daos/player.dao';
+import { UserDao } from '@/modules/user/daos/user.dao';
 import { ReportReason } from '../constants/report-reason.constants';
 import { DB } from '@/database/types/db';
 import { sql } from 'kysely';
@@ -16,6 +17,7 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
 
   private buildBaseQuery(includes?: Set<string>) {
     const includePlayer = includes?.has('player') ?? false;
+    const includeUser = includes?.has('user') ?? false;
 
     return (this.kysely as any)
       .selectFrom(AbuseReportDao.TABLE)
@@ -27,7 +29,8 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
           'punishmentId',
           'metadata',
           'createdAt',
-          'reportingPlayerId',
+          'reporter',
+          'reviewedBy',
           'reportedPlayerId',
           // Always include report reasons as JSON array
           eb
@@ -42,21 +45,43 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
             .as('reportReasons'),
         ];
 
-        // Conditionally include player subqueries
-        if (includePlayer) {
+        // Conditionally include user subqueries (reporter and reviewedBy)
+        if (includeUser) {
           selects.push(
             eb
-              .selectFrom(PlayerDao.TABLE)
+              .selectFrom(UserDao.TABLE)
               .select((eb) => [
                 eb.fn('json_build_object', [
                   sql.lit('id'),
-                  eb.ref('player.id'),
-                  sql.lit('lastKnownUsername'),
-                  eb.ref('player.lastKnownUsername'),
+                  eb.ref('user.id'),
+                  sql.lit('name'),
+                  eb.ref('user.name'),
+                  sql.lit('role'),
+                  eb.fn('COALESCE', [eb.ref('user.role'), sql.lit('')]),
                 ]),
               ])
-              .where('player.id', '=', eb.ref('abuse_report.reportingPlayerId'))
-              .as('reportingPlayer'),
+              .where('user.id', '=', eb.ref('abuse_report.reporter'))
+              .as('reporter'),
+            eb
+              .selectFrom(UserDao.TABLE)
+              .select((eb) => [
+                eb.fn('json_build_object', [
+                  sql.lit('id'),
+                  eb.ref('user.id'),
+                  sql.lit('name'),
+                  eb.ref('user.name'),
+                  sql.lit('role'),
+                  eb.fn('COALESCE', [eb.ref('user.role'), sql.lit('')]),
+                ]),
+              ])
+              .where('user.id', '=', eb.ref('abuse_report.reviewedBy'))
+              .as('reviewedBy'),
+          );
+        }
+
+        // Conditionally include player subquery (reportedPlayer)
+        if (includePlayer) {
+          selects.push(
             eb
               .selectFrom(PlayerDao.TABLE)
               .select((eb) => [
@@ -78,6 +103,7 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
 
   private mapRowToDto(row: any, includes?: Set<string>): AbuseReportDto {
     const includePlayer = includes?.has('player') ?? false;
+    const includeUser = includes?.has('user') ?? false;
 
     // Extract report reasons from JSON array
     let reportReasons: ReportReason[] = [];
@@ -95,7 +121,8 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
 
     return {
       id: row.id,
-      reportingPlayer: includePlayer ? row.reportingPlayer ?? undefined : undefined,
+      reporter: includeUser ? row.reporter ?? undefined : undefined,
+      reviewedBy: includeUser ? row.reviewedBy ?? undefined : undefined,
       reportedPlayer: includePlayer ? row.reportedPlayer ?? undefined : undefined,
       reportReasons,
       description: row.description ?? undefined,
@@ -161,8 +188,8 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
     if (queryDto.status !== undefined) {
       filters.status = queryDto.status;
     }
-    if (queryDto.reportingPlayerId) {
-      filters.reportingPlayerId = queryDto.reportingPlayerId;
+    if (queryDto.reporter) {
+      filters.reporter = queryDto.reporter;
     }
     if (queryDto.reportedPlayerId) {
       filters.reportedPlayerId = queryDto.reportedPlayerId;
@@ -233,18 +260,76 @@ export class AbuseReportDao extends KyselyDao<AbuseReportDao> {
     return this.mapRowToDto(result, includes);
   }
 
+  async findPendingByReportedPlayerId(reportedPlayerId: string): Promise<AbuseReportDto[]> {
+    const results = await this.buildBaseQuery()
+      .where('reportedPlayerId', '=', reportedPlayerId)
+      .where('status', '=', 'pending')
+      .execute();
+
+    return results.map((row: any) => this.mapRowToDto(row));
+  }
+
   // ==================== Public Mutation Methods ====================
+
+  async create(
+    data: {
+      reportedPlayerId: string;
+      reportReasons: ReportReason[];
+      description?: string | null;
+      metadata?: { chatLogs?: string[] } | null;
+    },
+    reporterId: string,
+    includes?: Set<string>,
+  ): Promise<AbuseReportDto> {
+    return await this.transaction(async (trx) => {
+      const dao = this.transacting(trx);
+
+      // Insert abuse report
+      const result = await (dao.kysely as any)
+        .insertInto(AbuseReportDao.TABLE)
+        .values({
+          reportedPlayerId: data.reportedPlayerId,
+          reporter: reporterId,
+          description: data.description ?? null,
+          metadata: data.metadata ? JSON.stringify(data.metadata) : null,
+          status: 'pending',
+        })
+        .returning(['id'])
+        .executeTakeFirstOrThrow();
+
+      // Insert report reasons into junction table
+      if (data.reportReasons && data.reportReasons.length > 0) {
+        await (dao.kysely as any)
+          .insertInto('abuse_report_reason')
+          .values(
+            data.reportReasons.map((reason: ReportReason) => ({
+              abuseReportId: result.id,
+              reportReason: reason,
+            })),
+          )
+          .execute();
+      }
+
+      const report = await dao.findById(result.id, includes);
+      if (!report) {
+        throw new Error('Failed to retrieve created abuse report');
+      }
+      return report;
+    });
+  }
 
   async updateReview(
     id: string,
     status: ReportStatus,
     punishmentId?: string | null,
+    reviewedById?: string,
     includes?: Set<string>,
   ): Promise<AbuseReportDto | null> {
     await this.updateWithTimestamp(AbuseReportDao.TABLE)
       .set({
         status,
         punishmentId: punishmentId ?? null,
+        reviewedBy: reviewedById ?? null,
       })
       .where('id', '=', id)
       .execute();

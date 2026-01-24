@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { KyselyDao } from '@/database/kysely/kysely.dao';
 import { AppealDto, AppealStatus } from '../dtos/appeal.dto';
+import { PublicAppealDto } from '../dtos/public-appeal.dto';
+import { CreateAppealDto } from '../dtos/create-appeal.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { AppealQueryDto } from '../dtos/appeal-query.dto';
 import { PunishmentDao } from '@/modules/punishment/daos/punishment.dao';
@@ -41,6 +43,21 @@ export class AppealDao extends KyselyDao<AppealDao> {
             .select('punishment.punishmentType')
             .where('punishment.id', '=', eb.ref('appeal.punishmentId'))
             .as('punishmentType'),
+          // Always include appealedBy user data
+          eb
+            .selectFrom(UserDao.TABLE)
+            .select((eb) => [
+              eb.fn('json_build_object', [
+                sql.lit('id'),
+                eb.ref('user.id'),
+                sql.lit('name'),
+                eb.ref('user.name'),
+                sql.lit('role'),
+                eb.fn('COALESCE', [eb.ref('user.role'), sql.lit('')]),
+              ]),
+            ])
+            .where('user.id', '=', eb.ref('appeal.appealedBy'))
+            .as('appealedBy'),
         ];
 
         // Conditionally include user subquery (reviewedBy)
@@ -121,6 +138,7 @@ export class AppealDao extends KyselyDao<AppealDao> {
       id: row.id,
       playerId: row.playerId,
       punishmentId: row.punishmentId,
+      appealedBy: row.appealedBy ?? undefined,
       punishmentType: row.punishmentType!,
       submittedAt: row.submittedAt.toISOString(),
       status: row.status as AppealStatus,
@@ -270,7 +288,78 @@ export class AppealDao extends KyselyDao<AppealDao> {
     return results.map((row: any) => this.mapRowToDto(row, includes));
   }
 
+  async findByPunishmentShortCodeId(shortCodeId: string): Promise<PublicAppealDto[] | null> {
+    // First, find the punishment ID by shortCodeId
+    const punishment = await (this.kysely as any)
+      .selectFrom(PunishmentDao.TABLE)
+      .select('id')
+      .where('shortCodeId', '=', shortCodeId)
+      .executeTakeFirst();
+
+    if (!punishment) {
+      return null;
+    }
+
+    // Then find appeals for that punishment
+    const results = await this.buildBaseQuery(new Set())
+      .where('punishmentId', '=', punishment.id)
+      .execute();
+
+    if (results.length === 0) {
+      return null;
+    }
+
+    return results.map((row: any) => this.mapRowToPublicDto(row));
+  }
+
+  private mapRowToPublicDto(row: any): PublicAppealDto {
+    return {
+      id: row.id,
+      punishmentType: row.punishmentType!,
+      submittedAt: row.submittedAt.toISOString(),
+      status: row.status as AppealStatus,
+      description: row.description ?? undefined,
+      acceptanceReason: row.acceptanceReason ?? null,
+      rejectionReason: row.rejectionReason ?? null,
+    } as PublicAppealDto;
+  }
+
   // ==================== Public Mutation Methods ====================
+
+  async create(
+    data: CreateAppealDto,
+    appealedByUserId: string,
+    includes?: Set<string>,
+  ): Promise<AppealDto> {
+    // Get playerId from the punishment
+    const punishment = await (this.kysely as any)
+      .selectFrom(PunishmentDao.TABLE)
+      .select('playerId')
+      .where('id', '=', data.punishmentId)
+      .executeTakeFirst();
+
+    if (!punishment) {
+      throw new NotFoundException(`Punishment with ID ${data.punishmentId} not found`);
+    }
+
+    const result = await (this.kysely as any)
+      .insertInto(AppealDao.TABLE)
+      .values({
+        playerId: punishment.playerId,
+        punishmentId: data.punishmentId,
+        appealedBy: appealedByUserId,
+        description: data.description ?? null,
+        status: 'pending',
+      })
+      .returning(['id'])
+      .executeTakeFirstOrThrow();
+
+    const created = await this.findById(result.id, includes);
+    if (!created) {
+      throw new NotFoundException(`Failed to retrieve created appeal with ID ${result.id}`);
+    }
+    return created;
+  }
 
   async updateStatus(
     id: string,

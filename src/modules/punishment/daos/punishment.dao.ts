@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectKysely } from 'nestjs-kysely';
 import { KyselyDao } from '@/database/kysely/kysely.dao';
 import { PunishmentDto } from '../dtos/punishment.dto';
+import { PublicPunishmentDto } from '../dtos/public-punishment.dto';
 import { CreatePunishmentDto } from '../dtos/create-punishment.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { PunishmentQueryDto } from '../dtos/punishment-query.dto';
@@ -16,7 +17,7 @@ import { customAlphabet } from 'nanoid';
 
 // Custom alphabet: lowercase, uppercase A-Z, and numbers 0-9
 const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-const nanoid = customAlphabet(alphabet, 8);
+const nanoid = customAlphabet(alphabet, 12);
 
 @Injectable()
 export class PunishmentDao extends KyselyDao<PunishmentDao> {
@@ -61,6 +62,7 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
           'playerId',
           'issuedById',
           'liftedById',
+          'appealLocked',
           // Always include punishment reasons as JSON array
           eb
             .selectFrom('punishment_reasons')
@@ -87,6 +89,8 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
                   eb.ref('player.lastKnownUsername'),
                   sql.lit('externalId'),
                   eb.ref('player.externalId'),
+                  sql.lit('game'),
+                  eb.ref('player.game'),
                 ]),
               ])
               .where('player.id', '=', eb.ref('punishment.playerId'))
@@ -254,6 +258,7 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
       liftNote,
       punishmentNote,
       relatedAbuseReportId: row.relatedAbuseReportId ?? null,
+      appealLocked: row.appealLocked ?? false,
     } as PunishmentDto;
   }
 
@@ -404,6 +409,55 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
     return this.mapRowToDto(result, includes);
   }
 
+  async findByShortCodeId(shortCodeId: string): Promise<PublicPunishmentDto | null> {
+    const result = await this.buildBaseQuery(new Set(['player']))
+      .where('shortCodeId', '=', shortCodeId)
+      .executeTakeFirst();
+
+    if (!result) {
+      return null;
+    }
+
+    return this.mapRowToPublicDto(result);
+  }
+
+  private mapRowToPublicDto(row: any): PublicPunishmentDto {
+    // Extract punishment reasons from JSON array
+    let punishmentReasons: PunishmentReason[] = [];
+    if (row.punishmentReasons) {
+      if (row.punishmentReasons.reasons) {
+        // If it's an object with a 'reasons' property (from json_agg)
+        punishmentReasons = Array.isArray(row.punishmentReasons.reasons)
+          ? row.punishmentReasons.reasons
+          : [];
+      } else if (Array.isArray(row.punishmentReasons)) {
+        // If it's already an array
+        punishmentReasons = row.punishmentReasons;
+      }
+    }
+
+    return {
+      id: row.id,
+      shortCodeId: row.shortCodeId,
+      punishmentType: row.punishmentType as 'ban' | 'mute' | 'kick',
+      punishmentReasons,
+      expiry: row.expiry ? row.expiry.toISOString() : null,
+      createdAt: row.createdAt.toISOString(),
+      lifted: row.lifted,
+      liftedAt: row.liftedAt ? row.liftedAt.toISOString() : null,
+      liftReason: row.liftReason ?? null,
+      appealLocked: row.appealLocked ?? false,
+      player: row.player
+        ? {
+            id: row.player.id,
+            lastKnownUsername: row.player.lastKnownUsername,
+            externalId: row.player.externalId ?? undefined,
+            game: row.player.game,
+          }
+        : undefined,
+    } as PublicPunishmentDto;
+  }
+
   async findByPlayerId(playerId: string, includes?: Set<string>): Promise<PunishmentDto[] | null> {
     const results = await this.buildBaseQuery(includes)
       .where('playerId', '=', playerId)
@@ -439,7 +493,7 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
     return await this.transaction(async (trx) => {
       const dao = this.transacting(trx);
 
-      // Generate a unique shortCodeId (8 characters)
+      // Generate a unique shortCodeId (12 characters)
       // Retry if duplicate exists
       let shortCodeId: string = '';
       let attempts = 0;
@@ -474,7 +528,6 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
           punishmentType: data.punishmentType,
           expiry: data.expiry ? new Date(data.expiry) : null,
           playerId: data.playerId,
-          externalId: data.externalId ?? null,
           issuedById,
           relatedAbuseReportId: data.relatedAbuseReportId ?? null,
           punishmentNoteId: punishmentNoteId ?? null,
@@ -530,6 +583,21 @@ export class PunishmentDao extends KyselyDao<PunishmentDao> {
       })
       .where('id', '=', id)
       .where('lifted', '=', false)
+      .execute();
+
+    return await this.findById(id, includes);
+  }
+
+  async updateAppealLocked(
+    id: string,
+    appealLocked: boolean,
+    includes?: Set<string>,
+  ): Promise<PunishmentDto | null> {
+    await this.updateWithTimestamp(PunishmentDao.TABLE)
+      .set({
+        appealLocked,
+      })
+      .where('id', '=', id)
       .execute();
 
     return await this.findById(id, includes);

@@ -2,7 +2,9 @@ import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef 
 import { PunishmentDao } from '../daos/punishment.dao';
 import { NoteDao } from '@/modules/note/daos/note.dao';
 import { AppealDao } from '@/modules/appeal/daos/appeal.dao';
+import { AbuseReportDao } from '@/modules/abuse-report/daos/abuse-report.dao';
 import { PunishmentDto } from '../dtos/punishment.dto';
+import { PublicPunishmentDto } from '../dtos/public-punishment.dto';
 import { CreatePunishmentDto } from '../dtos/create-punishment.dto';
 import { LiftPunishmentsDto } from '../dtos/lift-punishments.dto';
 import { PunishmentQueryDto } from '../dtos/punishment-query.dto';
@@ -16,6 +18,8 @@ export class PunishmentService {
     private readonly noteDao: NoteDao,
     @Inject(forwardRef(() => AppealDao))
     private readonly appealDao: AppealDao,
+    @Inject(forwardRef(() => AbuseReportDao))
+    private readonly abuseReportDao: AbuseReportDao,
   ) {}
 
   // ==================== Query Methods ====================
@@ -53,6 +57,21 @@ export class PunishmentService {
     return result;
   }
 
+  async isAppealLocked(punishmentId: string): Promise<boolean> {
+    const punishment = await this.punishmentDao.findById(punishmentId);
+    return punishment?.appealLocked ?? false;
+  }
+
+  async findByShortCodeId(shortCodeId: string): Promise<PublicPunishmentDto> {
+    const result = await this.punishmentDao.findByShortCodeId(shortCodeId);
+
+    if (!result) {
+      throw new NotFoundException(`Punishment with short code ID ${shortCodeId} not found`);
+    }
+
+    return result;
+  }
+
   async findByPlayerId(playerId: string, includes?: Set<string>): Promise<PunishmentDto[]> {
     const results = await this.punishmentDao.findByPlayerId(playerId, includes);
 
@@ -72,6 +91,20 @@ export class PunishmentService {
     issuedById: string,
     includes?: Set<string>,
   ): Promise<PunishmentDto> {
+    // Check if punishment is being created from an abuse report review
+    // If not, validate that player has no pending abuse reports
+    if (!createPunishmentDto.relatedAbuseReportId) {
+      const pendingReports = await this.abuseReportDao.findPendingByReportedPlayerId(
+        createPunishmentDto.playerId,
+      );
+
+      if (pendingReports.length > 0) {
+        throw new BadRequestException(
+          `Cannot create punishment for this player. There ${pendingReports.length === 1 ? 'is' : 'are'} ${pendingReports.length} pending abuse report${pendingReports.length === 1 ? '' : 's'} that must be reviewed first.`,
+        );
+      }
+    }
+
     // Use transaction to create note and punishment
     return await this.punishmentDao.transaction(async (trx) => {
       const punishmentDao = this.punishmentDao.transacting(trx);
@@ -277,6 +310,20 @@ export class PunishmentService {
     }
 
     const result = await this.punishmentDao.updateExpiry(id, newExpiry, includes);
+
+    if (!result) {
+      throw new NotFoundException(`Punishment with ID ${id} not found`);
+    }
+
+    return result;
+  }
+
+  async updateAppealLocked(
+    id: string,
+    appealLocked: boolean,
+    includes?: Set<string>,
+  ): Promise<PunishmentDto> {
+    const result = await this.punishmentDao.updateAppealLocked(id, appealLocked, includes);
 
     if (!result) {
       throw new NotFoundException(`Punishment with ID ${id} not found`);

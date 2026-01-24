@@ -7,13 +7,12 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('id', 'uuid', (col) =>
       col.primaryKey().defaultTo(sql`gen_random_uuid()`),
     )
-    .addColumn('shortCodeId', 'varchar(8)', (col) => col.notNull().unique())
+    .addColumn('shortCodeId', 'varchar(12)', (col) => col.notNull().unique())
     .addColumn('punishmentType', 'varchar', col => col.notNull())
     .addColumn('expiry', 'timestamp')
     .addColumn('playerId', 'uuid', col =>
       col.references('player.id').onDelete('cascade').notNull(),
     )
-    .addColumn('externalId', 'varchar')
     .addColumn('issuedById', 'varchar', (col) =>
       col.references('user.id').onDelete('set null')
     )
@@ -30,6 +29,7 @@ export async function up(db: Kysely<any>): Promise<void> {
       col.references('note.id').onDelete('set null'),
     )
     .addColumn('relatedAbuseReportId', 'uuid')
+    .addColumn('appealLocked', 'boolean', (col) => col.defaultTo(false).notNull())
     .addColumn('createdAt', 'timestamp', (col) =>
       col.defaultTo(sql`now()`).notNull(),
     )

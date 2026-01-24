@@ -43,4 +43,11 @@ export class PlayerDto {
     example: '2025-01-17T15:00:00.000Z',
   })
   updatedAt: Date;
+
+  @Expose()
+  @ApiProperty({
+    description: 'Whether the player has any pending abuse reports',
+    example: false,
+  })
+  hasOpenAbuseReports: boolean;
 }

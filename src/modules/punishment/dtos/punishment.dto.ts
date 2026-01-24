@@ -18,8 +18,8 @@ export class PunishmentDto {
 
   @Expose()
   @ApiProperty({
-    description: 'Short code ID for the punishment (8 characters)',
-    example: 'a1b2c3d4',
+    description: 'Short code ID for the punishment (12 characters)',
+    example: 'a1b2c3d4e5f6',
   })
   shortCodeId: string;
 
@@ -75,6 +75,13 @@ export class PunishmentDto {
     example: false,
   })
   lifted: boolean;
+
+  @Expose()
+  @ApiProperty({
+    description: 'Whether appeals are locked for this punishment',
+    example: false,
+  })
+  appealLocked: boolean;
 
   @Expose()
   @ApiPropertyOptional({

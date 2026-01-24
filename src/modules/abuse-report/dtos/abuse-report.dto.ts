@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { PlayerDto } from '@/modules/player/dtos/player.dto';
+import { UserDto } from '@/modules/user/dtos/user.dto';
 import { ReportReason, REPORT_REASONS } from '../constants/report-reason.constants';
 
 export type ReportStatus = 'pending' | 'reviewed';
@@ -14,18 +15,25 @@ export class AbuseReportDto {
   id: string;
 
   @Expose()
-  @ApiProperty({
-    description: 'Player who reported',
-    type: PlayerDto,
+  @ApiPropertyOptional({
+    description: 'User who reported',
+    type: UserDto,
   })
-  reportingPlayer?: Pick<PlayerDto, 'id' | 'lastKnownUsername'>;
+  reporter?: UserDto;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'User who reviewed the report',
+    type: UserDto,
+  })
+  reviewedBy?: UserDto;
 
   @Expose()
   @ApiProperty({
     description: 'Player who was reported',
     type: PlayerDto,
   })
-  reportedPlayer?: Pick<PlayerDto, 'id' | 'lastKnownUsername'>;
+  reportedPlayer?: Pick<PlayerDto, 'id' | 'lastKnownUsername' | 'externalId' | 'game'>;
 
   @Expose()
   @ApiProperty({

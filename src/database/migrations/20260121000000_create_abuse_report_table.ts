@@ -7,14 +7,17 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('id', 'uuid', (col) =>
       col.primaryKey().defaultTo(sql`gen_random_uuid()`),
     )
-    .addColumn('reportingPlayerId', 'uuid', (col) =>
-      col.references('player.id').onDelete('cascade').notNull(),
+    .addColumn('reporter', 'varchar', (col) =>
+      col.references('user.id').onDelete('cascade').notNull(),
     )
     .addColumn('reportedPlayerId', 'uuid', (col) =>
       col.references('player.id').onDelete('cascade').notNull(),
     )
     .addColumn('description', 'text')
     .addColumn('status', 'varchar', col => col.notNull())
+    .addColumn('reviewedBy', 'varchar', (col) =>
+      col.references('user.id').onDelete('set null'),
+    )
     .addColumn('punishmentId', 'uuid')
     .addColumn('metadata', 'jsonb')
     .addColumn('createdAt', 'timestamp', (col) =>
@@ -43,6 +46,14 @@ export async function up(db: Kysely<any>): Promise<void> {
     .on('abuse_report_reason')
     .columns(['abuseReportId', 'reportReason'])
     .unique()
+    .execute();
+
+  // Create composite index for efficient EXISTS queries on reportedPlayerId and status
+  // This optimizes the hasOpenAbuseReports subquery in player queries
+  await db.schema
+    .createIndex('abuse_report_reported_player_status_idx')
+    .on('abuse_report')
+    .columns(['reportedPlayerId', 'status'])
     .execute();
 }
 

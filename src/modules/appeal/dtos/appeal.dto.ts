@@ -31,6 +31,13 @@ export class AppealDto {
   punishmentId: string;
 
   @Expose()
+  @ApiPropertyOptional({
+    description: 'User who submitted the appeal',
+    type: UserDto,
+  })
+  appealedBy?: UserDto;
+
+  @Expose()
   @ApiProperty({
     description: 'Type of punishment being appealed',
     enum: ['ban', 'mute', 'kick'],

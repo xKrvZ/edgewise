@@ -3,6 +3,7 @@ import { AbuseReportDao } from '../daos/abuse-report.dao';
 import { PunishmentDao } from '../../punishment/daos/punishment.dao';
 import { NoteDao } from '@/modules/note/daos/note.dao';
 import { AbuseReportDto, ReportStatus } from '../dtos/abuse-report.dto';
+import { CreateAbuseReportDto } from '../dtos/create-abuse-report.dto';
 import { ReviewAbuseReportDto } from '../dtos/review-abuse-report.dto';
 import { AbuseReportQueryDto } from '../dtos/abuse-report-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
@@ -44,6 +45,23 @@ export class AbuseReportService {
 
   // ==================== Mutation Methods ====================
 
+  async create(
+    createAbuseReportDto: CreateAbuseReportDto,
+    reporterId: string,
+    includes?: Set<string>,
+  ): Promise<AbuseReportDto> {
+    return await this.abuseReportDao.create(
+      {
+        reportedPlayerId: createAbuseReportDto.reportedPlayerId,
+        reportReasons: createAbuseReportDto.reportReasons,
+        description: createAbuseReportDto.description,
+        metadata: createAbuseReportDto.metadata,
+      },
+      reporterId,
+      includes,
+    );
+  }
+
   async review(
     id: string,
     reviewAbuseReportDto: ReviewAbuseReportDto,
@@ -71,6 +89,7 @@ export class AbuseReportService {
         id,
         reviewAbuseReportDto.status,
         undefined, // No punishment ID
+        reviewedById,
         includes,
       );
 
@@ -130,11 +149,12 @@ export class AbuseReportService {
         });
       }
 
-      // Update report with punishment ID
+      // Update report with punishment ID and reviewedById
       const updatedReport = await abuseReportDao.updateReview(
         id,
         reviewAbuseReportDto.status,
         punishment.id,
+        reviewedById,
         includes,
       );
 

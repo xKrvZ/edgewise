@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Param,
   Body,
@@ -20,6 +21,7 @@ import {
 } from '@nestjs/swagger';
 import { AbuseReportService } from '../services/abuse-report.service';
 import { AbuseReportDto } from '../dtos/abuse-report.dto';
+import { CreateAbuseReportDto } from '../dtos/create-abuse-report.dto';
 import { ReviewAbuseReportDto } from '../dtos/review-abuse-report.dto';
 import { AbuseReportQueryDto } from '../dtos/abuse-report-query.dto';
 import { CreatePunishmentDto } from '../../punishment/dtos/create-punishment.dto';
@@ -36,8 +38,8 @@ export class AbuseReportController {
 
   /**
    * Validates and filters includes based on user role
-   * - Moderators: can include 'player'
-   * - Admins: can include 'player'
+   * - Moderators: can include 'player', 'user'
+   * - Admins: can include 'player', 'user'
    */
   private validateIncludes(
     include?: string,
@@ -51,8 +53,8 @@ export class AbuseReportController {
       include.split(',').map((i) => i.trim().toLowerCase()),
     );
 
-    // Allowed includes (both moderators and admins can see player data)
-    const allowedIncludes = ['player'];
+    // Allowed includes (both moderators and admins can see player and user data)
+    const allowedIncludes = ['player', 'user'];
 
     // Filter out any includes that aren't allowed
     const validatedIncludes = new Set<string>();
@@ -123,6 +125,38 @@ export class AbuseReportController {
   }
 
   // ==================== Mutation Endpoints ====================
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Create an abuse report',
+    description: 'Creates a new abuse report for a player. The report will be in "pending" status until reviewed by staff.',
+  })
+  @ApiBody({
+    description: 'Data for creating the abuse report',
+    type: CreateAbuseReportDto,
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Abuse report created successfully',
+    type: AbuseReportDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request data',
+  })
+  async create(
+    @Session() session: UserSession,
+    @Body() createAbuseReportDto: CreateAbuseReportDto,
+    @Query('include') include?: string,
+  ): Promise<AbuseReportDto> {
+    const includes = this.validateIncludes(include, session.user.role);
+    return await this.abuseReportService.create(
+      createAbuseReportDto,
+      session.user.id,
+      includes,
+    );
+  }
 
   @Patch(':id/review')
   @Roles(STAFF_ROLES)

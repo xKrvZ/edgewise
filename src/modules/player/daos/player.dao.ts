@@ -2,8 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { KyselyDao } from '@/database/kysely/kysely.dao';
 import { sql } from 'kysely';
 import { PlayerDto } from '../dtos/player.dto';
+import { PublicPlayerDto } from '../dtos/public-player.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { PlayerQueryDto } from '../dtos/player-query.dto';
+import { OrderByDto } from '@/database/dtos/filter.dto';
 import { DB } from '@/database/types/db';
 
 @Injectable()
@@ -13,6 +15,28 @@ export class PlayerDao extends KyselyDao<PlayerDao> {
   // ==================== Private Helper Methods ====================
 
   private buildBaseQuery() {
+    return (this.kysely as any)
+      .selectFrom(PlayerDao.TABLE)
+      .select((eb) => [
+        'id',
+        'externalId',
+        'lastKnownUsername',
+        'game',
+        'createdAt',
+        'updatedAt',
+        // Always include hasOpenAbuseReports as boolean
+        sql<boolean>`
+          EXISTS (
+            SELECT 1
+            FROM abuse_report
+            WHERE abuse_report."reportedPlayerId" = player.id
+            AND abuse_report.status = 'pending'
+          )
+        `.as('hasOpenAbuseReports'),
+      ]);
+  }
+
+  private buildPublicQuery() {
     return this.kysely
       .selectFrom(PlayerDao.TABLE)
       .select([
@@ -20,8 +44,6 @@ export class PlayerDao extends KyselyDao<PlayerDao> {
         'externalId',
         'lastKnownUsername',
         'game',
-        'createdAt',
-        'updatedAt',
       ]);
   }
 
@@ -114,6 +136,62 @@ export class PlayerDao extends KyselyDao<PlayerDao> {
     return (result as PlayerDto | undefined) ?? null;
   }
 
+  async findByUsernamePaginated(
+    username: string,
+    game: string | undefined,
+    cursor?: string,
+    limit?: number,
+    orderBy?: OrderByDto,
+  ): Promise<PaginatedDto<PublicPlayerDto>> {
+    const filters: { username: string; game?: string } = { username };
+    if (game) {
+      filters.game = game;
+    }
+
+    const cursorField = orderBy?.field
+      ? this.mapOrderByField(orderBy.field)
+      : `${PlayerDao.TABLE}.id`;
+
+    const buildFilterFunction = (filters: { username: string; game?: string }) => {
+      return (query: any) => {
+        // Use ILIKE for case-insensitive partial matching
+        let filteredQuery = query.where('lastKnownUsername', 'ilike', `%${filters.username}%`);
+        if (filters.game) {
+          filteredQuery = filteredQuery.where('game', '=', filters.game);
+        }
+        return filteredQuery;
+      };
+    };
+
+    const result = await this.paginateWithCursor<any>(
+      this.buildPublicQuery(),
+      {
+        cursor,
+        limit,
+        direction: 'forward',
+        cursorField,
+        filters,
+        orderBy,
+        mapField: (field: string) => this.mapOrderByField(field),
+        applyFilters: buildFilterFunction(filters),
+      },
+    );
+
+    // Map results to PublicPlayerDto
+    const publicItems: PublicPlayerDto[] = result.items.map((item: any) => ({
+      id: String(item.id),
+      externalId: item.externalId as string,
+      lastKnownUsername: item.lastKnownUsername as string,
+      game: item.game as string,
+    }));
+
+    return new PaginatedDto<PublicPlayerDto>({
+      items: publicItems,
+      previousCursor: result.previousCursor,
+      nextCursor: result.nextCursor,
+    });
+  }
+
   async findByIds(ids: string[]): Promise<Map<string, PlayerDto>> {
     if (ids.length === 0) {
       return new Map();
@@ -134,6 +212,7 @@ export class PlayerDao extends KyselyDao<PlayerDao> {
         game: player.game as string,
         createdAt: player.createdAt,
         updatedAt: player.updatedAt,
+        hasOpenAbuseReports: Boolean(player.hasOpenAbuseReports),
       } as PlayerDto);
     }
 
@@ -172,16 +251,16 @@ export class PlayerDao extends KyselyDao<PlayerDao> {
           updatedAt: sql`now()`,
         }),
       )
-      .returning([
-        'id',
-        'externalId',
-        'lastKnownUsername',
-        'game',
-        'createdAt',
-        'updatedAt',
-      ])
+      .returning(['id'])
       .executeTakeFirstOrThrow();
 
-    return result as PlayerDto;
+    // Fetch the full player data including hasOpenAbuseReports
+    const playerId = String(result.id);
+    const player = await this.findById(playerId);
+    if (!player) {
+      throw new Error(`Failed to retrieve player with ID ${playerId} after upsert`);
+    }
+
+    return player;
   }
 }

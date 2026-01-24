@@ -8,6 +8,4 @@ import { PlayerDao } from './daos/player.dao';
   providers: [PlayerService, PlayerDao],
   exports: [PlayerService, PlayerDao],
 })
-export class PlayerModule {
-  // PlayerMapper is exported as a static utility class, no need to register as provider
-}
+export class PlayerModule {}
