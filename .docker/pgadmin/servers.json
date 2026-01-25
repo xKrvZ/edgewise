@@ -1,15 +1,15 @@
 {
     "Servers": {
       "1": {
-        "Name": "App PostgreSQL",
+        "Name": "Platform PostgreSQL",
         "Group": "Servers",
         "Host": "postgres",
         "Port": 5432,
-        "MaintenanceDB": "app",
+        "MaintenanceDB": "platform",
         "Username": "postgres",
         "SSLMode": "prefer",
         "PassFile": "/var/lib/pgadmin/pgpass",
-        "Comment": "Auto-configured PostgreSQL server for App"
+        "Comment": "Auto-configured PostgreSQL server for Platform"
       }
     }
   }
