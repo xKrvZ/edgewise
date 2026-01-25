@@ -28,7 +28,8 @@ import { AppealQueryDto } from '../dtos/appeal-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { Roles, Session, UserSession } from '@thallesp/nestjs-better-auth';
 import { createPaginatedSchema } from '@/database/utils/paginated-schema.util';
-import { ROLES, STAFF_ROLES, hasRole } from '@/auth/constants/roles.constants';
+import { validateIncludes as validateIncludesUtil } from '@/database/utils/validate-includes.util';
+import { STAFF_ROLES } from '@/auth/constants/roles.constants';
 
 @ApiTags('appeal')
 @Controller('appeal')
@@ -45,34 +46,10 @@ export class AppealController {
     include?: string,
     userRole?: string | string[] | null,
   ): Set<string> {
-    if (!include) {
-      return new Set();
-    }
-
-    const requestedIncludes = new Set(
-      include.split(',').map((i) => i.trim().toLowerCase()),
-    );
-
-    // Check if user is administrator
-    const isAdmin = hasRole(userRole, ROLES.ADMINISTRATOR);
-
-    // Allowed includes based on role
-    // Note: 'note' is available to all staff, 'user' is admin-only
-    const allowedIncludes: string[] = isAdmin ? ['user', 'note'] : ['note'];
-
-    // Filter out any includes that aren't allowed
-    const validatedIncludes = new Set<string>();
-    for (const inc of requestedIncludes) {
-      if (allowedIncludes.includes(inc)) {
-        validatedIncludes.add(inc);
-      } else {
-        throw new BadRequestException(
-          `Include '${inc}' is not allowed for your role. Allowed includes: ${allowedIncludes.join(', ') || 'none'}`,
-        );
-      }
-    }
-
-    return validatedIncludes;
+    return validateIncludesUtil(include, userRole, {
+      staffIncludes: ['note'],
+      adminIncludes: ['user'],
+    });
   }
 
   // ==================== Query Endpoints ====================

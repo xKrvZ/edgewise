@@ -30,6 +30,7 @@ import { PunishmentDto } from '../../punishment/dtos/punishment.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { Roles, Session, UserSession } from '@thallesp/nestjs-better-auth';
 import { createPaginatedSchema } from '@/database/utils/paginated-schema.util';
+import { validateIncludes as validateIncludesUtil } from '@/database/utils/validate-includes.util';
 import { ROLES, STAFF_ROLES, hasRole } from '@/auth/constants/roles.constants';
 
 @ApiTags('abuse-report')
@@ -47,30 +48,9 @@ export class AbuseReportController {
     include?: string,
     userRole?: string | string[] | null,
   ): Set<string> {
-    if (!include) {
-      return new Set();
-    }
-
-    const requestedIncludes = new Set(
-      include.split(',').map((i) => i.trim().toLowerCase()),
-    );
-
-    // Allowed includes (both moderators and admins can see player and user data)
-    const allowedIncludes = ['player', 'user'];
-
-    // Filter out any includes that aren't allowed
-    const validatedIncludes = new Set<string>();
-    for (const inc of requestedIncludes) {
-      if (allowedIncludes.includes(inc)) {
-        validatedIncludes.add(inc);
-      } else {
-        throw new BadRequestException(
-          `Include '${inc}' is not allowed. Allowed includes: ${allowedIncludes.join(', ')}`,
-        );
-      }
-    }
-
-    return validatedIncludes;
+    return validateIncludesUtil(include, userRole, {
+      staffIncludes: ['player', 'user'],
+    });
   }
 
   // ==================== Query Endpoints ====================

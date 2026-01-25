@@ -138,7 +138,6 @@ export class AbuseReportService {
       );
 
       // Create note and update punishment if needed
-      let punishmentNoteId: string | undefined = undefined;
       if (needsNote) {
         const createdNote = await noteDao.create(
           {
@@ -149,8 +148,6 @@ export class AbuseReportService {
           reviewedById,
           false,
         );
-
-        punishmentNoteId = createdNote.id;
 
         // Update punishment with note ID
         await punishmentDao.updatePunishment(punishment.id, {

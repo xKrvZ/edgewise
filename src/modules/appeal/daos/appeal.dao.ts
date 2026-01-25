@@ -156,6 +156,7 @@ export class AppealDao extends KyselyDao<AppealDao> {
       playerId?: string;
       punishmentId?: string;
       reviewedBy?: string;
+      punishmentType?: string[];
     },
   ) {
     return (query: any) => {
@@ -175,6 +176,19 @@ export class AppealDao extends KyselyDao<AppealDao> {
 
       if (filters.reviewedBy) {
         filteredQuery = filteredQuery.where('reviewedBy', '=', filters.reviewedBy);
+      }
+
+      if (filters.punishmentType && filters.punishmentType.length > 0) {
+        // Filter by punishment type(s) using EXISTS subquery with IN clause
+        filteredQuery = filteredQuery.where((eb) =>
+          eb.exists(
+            eb
+              .selectFrom(PunishmentDao.TABLE)
+              .select('punishment.id')
+              .whereRef('punishment.id', '=', 'appeal.punishmentId')
+              .where('punishment.punishmentType', 'in', filters.punishmentType!),
+          ),
+        );
       }
 
       return filteredQuery;
@@ -206,6 +220,9 @@ export class AppealDao extends KyselyDao<AppealDao> {
     }
     if (queryDto.reviewedBy) {
       filters.reviewedBy = queryDto.reviewedBy;
+    }
+    if (queryDto.punishmentType) {
+      filters.punishmentType = queryDto.punishmentType;
     }
 
     return filters;

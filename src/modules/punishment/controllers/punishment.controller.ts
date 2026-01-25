@@ -10,7 +10,6 @@ import {
   HttpStatus,
   SerializeOptions,
   BadRequestException,
-  Req,
 } from '@nestjs/common';
 import {
   ApiOperation,
@@ -31,6 +30,7 @@ import { PunishmentQueryDto } from '../dtos/punishment-query.dto';
 import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { Roles, Session, UserSession } from '@thallesp/nestjs-better-auth';
 import { createPaginatedSchema } from '@/database/utils/paginated-schema.util';
+import { validateIncludes } from '@/database/utils/validate-includes.util';
 import { ROLES, STAFF_ROLES, hasRole } from '@/auth/constants/roles.constants';
 
 @ApiTags('punishment')
@@ -48,34 +48,10 @@ export class PunishmentController {
     include?: string,
     userRole?: string | string[] | null,
   ): Set<string> {
-    if (!include) {
-      return new Set();
-    }
-
-    const requestedIncludes = new Set(
-      include.split(',').map((i) => i.trim().toLowerCase()),
-    );
-
-    // Check if user is administrator
-    const isAdmin = hasRole(userRole, ROLES.ADMINISTRATOR);
-
-    // Allowed includes based on role
-    // Note: 'note' is available to all staff, 'user' is admin-only
-    const allowedIncludes: string[] = isAdmin ? ['player', 'user', 'note'] : ['player', 'note'];
-
-    // Filter out any includes that aren't allowed
-    const validatedIncludes = new Set<string>();
-    for (const inc of requestedIncludes) {
-      if (allowedIncludes.includes(inc)) {
-        validatedIncludes.add(inc);
-      } else {
-        throw new BadRequestException(
-          `Include '${inc}' is not allowed for your role. Allowed includes: ${allowedIncludes.join(', ')}`,
-        );
-      }
-    }
-
-    return validatedIncludes;
+    return validateIncludes(include, userRole, {
+      staffIncludes: ['player', 'note'],
+      adminIncludes: ['user'],
+    });
   }
 
   // ==================== Query Endpoints ====================
@@ -242,7 +218,6 @@ export class PunishmentController {
     @Body() liftPunishmentDto?: LiftPunishmentDto,
     @Query('include') include?: string,
   ): Promise<PunishmentDto> {
-    console.log(liftPunishmentDto);
     const includes = this.validateIncludes(include, session.user.role);
     return await this.punishmentService.lift(
       id,
