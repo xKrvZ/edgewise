@@ -102,6 +102,7 @@ services:
 
   minio-init:
     image: minio/mc:latest
+    container_name: platform-minio-init
     depends_on:
       - minio
     networks:
@@ -113,7 +114,6 @@ services:
       done;
       mc mb -p local/platform || true;
       mc mb -p local/cms || true;
-      mc anonymous set download local/bucket-one || true;
       "
     restart: "no"
 
