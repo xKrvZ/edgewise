@@ -237,7 +237,7 @@ export class PlayerDao extends KyselyDao<PlayerDao> {
     lastKnownUsername: string,
     game: string,
   ): Promise<PlayerDto> {
-    const result = await this.kysely
+    const result = await (this.kysely as any)
       .insertInto(PlayerDao.TABLE)
       .values({
         externalId,
