@@ -1,7 +1,12 @@
 # compiled output
-/dist
-/node_modules
-/build
+dist
+node_modules
+build
+
+# Next.js
+.next
+next-env.d.ts
+out
 
 # Logs
 logs

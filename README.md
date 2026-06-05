@@ -1,8 +1,20 @@
 ## Description
 
-This is the web platform for Dracade, a robust NestJS application that handles all CRUD operations related to Dracade. The platform manages core data operations and implements in-game specific mechanics such as matchmaking. It provides a solid foundation with best practices, security features, and production-ready configurations.
+This is the web platform, structured as a **Bun workspaces monorepo** containing a NestJS backend and a Next.js frontend. It provides a solid foundation with best practices, security features, and production-ready configurations.
 
-**Important:** Game servers and in-game plugins should adopt the web API instead of writing directly to databases. The web API is the standard interface for all data operations, ensuring consistency and enabling external applications (such as Discord bots, web dashboards, and other third-party integrations) to use the same API. This architectural approach promotes maintainability, security, and extensibility across the Dracade ecosystem.
+### Monorepo layout
+
+```
+platform/
+├── apps/
+│   ├── api/   # NestJS backend (REST + WebSocket, BetterAuth, Kysely)
+│   └── web/   # Next.js frontend (App Router)
+├── docker-compose.yml   # Local infrastructure (Postgres, Redis, etc.)
+├── biome.json           # Shared formatter/linter config
+└── package.json         # Workspace root + orchestration scripts
+```
+
+The backend (`apps/api`) runs on `http://localhost:3001/api` and the frontend (`apps/web`) on `http://localhost:3000`.
 
 ## Table of Contents
 - [Description](#description)
@@ -60,7 +72,18 @@ This is the web platform for Dracade, a robust NestJS application that handles a
   - Mocking utilities
 
 ## Installation
-Begin by copying the `.env.example` file to a `.env` file.
+Each app has its own environment file. Copy the examples before running:
+
+```bash
+$ cp apps/api/.env.example apps/api/.env
+$ cp apps/web/.env.example apps/web/.env
+```
+
+Then install all workspace dependencies from the repository root:
+
+```bash
+$ bun install
+```
 
 ### Dependencies
 
@@ -79,38 +102,44 @@ You can also access **pgAdmin 4** in the browser on port `8082` and **Redis Comm
 that you create any necessary databases for local development.
 
 ### Manual (Development/Production)
-If you are setting up the application for a production environment, then change the variables within the `.env` file
-for connecting to your production **postgres** and **Redis**. In order for the application to run correctly, you will
-need to install the dependencies by running the following command:
+If you are setting up the application for a production environment, then change the variables within the relevant
+`apps/api/.env` file for connecting to your production **postgres** and **Redis**. Install dependencies and run the
+database migrations (from the API workspace):
 
 ```bash 
 $ bun install
-$ bun run db:migrate
+$ bun run --filter '@platform/api' db:migrate
 ```
 
-You can then run the app with any of the following commands:
+From the repository root you can run both apps together, or each individually:
 
-```bash 
-# development 
-$ bun run start 
- 
-# watch mode 
-$ bun run start:dev 
+```bash
+# run the frontend and backend together (watch mode)
+$ bun run dev
+
+# run just the backend
+$ bun run dev:api
+
+# run just the frontend
+$ bun run dev:web
 ```
 
-You should now be able to access the application via localhost on the designated port.
+You should now be able to access the frontend at `http://localhost:3000` and the API at `http://localhost:3001/api`.
 
 ## Deployment
 Ideally, you'll want to deploy this application using container orchestration infrastructure and then connecting to
 the relevant services. You'll want to first build the application for production which will get rid of the development
-dependencies and unused code keeping the overall bundle light. You can do that by running the following command:
+dependencies and unused code keeping the overall bundle light. You can build both apps from the root:
 ```bash
-$ npm run build
+$ bun run build
 ```
-The command will result in a newly generated `dist` directory. You can then use the following command to start the application:
+This produces `apps/api/dist` (NestJS bundle) and `apps/web/.next` (Next.js build). You can then start each app:
 ```bash
-# production mode 
-$ bun run start:prod 
+# backend (production mode)
+$ bun run --filter '@platform/api' start:prod
+
+# frontend (production mode)
+$ bun run --filter '@platform/web' start
 ```
 It is recommended you use a process manager like [pm2](https://pm2.keymetrics.io/) for running applications in a production
 environment. You should also consider only deploying the production required dependencies, this can only be done after the
@@ -125,13 +154,13 @@ If you wish to run through the application's test suite with the following comma
 
 ```bash 
 # unit tests 
-$ bun run test 
+$ bun run --filter '@platform/api' test 
  
 # e2e tests 
-$ bun run test:e2e 
+$ bun run --filter '@platform/api' test:e2e 
  
 # test coverage 
-$ bun run test:cov 
+$ bun run --filter '@platform/api' test:cov 
 ```
 
 ## API Reference
@@ -142,19 +171,26 @@ The API documentation can be accessed at `/api/reference` when running the appli
 
 ### Project Structure
 ```
-src/
-├── app.module.ts    # Main application module
-├── main.ts         # Application entry point
-├── config/         # Configuration files
-├── database/       # Database related files
-│   └── migrations/      # Kysely migrations
-├── filters/        # Exception filters
-├── modules/        # Feature modules
-│   ├── auth/      # Authentication module
-│   ├── api-key/   # API key management
-│   ├── socket/    # WebSocket functionality
-│   └── user/      # User management
-└── redis/         # Redis configuration and utilities
+apps/
+├── api/                     # NestJS backend
+│   └── src/
+│       ├── app.module.ts    # Main application module
+│       ├── main.ts          # Application entry point
+│       ├── auth/            # BetterAuth configuration
+│       ├── config/          # Configuration files
+│       ├── database/        # Database related files
+│       │   └── migrations/  # Kysely migrations
+│       ├── filters/         # Exception filters
+│       ├── modules/         # Feature modules
+│       │   ├── email/       # Email delivery
+│       │   ├── socket/      # WebSocket functionality
+│       │   └── user/        # User management
+│       ├── postgres/        # Postgres pool/provider
+│       └── redis/           # Redis configuration and utilities
+└── web/                     # Next.js frontend
+    ├── app/                 # App Router routes
+    ├── components/          # React components
+    └── lib/                 # Shared client utilities
 ```
 
 ### Development Guidelines
