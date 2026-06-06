@@ -1,6 +1,6 @@
 export default {
-  from: process.env.EMAIL_FROM || 'noreply@dracade.com',
-  fromName: process.env.EMAIL_FROM_NAME || 'Dracade',
+  from: process.env.EMAIL_FROM || 'noreply@edgewise.app',
+  fromName: process.env.EMAIL_FROM_NAME || 'Edgewise',
   // For SMTP configuration
   smtp: {
     host: process.env.SMTP_HOST || 'localhost',

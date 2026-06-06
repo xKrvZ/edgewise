@@ -1,9 +1,21 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import { GeistMono } from 'geist/font/mono';
+import { GeistSans } from 'geist/font/sans';
+import type { Metadata } from 'next';
+import './globals.css';
+import { ThemeProvider } from '@/components/theme-provider';
+import { Toaster } from '@/components/ui/sonner';
+import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
-  title: "Platform",
-  description: "Monorepo — Next.js frontend + NestJS backend",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ?? 'https://edgewise.app',
+  ),
+  title: {
+    default: 'Edgewise — Trading Journal, Trade Replay & Analytics',
+    template: '%s | Edgewise',
+  },
+  description:
+    'Edgewise is trade journal software for futures, forex, and prop firm traders. Log trades, replay sessions, and track performance.',
 };
 
 export default function RootLayout({
@@ -12,8 +24,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html
+      lang="en"
+      className={cn(GeistSans.variable, GeistMono.variable)}
+      suppressHydrationWarning
+    >
+      <body className="font-sans antialiased">
+        <ThemeProvider>
+          {children}
+          <Toaster richColors position="top-right" />
+        </ThemeProvider>
+      </body>
     </html>
   );
 }

@@ -1,0 +1,29 @@
+/* Meridian theme overrides for TradingView Charting Library. */
+
+/* Dark (default TV chrome when theme is dark) — indigo-ink Meridian palette. */
+:root:not(.theme-light) {
+  --tv-color-pane-background: hsl(238 35% 7%);
+  --tv-color-platform-background: hsl(238 35% 7%);
+  --tv-color-toolbar-button-background-hover: hsl(238 24% 15%);
+  --tv-color-toolbar-button-background-expanded: hsl(238 24% 15%);
+  --tv-color-toolbar-button-text: hsl(238 20% 95%);
+  --tv-color-toolbar-button-text-hover: hsl(238 20% 95%);
+  --tv-color-popup-background: hsl(238 28% 11%);
+  --tv-color-popup-element-text: hsl(238 20% 95%);
+  --tv-color-popup-element-text-hover: hsl(238 20% 95%);
+  --tv-color-popup-element-background-hover: hsl(238 24% 15%);
+}
+
+/* Light — matches Meridian canvas tokens. */
+:root.theme-light {
+  --tv-color-pane-background: hsl(220 33% 98%);
+  --tv-color-platform-background: hsl(220 33% 98%);
+  --tv-color-toolbar-button-background-hover: hsl(220 22% 93%);
+  --tv-color-toolbar-button-background-expanded: hsl(220 22% 93%);
+  --tv-color-toolbar-button-text: hsl(224 32% 12%);
+  --tv-color-toolbar-button-text-hover: hsl(224 32% 12%);
+  --tv-color-popup-background: hsl(0 0% 100%);
+  --tv-color-popup-element-text: hsl(224 32% 12%);
+  --tv-color-popup-element-text-hover: hsl(224 32% 12%);
+  --tv-color-popup-element-background-hover: hsl(220 22% 93%);
+}

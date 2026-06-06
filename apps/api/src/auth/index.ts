@@ -6,11 +6,13 @@ import { betterAuth } from "better-auth";
 import type { BetterAuthOptions } from "better-auth";
 import appConfig from "@/config/app.config";
 import authConfig from "@/config/auth.config";
+import cookieConfig from "@/config/cookie.config";
 import { sendEmail } from "@/modules/email/utils/send-email";
 import { ROLES } from "@/auth/constants/roles.constants";
 import { ac, roles } from "@/auth/permissions";
 
 export const authOptions: BetterAuthOptions = {
+    basePath: '/api/auth',
     emailAndPassword: {
         enabled: true,
         sendResetPassword: async ({ user, url, token }, request) => {
@@ -35,7 +37,7 @@ If you did not request this password reset, please ignore this email. Your passw
 This link will expire in 1 hour.
 
 Best regards,
-The Dracade Team`,
+The Edgewise Team`,
                 html: `
                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                         <h2 style="color: #333;">Reset your password</h2>
@@ -60,7 +62,7 @@ The Dracade Team`,
                         </p>
                         <p style="color: #999; font-size: 12px; margin-top: 20px;">
                             Best regards,<br>
-                            The Dracade Team
+                            The Edgewise Team
                         </p>
                     </div>
                 `,
@@ -91,6 +93,12 @@ The Dracade Team`,
     },
     baseURL: appConfig.baseUrl,
     secret: appConfig.secret,
+    advanced: {
+        crossSubDomainCookies: {
+            enabled: true,
+            domain: cookieConfig.domain,
+        },
+    },
     trustedOrigins: [
         appConfig.baseUrl,
         appConfig.frontendUrl

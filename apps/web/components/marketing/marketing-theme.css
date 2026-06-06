@@ -1,0 +1,73 @@
+/* Light marketing theme — scoped to landing page only. Overrides dark app shell. */
+.marketing {
+  color-scheme: light;
+
+  --background: 228 33% 98%;
+  --foreground: 222 47% 11%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+
+  --primary: 238 65% 55%;
+  --primary-foreground: 238 100% 99%;
+
+  --secondary: 220 20% 96%;
+  --secondary-foreground: 222 47% 11%;
+
+  --muted: 220 22% 96%;
+  --muted-foreground: 215 16% 47%;
+
+  --accent: 238 40% 96%;
+  --accent-foreground: 238 28% 14%;
+
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 238 65% 55%;
+
+  --success: 142 71% 45%;
+  --destructive: 0 84% 60%;
+
+  --chart-1: 238 65% 55%;
+  --chart-4: 205 86% 50%;
+
+  background-color: #f7f8fc;
+  color: hsl(var(--foreground));
+}
+
+.marketing details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.marketing details > summary::marker {
+  content: '';
+}
+
+.dark .marketing {
+  --background: 228 33% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --primary: 238 65% 55%;
+  --primary-foreground: 238 100% 99%;
+  --secondary: 220 20% 96%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 220 22% 96%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 238 40% 96%;
+  --accent-foreground: 238 28% 14%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 238 65% 55%;
+  --success: 142 71% 45%;
+  --destructive: 0 84% 60%;
+  --chart-1: 238 65% 55%;
+  --chart-4: 205 86% 50%;
+
+  background-color: #f7f8fc;
+  color: hsl(var(--foreground));
+}

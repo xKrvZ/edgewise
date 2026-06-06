@@ -1,0 +1,1 @@
+export const MAX_JOURNAL_ENTRY_TRADES = 50;

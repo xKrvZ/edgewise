@@ -21,6 +21,8 @@ export type JsonPrimitive = boolean | number | string | null;
 
 export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
+export type Numeric = ColumnType<string, number | string, number | string>;
+
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface Account {
@@ -39,12 +41,124 @@ export interface Account {
   userId: string;
 }
 
+export interface Backtest {
+  createdAt: Generated<Timestamp>;
+  endDate: Timestamp;
+  id: Generated<string>;
+  marketType: string;
+  name: string;
+  notes: string | null;
+  startDate: Timestamp;
+  symbol: string;
+  updatedAt: Generated<Timestamp>;
+  userId: string;
+}
+
+export interface BacktestTrade {
+  backtestId: string;
+  createdAt: Generated<Timestamp>;
+  direction: string;
+  entryPrice: Numeric;
+  entryTime: Timestamp;
+  exitPrice: Numeric | null;
+  exitTime: Timestamp | null;
+  fees: Generated<Numeric>;
+  id: Generated<string>;
+  notes: string | null;
+  pnl: Numeric | null;
+  quantity: Numeric;
+  rMultiple: Numeric | null;
+  stopLoss: Numeric | null;
+  symbol: string;
+  takeProfit: Numeric | null;
+  userId: string;
+}
+
+export interface Comment {
+  authorId: string;
+  body: string;
+  communityId: string;
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  parentId: string | null;
+  targetId: string;
+  targetType: string;
+  updatedAt: Generated<Timestamp>;
+}
+
+export interface Community {
+  createdAt: Generated<Timestamp>;
+  createdBy: string;
+  description: string | null;
+  id: Generated<string>;
+  name: string;
+  updatedAt: Generated<Timestamp>;
+}
+
+export interface CommunityInvitation {
+  communityId: string;
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  invitedBy: string;
+  inviteeEmail: string | null;
+  inviteeUserId: string | null;
+  respondedAt: Timestamp | null;
+  role: string;
+  status: Generated<string>;
+  token: string;
+}
+
+export interface CommunityMember {
+  communityId: string;
+  id: Generated<string>;
+  joinedAt: Generated<Timestamp>;
+  role: string;
+  userId: string;
+}
+
+export interface JournalEntry {
+  content: string;
+  createdAt: Generated<Timestamp>;
+  date: Timestamp;
+  id: Generated<string>;
+  mood: string | null;
+  title: string | null;
+  updatedAt: Generated<Timestamp>;
+  userId: string;
+}
+
+export interface JournalEntryTrade {
+  journalEntryId: string;
+  tradeId: string;
+}
+
 export interface Jwks {
   createdAt: Timestamp;
   expiresAt: Timestamp | null;
   id: string;
   privateKey: string;
   publicKey: string;
+}
+
+export interface Mistake {
+  color: string | null;
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  name: string;
+  userId: string;
+}
+
+export interface Notification {
+  actorId: string;
+  commentId: string;
+  communityId: string;
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  read: Generated<boolean>;
+  targetId: string;
+  targetType: string;
+  type: string;
+  userId: string;
 }
 
 export interface OauthAccessToken {
@@ -114,6 +228,43 @@ export interface OauthRefreshToken {
   userId: string;
 }
 
+export interface Playbook {
+  createdAt: Generated<Timestamp>;
+  description: string | null;
+  entryCriteria: string | null;
+  exitCriteria: string | null;
+  id: Generated<string>;
+  invalidationRules: string | null;
+  marketConditions: string | null;
+  name: string;
+  riskRules: string | null;
+  updatedAt: Generated<Timestamp>;
+  userId: string;
+}
+
+export interface PlaybookChecklistItem {
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  playbookId: string;
+  sortOrder: Generated<number>;
+  text: string;
+}
+
+export interface Screenshot {
+  caption: string | null;
+  contentType: string | null;
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  kind: Generated<string>;
+  playbookId: string | null;
+  sizeBytes: number | null;
+  storageKey: string | null;
+  tradeId: string | null;
+  url: string | null;
+  userId: string;
+  visibility: Generated<string>;
+}
+
 export interface Session {
   createdAt: Generated<Timestamp>;
   expiresAt: Timestamp;
@@ -123,6 +274,109 @@ export interface Session {
   token: string;
   updatedAt: Timestamp;
   userAgent: string | null;
+  userId: string;
+}
+
+export interface Tag {
+  category: Generated<string>;
+  color: string | null;
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  name: string;
+  userId: string;
+}
+
+export interface Trade {
+  accountId: string;
+  createdAt: Generated<Timestamp>;
+  direction: string;
+  emotion: string | null;
+  entryPrice: Numeric;
+  entryTime: Timestamp;
+  executionRating: number | null;
+  exitPrice: Numeric | null;
+  exitTime: Timestamp | null;
+  fees: Generated<Numeric>;
+  id: Generated<string>;
+  mae: Numeric | null;
+  marketType: string;
+  mfe: Numeric | null;
+  notes: string | null;
+  playbookId: string | null;
+  pnl: Numeric | null;
+  quantity: Numeric;
+  rMultiple: Numeric | null;
+  sessionId: string | null;
+  setupId: string | null;
+  shareToken: string | null;
+  status: Generated<string>;
+  stopLoss: Numeric | null;
+  symbol: string;
+  takeProfit: Numeric | null;
+  updatedAt: Generated<Timestamp>;
+  userId: string;
+  visibility: Generated<string>;
+}
+
+export interface TradeMistake {
+  mistakeId: string;
+  tradeId: string;
+}
+
+export interface TraderProfile {
+  avatarStorageKey: string | null;
+  bio: string | null;
+  createdAt: Generated<Timestamp>;
+  displayName: string | null;
+  favoriteSymbols: Generated<string[]>;
+  headerStorageKey: string | null;
+  sharePlaybooks: Generated<boolean>;
+  statsShareToken: string | null;
+  statsVisibility: Generated<string>;
+  updatedAt: Generated<Timestamp>;
+  userId: string;
+}
+
+export interface TraderProfilePlaybook {
+  playbookId: string;
+  userId: string;
+}
+
+export interface TradeTag {
+  tagId: string;
+  tradeId: string;
+}
+
+export interface TradingAccount {
+  breakevenRange: Generated<Numeric>;
+  broker: string | null;
+  challengeStartedAt: Timestamp | null;
+  challengeStatus: string | null;
+  createdAt: Generated<Timestamp>;
+  currency: Generated<string>;
+  currentBalance: Generated<Numeric>;
+  dailyLossLimit: Numeric | null;
+  daysTraded: Generated<number>;
+  firmName: string | null;
+  id: Generated<string>;
+  isArchived: Generated<boolean>;
+  maxLossLimit: Numeric | null;
+  name: string;
+  profitTarget: Numeric | null;
+  startingBalance: Generated<Numeric>;
+  trailingDrawdown: Generated<boolean>;
+  type: Generated<string>;
+  updatedAt: Generated<Timestamp>;
+  userId: string;
+}
+
+export interface TradingSession {
+  createdAt: Generated<Timestamp>;
+  endTime: string;
+  id: Generated<string>;
+  name: string;
+  startTime: string;
+  timezone: string | null;
   userId: string;
 }
 
@@ -151,12 +405,33 @@ export interface Verification {
 
 export interface DB {
   account: Account;
+  backtest: Backtest;
+  backtest_trade: BacktestTrade;
+  comment: Comment;
+  community: Community;
+  community_invitation: CommunityInvitation;
+  community_member: CommunityMember;
+  journal_entry: JournalEntry;
+  journal_entry_trade: JournalEntryTrade;
   jwks: Jwks;
+  mistake: Mistake;
+  notification: Notification;
   oauthAccessToken: OauthAccessToken;
   oauthClient: OauthClient;
   oauthConsent: OauthConsent;
   oauthRefreshToken: OauthRefreshToken;
+  playbook: Playbook;
+  playbook_checklist_item: PlaybookChecklistItem;
+  screenshot: Screenshot;
   session: Session;
+  tag: Tag;
+  trade: Trade;
+  trade_mistake: TradeMistake;
+  trade_tag: TradeTag;
+  trader_profile: TraderProfile;
+  trader_profile_playbook: TraderProfilePlaybook;
+  trading_account: TradingAccount;
+  trading_session: TradingSession;
   user: User;
   verification: Verification;
 }

@@ -51,6 +51,9 @@ lerna-debug.log*
 .temp
 .tmp
 
+# TradingView Charting Library (licensed — obtain separately, do not commit)
+apps/web/public/charting_library/
+
 # Runtime data
 pids
 *.pid

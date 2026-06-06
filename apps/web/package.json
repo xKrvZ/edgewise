@@ -9,9 +9,24 @@
     "lint": "biome lint --write ."
   },
   "dependencies": {
+    "better-auth": "1.4.14",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "geist": "^1.7.2",
+    "lightweight-charts": "^5.2.0",
+    "lucide-react": "^1.17.0",
     "next": "^16.2.7",
+    "next-themes": "^0.4.6",
+    "radix-ui": "^1.4.3",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-day-picker": "^10.0.1",
+    "react-dom": "^19.2.7",
+    "recharts": "^3.8.1",
+    "socket.io-client": "^4.8.3",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.6.0",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.0",

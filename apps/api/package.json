@@ -11,7 +11,7 @@
     "start": "bunx dotenv -e .env -- nest start -b swc",
     "start:dev": "bunx dotenv -e .env -- nest start -b swc --watch",
     "start:debug": "bunx dotenv -e .env -- nest start -b swc --debug --watch",
-    "start:prod": "bunx dotenv -e .env -- bun dist/main",
+    "start:prod": "bunx dotenv -e .env -- node dist/main.js",
     "test": "bunx dotenv -e .env -- jest",
     "test:watch": "bunx dotenv -e .env -- jest --watch",
     "test:cov": "bunx dotenv -e .env -- jest --coverage",
@@ -20,9 +20,12 @@
     "db": "bunx dotenv -e .env -- bunx kysely-ctl",
     "db:migrate": "bunx dotenv -e .env -- bunx @better-auth/cli migrate && bun run db -- migrate:latest && bun run db:generate",
     "db:rollback": "bun run db -- migrate:rollback --all",
+    "db:seed": "bunx dotenv -e .env -- bun src/database/seeds/seed.ts",
     "db:generate": "bunx dotenv -e .env -- bunx kysely-codegen"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1063.0",
+    "@aws-sdk/s3-request-presigner": "^3.1063.0",
     "@better-auth/cli": "^1.4.14",
     "@better-auth/oauth-provider": "^1.4.14",
     "@keyv/redis": "^4.2.0",

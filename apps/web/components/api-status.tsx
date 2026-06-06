@@ -1,24 +1,24 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { API_URL } from "@/lib/api";
+import { API_URL } from '@/lib/api';
+import { useEffect, useState } from 'react';
 
-type Status = "checking" | "online" | "offline";
+type Status = 'checking' | 'online' | 'offline';
 
 export function ApiStatus() {
-  const [status, setStatus] = useState<Status>("checking");
+  const [status, setStatus] = useState<Status>('checking');
 
   useEffect(() => {
     let cancelled = false;
 
     const ping = async () => {
       try {
-        const res = await fetch(`${API_URL}/reference-json`, {
-          method: "GET",
+        const res = await fetch(`${API_URL}/health`, {
+          method: 'GET',
         });
-        if (!cancelled) setStatus(res.ok ? "online" : "offline");
+        if (!cancelled) setStatus(res.ok ? 'online' : 'offline');
       } catch {
-        if (!cancelled) setStatus("offline");
+        if (!cancelled) setStatus('offline');
       }
     };
 
@@ -31,14 +31,16 @@ export function ApiStatus() {
   }, []);
 
   const config = {
-    checking: { label: "Checking API…", dot: "bg-amber-400" },
-    online: { label: "API online", dot: "bg-emerald-400" },
-    offline: { label: "API offline", dot: "bg-rose-500" },
+    checking: { label: 'Checking API…', dot: 'bg-warning' },
+    online: { label: 'API online', dot: 'bg-success' },
+    offline: { label: 'API offline', dot: 'bg-destructive' },
   }[status];
 
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-sm text-zinc-300">
-      <span className={`h-2 w-2 rounded-full ${config.dot}`} />
+    <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm text-muted-foreground">
+      <span
+        className={`h-2 w-2 rounded-full ${config.dot} ${status === 'checking' ? 'animate-pulse' : ''}`}
+      />
       {config.label}
     </span>
   );
