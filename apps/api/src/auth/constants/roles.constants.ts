@@ -1,6 +1,10 @@
 /**
- * User role constants for the platform
- * These roles define the authorization levels for API endpoints
+ * User role constants for the platform.
+ *
+ * Better Auth admin plugin stores roles on `session.user.role` (comma-separated
+ * when multiple). In Nest guards/controllers, check with `hasRole` /
+ * `hasAnyRole` against the session role, e.g.
+ * `hasRole(session.user.role, ROLES.ADMINISTRATOR)`.
  */
 export const ROLES = {
   ADMINISTRATOR: 'Administrator',

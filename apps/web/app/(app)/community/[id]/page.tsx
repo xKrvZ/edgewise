@@ -4,6 +4,7 @@ import { CommunityLeaderboardTable } from '@/components/community/community-lead
 import { CommunityStatsBar } from '@/components/community/community-stats-bar';
 import { InviteMemberDialog } from '@/components/community/invite-member-dialog';
 import { DetailBackLink } from '@/components/shared/detail-back-link';
+import { UserAvatar } from '@/components/shared/user-avatar';
 import { ErrorState } from '@/components/shared/error-state';
 import { ListSection } from '@/components/shared/list-section';
 import { PageBody } from '@/components/shared/page-body';
@@ -114,7 +115,14 @@ export default function CommunityDetailPage() {
                 key={member.id}
                 className="flex items-center justify-between rounded-md border border-border/60 bg-muted/30 px-3 py-2.5 transition-colors duration-150 hover:bg-muted/50"
               >
-                <span className="font-medium">{member.displayName}</span>
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <UserAvatar
+                    name={member.displayName}
+                    avatarUrl={member.avatarUrl}
+                    className="h-8 w-8 shrink-0"
+                  />
+                  <span className="truncate font-medium">{member.displayName}</span>
+                </div>
                 <Badge variant="outline" className="capitalize">
                   {member.role}
                 </Badge>

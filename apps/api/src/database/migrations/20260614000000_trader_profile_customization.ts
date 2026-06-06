@@ -25,7 +25,7 @@ export async function up(db: Kysely<any>): Promise<void> {
         .references('trader_profile.userId')
         .onDelete('cascade'),
     )
-    .addColumn('playbookId', 'text', (col) =>
+    .addColumn('playbookId', 'uuid', (col) =>
       col.notNull().references('playbook.id').onDelete('cascade'),
     )
     .addPrimaryKeyConstraint('trader_profile_playbook_pk', [

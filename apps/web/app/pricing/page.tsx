@@ -56,7 +56,7 @@ export default function PricingPage() {
           <MarketingSectionHeader
             eyebrow="Pricing & compare"
             title="Plans for every stage of your trading journey"
-            description="Start free with a full trading journal. Compare Edgewise to TradeZella, Tradervue, and traditional journals — then pick the plan that fits."
+            description="Start free with a full trading journal. Compare Edgewise to Tradervue and traditional journals — then pick the plan that fits."
             align="center"
           />
         </MarketingSection>

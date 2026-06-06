@@ -15,6 +15,10 @@ export class CommunityLeaderboardEntryDto {
   displayName: string;
 
   @Expose()
+  @ApiProperty({ nullable: true, description: 'Resolved trader avatar URL' })
+  avatarUrl: string | null;
+
+  @Expose()
   @ApiProperty({ enum: ['owner', 'mentor', 'member'] })
   role: string;
 

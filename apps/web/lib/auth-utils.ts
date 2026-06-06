@@ -18,3 +18,10 @@ export function isEmailNotVerifiedError(message: string | undefined): boolean {
     normalized.includes('email is not verified')
   );
 }
+
+export function isNetworkFetchError(error: unknown): boolean {
+  return error instanceof TypeError && error.message === 'Failed to fetch';
+}
+
+export const AUTH_SERVER_UNAVAILABLE_MESSAGE =
+  'Cannot reach the server. Is the API running? Start Docker (`docker compose up -d`) and run `bun run dev`.';

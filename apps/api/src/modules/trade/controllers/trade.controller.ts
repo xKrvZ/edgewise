@@ -20,7 +20,8 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
-import { PageDto } from '@/database/dtos/page.dto';
+import { PaginatedDto } from '@/database/dtos/paginated.dto';
+import { createPaginatedSchema } from '@/database/utils/paginated-schema.util';
 import { TradeSharingDto } from '@/modules/sharing/dtos/trade-sharing.dto';
 import { UpdateTradeSharingDto } from '@/modules/sharing/dtos/update-trade-sharing.dto';
 import { SharingService } from '@/modules/sharing/services/sharing.service';
@@ -31,7 +32,7 @@ import { UpdateTradeDto } from '../dtos/update-trade.dto';
 import { TradeQueryDto } from '../dtos/trade-query.dto';
 
 @ApiTags('Trades')
-@ApiExtraModels(PageDto, TradeDto)
+@ApiExtraModels(PaginatedDto, TradeDto)
 @Controller('trades')
 export class TradeController {
   constructor(
@@ -46,24 +47,12 @@ export class TradeController {
       'Filterable by symbol, date range, setup/playbook, tag, account, direction and market type.',
   })
   @ApiOkResponse({
-    schema: {
-      allOf: [
-        { $ref: getSchemaPath(PageDto) },
-        {
-          properties: {
-            items: {
-              type: 'array',
-              items: { $ref: getSchemaPath(TradeDto) },
-            },
-          },
-        },
-      ],
-    },
+    schema: createPaginatedSchema(getSchemaPath(TradeDto)),
   })
   async list(
     @Query() query: TradeQueryDto,
     @Session() session: UserSession,
-  ): Promise<PageDto<TradeDto>> {
+  ): Promise<PaginatedDto<TradeDto>> {
     return this.tradeService.list(session.user.id, query);
   }
 

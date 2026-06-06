@@ -6,6 +6,7 @@ import {
   type Transaction,
   type Updateable,
 } from 'kysely';
+import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { KyselyDao } from '@/database/kysely/kysely.dao';
 import type { DB, Trade } from '@/database/types/db';
 import type { TradeFilters } from '../dtos/trade-query.dto';
@@ -58,33 +59,25 @@ export class TradeDao extends KyselyDao<TradeDao> {
     return q;
   }
 
-  async findPaged(
+  async findCursorPaged(
     userId: string,
     filters: TradeFilters,
-    page: number,
-    limit: number,
-  ): Promise<{ items: Selectable<Trade>[]; total: number }> {
-    const offset = (page - 1) * limit;
+    options: { cursor?: string; limit?: number },
+  ): Promise<PaginatedDto<Selectable<Trade>>> {
+    const limit = options.limit ?? 25;
 
-    const items = (await this.applyFilters(
+    return this.paginateWithCursor<Selectable<Trade>>(
       this.kysely.selectFrom(TradeDao.TABLE).selectAll('trade'),
-      userId,
-      filters,
-    )
-      .orderBy('trade.entryTime', 'desc')
-      .limit(limit)
-      .offset(offset)
-      .execute()) as Selectable<Trade>[];
-
-    const totalRow = await this.applyFilters(
-      this.kysely
-        .selectFrom(TradeDao.TABLE)
-        .select((eb: any) => eb.fn.countAll().as('count')),
-      userId,
-      filters,
-    ).executeTakeFirst();
-
-    return { items, total: Number(totalRow?.count ?? 0) };
+      {
+        cursor: options.cursor,
+        limit,
+        cursorField: 'trade.entryTime',
+        tieBreakerField: 'trade.id',
+        filters,
+        orderBy: { field: 'trade.entryTime', direction: 'desc' },
+        applyFilters: (query) => this.applyFilters(query, userId, filters),
+      },
+    );
   }
 
   async findById(id: string): Promise<Selectable<Trade> | null> {

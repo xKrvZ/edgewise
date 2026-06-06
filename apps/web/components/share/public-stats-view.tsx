@@ -49,7 +49,7 @@ export function PublicStatsView({ stats }: PublicStatsViewProps) {
           value={overview.avgR === null ? '—' : overview.avgR.toFixed(2)}
           valueClassName={pnlColor(overview.avgR)}
         />
-        <InlineStat label="Zella score" value={String(Math.round(overview.zellaScore))} />
+        <InlineStat label="Trader score" value={String(Math.round(overview.traderScore))} />
         <InlineStat
           label="Max drawdown"
           value={formatCurrency(-overview.maxDrawdown)}

@@ -7,7 +7,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { signUp } from '@/lib/auth-client';
-import { resolvePostAuthRedirect } from '@/lib/auth-utils';
+import {
+  AUTH_SERVER_UNAVAILABLE_MESSAGE,
+  isNetworkFetchError,
+  resolvePostAuthRedirect,
+} from '@/lib/auth-utils';
 import {
   authInputClassNameNoIcon,
   authLinkClassName,
@@ -16,6 +20,7 @@ import {
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 export function SignUpForm() {
   const router = useRouter();
@@ -52,21 +57,34 @@ export function SignUpForm() {
 
     setLoading(true);
 
-    const { error: signUpError } = await signUp.email({
-      email,
-      password,
-      name,
-      callbackURL: postAuthRedirect,
-    });
+    try {
+      const { error: signUpError } = await signUp.email({
+        email,
+        password,
+        name,
+        callbackURL: postAuthRedirect,
+      });
 
-    setLoading(false);
+      setLoading(false);
 
-    if (signUpError) {
-      setError(signUpError.message ?? 'Something went wrong');
-      return;
+      if (signUpError) {
+        setError(signUpError.message ?? 'Something went wrong');
+        return;
+      }
+
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+    } catch (err) {
+      setLoading(false);
+
+      if (isNetworkFetchError(err)) {
+        const message = AUTH_SERVER_UNAVAILABLE_MESSAGE;
+        setError(message);
+        toast.error(message);
+        return;
+      }
+
+      throw err;
     }
-
-    router.push(`/verify-email?email=${encodeURIComponent(email)}`);
   };
 
   const signInHref = callbackUrl

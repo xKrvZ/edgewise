@@ -1,0 +1,62 @@
+export const PLATFORM_EVENT_SOURCE = {
+  AUTH: 'auth',
+  POLAR: 'polar',
+  ADMIN: 'admin',
+  SYSTEM: 'system',
+} as const;
+
+export type PlatformEventSource =
+  (typeof PLATFORM_EVENT_SOURCE)[keyof typeof PLATFORM_EVENT_SOURCE];
+
+export const PLATFORM_EVENT_TYPE = {
+  USER_REGISTERED: 'user.registered',
+  ORDER_PAID: 'order.paid',
+  ORDER_REFUNDED: 'order.refunded',
+  SUBSCRIPTION_ACTIVE: 'subscription.active',
+  SUBSCRIPTION_CANCELED: 'subscription.canceled',
+  SUBSCRIPTION_REVOKED: 'subscription.revoked',
+  ADMIN_USER_BANNED: 'admin.user.banned',
+  ADMIN_USER_UNBANNED: 'admin.user.unbanned',
+  ADMIN_USER_ROLE_CHANGED: 'admin.user.role_changed',
+  ADMIN_SUBSCRIPTION_OVERRIDE: 'admin.subscription.override',
+  ADMIN_SUBSCRIPTION_PLAN_CHANGED: 'admin.subscription.plan_changed',
+  ADMIN_SUBSCRIPTION_CANCELED: 'admin.subscription.canceled',
+  ADMIN_ORDER_REFUNDED: 'admin.order.refunded',
+  ADMIN_DISCOUNT_GRANTED: 'admin.discount.granted',
+} as const;
+
+export const ADMIN_AUDIT_EVENT_TYPES = [
+  PLATFORM_EVENT_TYPE.ADMIN_USER_BANNED,
+  PLATFORM_EVENT_TYPE.ADMIN_USER_UNBANNED,
+  PLATFORM_EVENT_TYPE.ADMIN_USER_ROLE_CHANGED,
+  PLATFORM_EVENT_TYPE.ADMIN_SUBSCRIPTION_OVERRIDE,
+  PLATFORM_EVENT_TYPE.ADMIN_SUBSCRIPTION_PLAN_CHANGED,
+  PLATFORM_EVENT_TYPE.ADMIN_SUBSCRIPTION_CANCELED,
+  PLATFORM_EVENT_TYPE.ADMIN_ORDER_REFUNDED,
+  PLATFORM_EVENT_TYPE.ADMIN_DISCOUNT_GRANTED,
+] as const;
+
+export const USER_AUDIT_EVENT_TYPES = [
+  PLATFORM_EVENT_TYPE.USER_REGISTERED,
+  PLATFORM_EVENT_TYPE.ORDER_PAID,
+  PLATFORM_EVENT_TYPE.ORDER_REFUNDED,
+  PLATFORM_EVENT_TYPE.SUBSCRIPTION_ACTIVE,
+  PLATFORM_EVENT_TYPE.SUBSCRIPTION_CANCELED,
+  PLATFORM_EVENT_TYPE.SUBSCRIPTION_REVOKED,
+  ...ADMIN_AUDIT_EVENT_TYPES,
+] as const;
+
+export type PlatformEventType =
+  (typeof PLATFORM_EVENT_TYPE)[keyof typeof PLATFORM_EVENT_TYPE];
+
+export const PLATFORM_DAILY_METRIC = {
+  USER_SIGNUPS: 'user_signups',
+  REVENUE_CENTS: 'revenue_cents',
+  SUBSCRIPTIONS_ACTIVATED: 'subscriptions_activated',
+  SUBSCRIPTIONS_CANCELED: 'subscriptions_canceled',
+} as const;
+
+export type PlatformDailyMetric =
+  (typeof PLATFORM_DAILY_METRIC)[keyof typeof PLATFORM_DAILY_METRIC];
+
+export const ROLLUP_LOOKBACK_DAYS = 90;

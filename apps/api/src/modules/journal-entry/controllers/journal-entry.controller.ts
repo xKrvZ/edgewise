@@ -12,11 +12,15 @@ import {
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
+  ApiExtraModels,
   ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  getSchemaPath,
 } from '@nestjs/swagger';
+import { PaginatedDto } from '@/database/dtos/paginated.dto';
+import { createPaginatedSchema } from '@/database/utils/paginated-schema.util';
 import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
 import { JournalEntryService } from '../services/journal-entry.service';
 import {
@@ -27,17 +31,20 @@ import {
 } from '../dtos/journal-entry.dto';
 
 @ApiTags('Journal')
+@ApiExtraModels(PaginatedDto, JournalEntryDto)
 @Controller('journal-entries')
 export class JournalEntryController {
   constructor(private readonly journalEntryService: JournalEntryService) {}
 
   @Get()
   @ApiOperation({ summary: 'List journal entries (filter by date/trade)' })
-  @ApiOkResponse({ type: JournalEntryDto, isArray: true })
+  @ApiOkResponse({
+    schema: createPaginatedSchema(getSchemaPath(JournalEntryDto)),
+  })
   async list(
     @Query() query: JournalEntryQueryDto,
     @Session() session: UserSession,
-  ): Promise<JournalEntryDto[]> {
+  ): Promise<PaginatedDto<JournalEntryDto>> {
     return this.journalEntryService.list(session.user.id, query);
   }
 

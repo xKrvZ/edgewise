@@ -67,6 +67,10 @@ export class CommunityMemberDto {
   displayName: string;
 
   @Expose()
+  @ApiProperty({ nullable: true, description: 'Resolved member avatar URL' })
+  avatarUrl: string | null;
+
+  @Expose()
   @ApiProperty({ enum: COMMUNITY_MEMBER_ROLES })
   role: string;
 

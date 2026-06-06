@@ -1,8 +1,8 @@
 import {
   BarChart3,
+  BookOpen,
   BookOpenCheck,
   FlaskConical,
-  LayoutDashboard,
   LineChart,
   type LucideIcon,
   NotebookPen,
@@ -25,7 +25,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: 'Trading',
     items: [
-      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'My Journal', href: '/dashboard', icon: BookOpen },
       { label: 'Trades', href: '/trades', icon: LineChart },
       { label: 'Notebook', href: '/journal', icon: NotebookPen },
       { label: 'Analytics', href: '/analytics', icon: BarChart3 },

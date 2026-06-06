@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import type { ReactNode } from 'react';
 
 interface PageHeaderProps {
-  title: string;
+  title?: string;
   description?: string;
   eyebrow?: string;
   /** Renders below the title and description in the left column (e.g. date filters). */
@@ -32,7 +32,9 @@ export function PageHeader({
             {eyebrow}
           </p>
         )}
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+        {title && (
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+        )}
         {description && (
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{description}</p>
         )}

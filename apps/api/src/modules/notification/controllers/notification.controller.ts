@@ -16,7 +16,8 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
-import { PageDto } from '@/database/dtos/page.dto';
+import { PaginatedDto } from '@/database/dtos/paginated.dto';
+import { createPaginatedSchema } from '@/database/utils/paginated-schema.util';
 import { NotificationService } from '../services/notification.service';
 import {
   NotificationDto,
@@ -31,26 +32,14 @@ export class NotificationController {
 
   @Get()
   @ApiOperation({ summary: 'List notifications for the current user' })
-  @ApiExtraModels(PageDto, NotificationDto)
+  @ApiExtraModels(PaginatedDto, NotificationDto)
   @ApiOkResponse({
-    schema: {
-      allOf: [
-        { $ref: getSchemaPath(PageDto) },
-        {
-          properties: {
-            items: {
-              type: 'array',
-              items: { $ref: getSchemaPath(NotificationDto) },
-            },
-          },
-        },
-      ],
-    },
+    schema: createPaginatedSchema(getSchemaPath(NotificationDto)),
   })
   async list(
     @Query() query: NotificationQueryDto,
     @Session() session: UserSession,
-  ): Promise<PageDto<NotificationDto>> {
+  ): Promise<PaginatedDto<NotificationDto>> {
     return this.notificationService.list(session.user.id, query);
   }
 

@@ -13,10 +13,9 @@ export interface TradeListSummary {
 
 export function summarizeTrades(
   trades: Trade[],
-  total: number,
-  pageCount: number,
+  options?: { isSinglePage?: boolean },
 ): TradeListSummary {
-  const isFullPage = pageCount <= 1;
+  const isFullPage = options?.isSinglePage ?? true;
   const stats = isFullPage ? computeTradeStats(trades) : null;
 
   const mostRecent =
@@ -27,7 +26,7 @@ export function summarizeTrades(
       : null;
 
   return {
-    total,
+    total: trades.length,
     pageTradeCount: trades.length,
     winRate: stats && stats.closedTrades > 0 ? stats.winRate : null,
     netPnl: stats && stats.closedTrades > 0 ? stats.netPnl : null,

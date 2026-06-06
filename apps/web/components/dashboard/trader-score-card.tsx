@@ -1,12 +1,12 @@
 'use client';
 
-import { ZellaRadarChart } from '@/components/charts/zella-radar-chart';
-import type { ZellaBreakdown } from '@/lib/types';
+import { ScoreRadarChart } from '@/components/charts/score-radar-chart';
+import type { TraderScoreBreakdown } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-interface ZellaScoreCardProps {
+interface TraderScoreCardProps {
   score: number;
-  breakdown: ZellaBreakdown;
+  breakdown: TraderScoreBreakdown;
 }
 
 function scoreColor(score: number): string {
@@ -23,17 +23,17 @@ function scoreLabel(score: number): string {
   return 'Needs work';
 }
 
-export function ZellaScoreCard({ score, breakdown }: ZellaScoreCardProps) {
+export function TraderScoreCard({ score, breakdown }: TraderScoreCardProps) {
   return (
     <div className="flex flex-col items-center gap-2">
-      <ZellaRadarChart breakdown={breakdown} />
+      <ScoreRadarChart breakdown={breakdown} />
       <div className="flex flex-col items-center">
         <span
           className={cn('text-3xl font-semibold tabular-nums tracking-tight', scoreColor(score))}
         >
           {score.toFixed(0)}
         </span>
-        <span className="text-xs text-muted-foreground">Zella score · {scoreLabel(score)}</span>
+        <span className="text-xs text-muted-foreground">Trader score · {scoreLabel(score)}</span>
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { InjectKysely } from 'nestjs-kysely';
 import { BaseTransaction } from '@/database/base-transaction';
 import { DB } from '../types/db';
 import { PaginatedDto } from '../dtos/paginated.dto';
-import { CursorEncoder } from '../utils/cursor-encoder';
+import { CursorEncoder, isCompositeCursorValue, type CompositeCursorValue, type CursorValue } from '../utils/cursor-encoder';
 import { OrderByDto } from '../dtos/filter.dto';
 
 export interface CursorPaginationOptions<T, DTO = T> {
@@ -12,6 +12,8 @@ export interface CursorPaginationOptions<T, DTO = T> {
   limit?: number;
   direction?: 'forward' | 'backward';
   cursorField: string | keyof T;
+  /** Stable secondary sort column (e.g. id) for keyset pagination. */
+  tieBreakerField?: string | keyof T;
   filters?: Record<string, any>;
   orderBy?: OrderByDto;
   mapField?: (field: string) => string; // Function to map DTO field names to DB column names
@@ -183,6 +185,7 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
       limit = 20,
       direction = 'forward',
       cursorField,
+      tieBreakerField,
       filters = {},
       orderBy,
       applyFilters,
@@ -210,6 +213,7 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
       orderConfig,
       cursorData.value,
       activeDirection,
+      tieBreakerField,
     );
 
     const items = await paginatedQuery.limit(limit + 1).execute();
@@ -222,7 +226,11 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
     }
 
     // Step 5: Extract cursor values from results
-    const cursorValues = this.extractCursorValues(resultItems, orderConfig.columnName);
+    const cursorValues = this.extractCursorValues(
+      resultItems,
+      orderConfig.columnName,
+      tieBreakerField,
+    );
 
     // Step 6: Check for additional pages (for backward pagination)
     const pageInfo = await this.checkPageBoundaries(
@@ -232,6 +240,7 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
       cursorValues,
       activeDirection,
       hasMore,
+      tieBreakerField,
     );
 
     // Step 7: Build cursor context and encode cursors
@@ -265,7 +274,7 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
     cursor: string | undefined,
     mapField?: (field: string) => string,
   ): {
-    value: string | number | Date | undefined;
+    value: CursorValue | undefined;
     direction?: 'forward' | 'backward';
     filters: Record<string, any>;
     orderBy?: OrderByDto;
@@ -338,8 +347,9 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
     queryBuilder: SelectQueryBuilder<DB, TB, R>,
     applyFilters: ((query: SelectQueryBuilder<DB, any, any>) => SelectQueryBuilder<DB, any, any>) | undefined,
     orderConfig: { field: any; baseDirection: 'asc' | 'desc'; queryDirection: 'asc' | 'desc' },
-    cursorValue: string | number | Date | undefined,
+    cursorValue: CursorValue | undefined,
     direction: 'forward' | 'backward',
+    tieBreakerField?: string | keyof any,
   ): SelectQueryBuilder<DB, TB, R> {
     let query = queryBuilder;
 
@@ -349,16 +359,26 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
     }
 
     // Apply cursor filter if provided
-    if (cursorValue !== undefined) {
-      const operator = direction === 'backward'
-        ? (orderConfig.baseDirection === 'asc' ? '<' : '>')
-        : (orderConfig.baseDirection === 'asc' ? '>' : '<');
+    if (cursorValue !== undefined && cursorValue !== null) {
+      if (tieBreakerField && isCompositeCursorValue(cursorValue)) {
+        query = this.applyCompositeCursorFilter(
+          query,
+          orderConfig,
+          cursorValue,
+          tieBreakerField,
+          direction,
+        ) as SelectQueryBuilder<DB, TB, R>;
+      } else if (!isCompositeCursorValue(cursorValue)) {
+        const operator = direction === 'backward'
+          ? (orderConfig.baseDirection === 'asc' ? '<' : '>')
+          : (orderConfig.baseDirection === 'asc' ? '>' : '<');
 
-      query = query.where(
-        orderConfig.field,
-        operator,
-        cursorValue as any,
-      ) as SelectQueryBuilder<DB, TB, R>;
+        query = query.where(
+          orderConfig.field,
+          operator,
+          cursorValue as any,
+        ) as SelectQueryBuilder<DB, TB, R>;
+      }
     }
 
     // Apply ordering
@@ -367,7 +387,37 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
       orderConfig.queryDirection,
     ) as SelectQueryBuilder<DB, TB, R>;
 
+    if (tieBreakerField) {
+      query = query.orderBy(
+        tieBreakerField as any,
+        orderConfig.queryDirection,
+      ) as SelectQueryBuilder<DB, TB, R>;
+    }
+
     return query;
+  }
+
+  private applyCompositeCursorFilter<TB extends keyof DB = any, R = any>(
+    query: SelectQueryBuilder<DB, TB, R>,
+    orderConfig: { field: any; baseDirection: 'asc' | 'desc' },
+    cursorValue: CompositeCursorValue,
+    tieBreakerField: string | keyof any,
+    direction: 'forward' | 'backward',
+  ): SelectQueryBuilder<DB, TB, R> {
+    const forwardOperator = orderConfig.baseDirection === 'asc' ? '>' : '<';
+    const operator = direction === 'backward'
+      ? (forwardOperator === '>' ? '<' : '>')
+      : forwardOperator;
+
+    return query.where((eb) =>
+      eb.or([
+        eb(orderConfig.field as any, operator, cursorValue.primary as any),
+        eb.and([
+          eb(orderConfig.field as any, '=', cursorValue.primary as any),
+          eb(tieBreakerField as any, operator, cursorValue.tie as any),
+        ]),
+      ]),
+    ) as SelectQueryBuilder<DB, TB, R>;
   }
 
   /**
@@ -376,10 +426,31 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
   private extractCursorValues(
     items: any[],
     columnName: string,
-  ): { first: string | number | Date | null; last: string | number | Date | null } {
-    const first = items.length > 0 ? (items[0] as any)[columnName] : null;
-    const last = items.length > 0 ? (items[items.length - 1] as any)[columnName] : null;
-    return { first, last };
+    tieBreakerField?: string | keyof any,
+  ): {
+    first: CursorValue | null;
+    last: CursorValue | null;
+  } {
+    if (items.length === 0) {
+      return { first: null, last: null };
+    }
+
+    const tieColumn = tieBreakerField
+      ? String(tieBreakerField).split('.').pop()!
+      : null;
+
+    const toCursorValue = (item: any): CursorValue => {
+      const primary = item[columnName];
+      if (tieColumn) {
+        return { primary, tie: String(item[tieColumn]) };
+      }
+      return primary;
+    };
+
+    return {
+      first: toCursorValue(items[0]),
+      last: toCursorValue(items[items.length - 1]),
+    };
   }
 
   /**
@@ -389,9 +460,10 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
     queryBuilder: SelectQueryBuilder<DB, any, any>,
     applyFilters: ((query: SelectQueryBuilder<DB, any, any>) => SelectQueryBuilder<DB, any, any>) | undefined,
     orderConfig: { field: any; baseDirection: 'asc' | 'desc' },
-    cursorValues: { first: string | number | Date | null; last: string | number | Date | null },
+    cursorValues: { first: CursorValue | null; last: CursorValue | null },
     direction: 'forward' | 'backward',
     hasMore: boolean,
+    tieBreakerField?: string | keyof any,
   ): Promise<{ hasMore: boolean; hasMoreBefore: boolean; hasMoreAfter: boolean }> {
     let hasMoreBefore = false;
     let hasMoreAfter = false;
@@ -402,10 +474,10 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
         hasMoreBefore = await this.checkHasMoreItems(
           queryBuilder,
           applyFilters,
-          orderConfig.field,
-          orderConfig.baseDirection,
+          orderConfig,
           cursorValues.first,
           'before',
+          tieBreakerField,
         );
       }
 
@@ -413,10 +485,10 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
         hasMoreAfter = await this.checkHasMoreItems(
           queryBuilder,
           applyFilters,
-          orderConfig.field,
-          orderConfig.baseDirection,
+          orderConfig,
           cursorValues.last,
           'after',
+          tieBreakerField,
         );
       }
     }
@@ -434,23 +506,40 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
   private async checkHasMoreItems(
     queryBuilder: SelectQueryBuilder<DB, any, any>,
     applyFilters: ((query: SelectQueryBuilder<DB, any, any>) => SelectQueryBuilder<DB, any, any>) | undefined,
-    orderField: any,
-    baseDirection: 'asc' | 'desc',
-    cursorValue: string | number | Date,
+    orderConfig: { field: any; baseDirection: 'asc' | 'desc' },
+    cursorValue: CursorValue,
     position: 'before' | 'after',
+    tieBreakerField?: string | keyof any,
   ): Promise<boolean> {
     let query = queryBuilder;
     if (applyFilters) {
       query = applyFilters(query);
     }
 
+    const forwardOperator = orderConfig.baseDirection === 'asc' ? '>' : '<';
     const operator = position === 'before'
-      ? (baseDirection === 'asc' ? '<' : '>')
-      : (baseDirection === 'asc' ? '>' : '<');
+      ? (forwardOperator === '>' ? '<' : '>')
+      : forwardOperator;
+
+    if (tieBreakerField && isCompositeCursorValue(cursorValue)) {
+      query = this.applyCompositeCursorFilter(
+        query,
+        orderConfig,
+        cursorValue,
+        tieBreakerField,
+        position === 'before' ? 'backward' : 'forward',
+      );
+    } else if (!isCompositeCursorValue(cursorValue)) {
+      query = query.where(orderConfig.field as any, operator, cursorValue as any);
+    } else {
+      return false;
+    }
 
     const items = await query
-      .where(orderField as any, operator, cursorValue as any)
-      .orderBy(orderField as any, baseDirection)
+      .orderBy(orderConfig.field as any, orderConfig.baseDirection)
+      .$if(Boolean(tieBreakerField), (qb) =>
+        qb.orderBy(tieBreakerField as any, orderConfig.baseDirection),
+      )
       .limit(1)
       .execute();
 
@@ -484,7 +573,7 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
    */
   private buildPreviousCursor(
     originalCursor: string | undefined,
-    firstItemCursor: string | number | Date | null,
+    firstItemCursor: CursorValue | null,
     direction: 'forward' | 'backward',
     hasMoreBefore: boolean,
     cursorContext: { filters: Record<string, any>; orderBy: { field: string; direction: 'asc' | 'desc' } },
@@ -511,7 +600,7 @@ export abstract class KyselyDao<T extends KyselyDao<T>> {
    * Builds the next cursor if applicable
    */
   private buildNextCursor(
-    lastItemCursor: string | number | Date | null,
+    lastItemCursor: CursorValue | null,
     direction: 'forward' | 'backward',
     hasMore: boolean,
     hasMoreAfter: boolean,

@@ -1,5 +1,6 @@
 'use client';
 
+import { AppTopHeader } from '@/components/app/app-top-header';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -19,21 +20,19 @@ export function AppContent({ children }: { children: ReactNode }) {
   const immersive = isImmersiveRoute(pathname);
 
   return (
-    <main
-      className={cn(
-        'flex min-h-0 min-w-0 flex-1 flex-col',
-        immersive ? 'overflow-hidden' : 'overflow-y-auto',
-      )}
-    >
-      <div
-        className={cn(
-          'mx-auto flex w-full flex-1 flex-col',
-          immersive
-            ? 'min-h-0'
-            : 'max-w-screen-2xl px-4 pt-14 pb-6 sm:px-6 sm:pt-8 sm:pb-8 lg:px-8 lg:pt-10',
-        )}
-      >
-        {children}
+    <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      {!immersive && <AppTopHeader />}
+      <div className={cn('flex min-h-0 flex-1 flex-col', immersive ? 'overflow-hidden' : 'overflow-y-auto')}>
+        <div
+          className={cn(
+            'mx-auto flex w-full flex-1 flex-col',
+            immersive
+              ? 'min-h-0'
+              : 'max-w-screen-2xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8',
+          )}
+        >
+          {children}
+        </div>
       </div>
     </main>
   );

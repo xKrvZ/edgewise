@@ -16,11 +16,11 @@ import { useCallback, useEffect, useState } from 'react';
 const POLL_INTERVAL_MS = 30_000;
 
 interface NotificationBellProps {
-  variant?: 'sidebar' | 'default';
+  variant?: 'sidebar' | 'header';
   collapsed?: boolean;
 }
 
-export function NotificationBell({ variant = 'sidebar', collapsed }: NotificationBellProps) {
+export function NotificationBell({ variant = 'header', collapsed }: NotificationBellProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
@@ -29,7 +29,7 @@ export function NotificationBell({ variant = 'sidebar', collapsed }: Notificatio
     enabled: true,
   });
 
-  const listQuery = useQuery(() => api.notifications.list({ page: 1, limit: 20 }), [], {
+  const listQuery = useQuery(() => api.notifications.list({ limit: 20 }), [], {
     enabled: open,
   });
 
@@ -88,11 +88,12 @@ export function NotificationBell({ variant = 'sidebar', collapsed }: Notificatio
 
   const unread = unreadQuery.data?.count ?? 0;
   const isSidebar = variant === 'sidebar';
+  const isHeader = variant === 'header';
 
   const trigger = (
     <Button
       variant={isSidebar ? 'sidebar' : 'ghost'}
-      size="icon-sm"
+      size={isHeader ? 'icon' : 'icon-sm'}
       className={cn('relative shrink-0', collapsed && 'mx-auto')}
       aria-label={`Notifications${unread > 0 ? `, ${unread} unread` : ''}`}
     >
@@ -123,7 +124,7 @@ export function NotificationBell({ variant = 'sidebar', collapsed }: Notificatio
         <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       )}
       <PopoverContent
-        align={isSidebar ? 'start' : 'end'}
+        align={isHeader ? 'end' : isSidebar ? 'start' : 'end'}
         side={isSidebar ? 'right' : 'bottom'}
         className="w-80 p-0"
       >

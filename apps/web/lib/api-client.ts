@@ -25,11 +25,13 @@ import type {
   DrawdownPoint,
   EquityPoint,
   GroupStat,
+  Instrument,
   JournalEntry,
   JournalEntryFilters,
   MediaKind,
   Mistake,
   Page,
+  Paginated,
   Playbook,
   PlaybookChecklistItem,
   PnlPoint,
@@ -77,7 +79,6 @@ import type {
   NotificationQuery,
   UnreadCount,
 } from '@/lib/types';
-
 export class ApiError extends Error {
   status: number;
   body: unknown;
@@ -166,6 +167,17 @@ function normalizePage<T>(raw: RawPage<T> | T[], fallbackLimit = 25): Page<T> {
   return { items, total, page, limit, pageCount };
 }
 
+function normalizePaginated<T>(raw: RawPage<T> | T[]): Paginated<T> {
+  if (Array.isArray(raw)) {
+    return { items: raw, previousCursor: null, nextCursor: null };
+  }
+  return {
+    items: raw.items ?? raw.data ?? [],
+    previousCursor: raw.previousCursor ?? null,
+    nextCursor: raw.nextCursor ?? null,
+  };
+}
+
 /**
  * Typed API surface for the Edgewise backend. Every call is credentialed
  * (cookies) and scoped server-side to the authenticated user.
@@ -188,7 +200,7 @@ export const api = {
       const raw = await request<RawPage<Trade> | Trade[]>('/trades', {
         query: filters,
       });
-      return normalizePage<Trade>(raw, filters?.limit);
+      return normalizePaginated<Trade>(raw);
     },
     get: (id: string) => request<Trade>(`/trades/${id}`),
     create: (input: CreateTradeInput) => request<Trade>('/trades', { method: 'POST', body: input }),
@@ -276,6 +288,13 @@ export const api = {
         body: { headerStorageKey: target.storageKey },
       });
     },
+  },
+
+  // -------------------- Instruments --------------------
+  instruments: {
+    search: (q: string, limit = 20) =>
+      request<Instrument[]>('/instruments/search', { query: { q, limit } }),
+    get: (symbol: string) => request<Instrument>(`/instruments/${encodeURIComponent(symbol)}`),
   },
 
   // -------------------- Tags --------------------
@@ -429,8 +448,12 @@ export const api = {
 
   // -------------------- Journal --------------------
   journal: {
-    list: (filters?: JournalEntryFilters) =>
-      request<JournalEntry[]>('/journal-entries', { query: filters }),
+    list: async (filters?: JournalEntryFilters) => {
+      const raw = await request<RawPage<JournalEntry> | JournalEntry[]>('/journal-entries', {
+        query: filters,
+      });
+      return normalizePaginated<JournalEntry>(raw);
+    },
     get: (id: string) => request<JournalEntry>(`/journal-entries/${id}`),
     create: (input: CreateJournalEntryInput) =>
       request<JournalEntry>('/journal-entries', {
@@ -532,12 +555,106 @@ export const api = {
       const raw = await request<RawPage<Notification> | Notification[]>('/notifications', {
         query,
       });
-      return normalizePage<Notification>(raw, query?.limit);
+      return normalizePaginated<Notification>(raw);
     },
     unreadCount: () => request<UnreadCount>('/notifications/unread-count'),
     markRead: (id: string) =>
       request<Notification>(`/notifications/${id}/read`, { method: 'POST' }),
     markAllRead: () => request<void>('/notifications/read-all', { method: 'POST' }),
+  },
+
+  // -------------------- Account privacy --------------------
+  account: {
+    delete: (confirmation: string) =>
+      request<void>('/account/delete', {
+        method: 'POST',
+        body: { confirmation },
+      }),
+  },
+
+  // -------------------- Billing --------------------
+  billing: {
+    features: () => request<import('@/lib/types/billing').UserFeaturesStatus>('/billing/features'),
+    /** @deprecated Use features() */
+    entitlements: () =>
+      request<import('@/lib/types/billing').EntitlementsStatus>('/billing/entitlements'),
+    invoices: () => request<import('@/lib/types/billing').InvoicesPage>('/billing/invoices'),
+  },
+
+  // -------------------- Admin --------------------
+  admin: {
+    stats: (period: import('@/lib/types/admin').AdminStatsPeriod = '30d') =>
+      request<import('@/lib/types/admin').AdminStats>(`/admin/stats?period=${period}`),
+    audit: (query?: { limit?: number; offset?: number }) =>
+      request<import('@/lib/types/admin').AdminAuditPage>('/admin/audit', { query }),
+    users: {
+      list: (query?: { limit?: number; offset?: number; search?: string }) =>
+        request<import('@/lib/types/admin').AdminUsersPage>('/admin/users', { query }),
+      get: (id: string) =>
+        request<import('@/lib/types/admin').AdminUserDetail>(`/admin/users/${id}`),
+      invoices: (id: string) =>
+        request<import('@/lib/types/billing').InvoicesPage>(`/admin/users/${id}/invoices`),
+      audit: (id: string, query?: { limit?: number; offset?: number }) =>
+        request<import('@/lib/types/admin').AdminAuditPage>(`/admin/users/${id}/audit`, {
+          query,
+        }),
+      updateRole: (id: string, role: string) =>
+        request<import('@/lib/types/admin').AdminUserDetail>(`/admin/users/${id}/role`, {
+          method: 'PATCH',
+          body: { role },
+        }),
+      updateSubscription: (
+        id: string,
+        status: import('@/lib/types/admin').AdminSubscriptionStatus,
+      ) =>
+        request<import('@/lib/types/admin').AdminUserDetail>(`/admin/users/${id}/subscription`, {
+          method: 'PATCH',
+          body: { status },
+        }),
+      ban: (id: string, banReason?: string) =>
+        request<import('@/lib/types/admin').AdminUserDetail>(`/admin/users/${id}/ban`, {
+          method: 'POST',
+          body: banReason ? { banReason } : {},
+        }),
+      unban: (id: string) =>
+        request<import('@/lib/types/admin').AdminUserDetail>(`/admin/users/${id}/unban`, {
+          method: 'POST',
+        }),
+      subscription: (id: string) =>
+        request<import('@/lib/types/admin').AdminSubscriptionDetail>(
+          `/admin/users/${id}/subscription`,
+        ),
+      changePlan: (id: string, body: { productId?: string; planSlug?: string }) =>
+        request<import('@/lib/types/admin').AdminSubscriptionDetail>(
+          `/admin/users/${id}/subscription/plan`,
+          { method: 'PATCH', body },
+        ),
+      cancelSubscription: (id: string, immediate = false) =>
+        request<import('@/lib/types/admin').AdminSubscriptionDetail>(
+          `/admin/users/${id}/subscription/cancel`,
+          { method: 'POST', body: { immediate } },
+        ),
+      refundOrder: (
+        id: string,
+        orderId: string,
+        body?: { amount?: number; reason?: string; comment?: string },
+      ) =>
+        request<import('@/lib/types/admin').AdminRefundResult>(
+          `/admin/users/${id}/orders/${orderId}/refund`,
+          { method: 'POST', body: body ?? {} },
+        ),
+    },
+    subscriptions: (query?: {
+      limit?: number;
+      offset?: number;
+      search?: string;
+      status?: string;
+    }) =>
+      request<import('@/lib/types/admin').AdminSubscriptionsPage>('/admin/subscriptions', {
+        query,
+      }),
+    plans: () =>
+      request<{ plans: import('@/lib/types/admin').AdminPlan[] }>('/admin/plans'),
   },
 
   // -------------------- Socket --------------------

@@ -1,4 +1,5 @@
 import { adminClient, emailOTPClient, jwtClient } from 'better-auth/client/plugins';
+import { polarClient } from '@polar-sh/better-auth/client';
 import { createAuthClient } from 'better-auth/react';
 
 /**
@@ -19,7 +20,7 @@ const authBaseURL = resolveAuthBaseURL();
 
 export const authClient = createAuthClient({
   baseURL: authBaseURL,
-  plugins: [adminClient(), emailOTPClient(), jwtClient()],
+  plugins: [adminClient(), emailOTPClient(), jwtClient(), polarClient()],
 });
 
 export const { signIn, signUp, signOut, useSession, getSession, emailOtp } = authClient;

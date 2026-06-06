@@ -47,26 +47,28 @@ interface KpiCardProps {
 function KpiCard({ label, value, valueClassName, change, chart, isLoading }: KpiCardProps) {
   return (
     <Card className="overflow-hidden">
-      <CardContent className="flex items-center justify-between gap-4 pt-6">
-        <div className="min-w-0 space-y-2">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            {label}
-          </p>
-          {isLoading ? (
-            <Skeleton className="h-8 w-28" />
-          ) : (
-            <p
-              className={cn(
-                'text-2xl font-semibold tracking-tight tabular-nums',
-                valueClassName,
-              )}
-            >
-              {value}
+      <CardContent>
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0 space-y-2">
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              {label}
             </p>
-          )}
-          {!isLoading && <DashboardChangePill value={change} />}
+            {isLoading ? (
+              <Skeleton className="h-8 w-28" />
+            ) : (
+              <p
+                className={cn(
+                  'text-2xl font-semibold tracking-tight tabular-nums',
+                  valueClassName,
+                )}
+              >
+                {value}
+              </p>
+            )}
+            {!isLoading && <DashboardChangePill value={change} />}
+          </div>
+          {isLoading ? <Skeleton className="h-10 w-20 shrink-0" /> : chart}
         </div>
-        {isLoading ? <Skeleton className="h-10 w-20 shrink-0" /> : chart}
       </CardContent>
     </Card>
   );

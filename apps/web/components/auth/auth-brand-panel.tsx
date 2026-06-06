@@ -69,7 +69,7 @@ export function AuthBrandPanel({ compact = false }: AuthBrandPanelProps) {
 
       <div className="relative z-10 shrink-0">
         <Link href="/" className="inline-flex w-fit">
-          <Logo variant="dark" className="h-8 lg:h-10" />
+          <Logo variant="dark" className="h-11 lg:h-12" />
         </Link>
       </div>
 

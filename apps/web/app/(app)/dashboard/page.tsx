@@ -14,7 +14,7 @@ import { DashboardMonthlyBars } from '@/components/dashboard/dashboard-monthly-b
 import { DashboardPerformanceDonut } from '@/components/dashboard/dashboard-performance-donut';
 import { DashboardRecentTrades } from '@/components/dashboard/dashboard-recent-trades';
 import { ProgressTracker } from '@/components/dashboard/progress-tracker';
-import { ZellaScoreCard } from '@/components/dashboard/zella-score-card';
+import { TraderScoreCard } from '@/components/dashboard/trader-score-card';
 import { ChartEmpty } from '@/components/shared/chart-empty';
 import { EmptyState } from '@/components/shared/empty-state';
 import { ErrorState } from '@/components/shared/error-state';
@@ -64,7 +64,6 @@ export default function DashboardPage() {
         dateFrom: filters.dateFrom,
         dateTo: filters.dateTo,
         limit: 6,
-        page: 1,
       }),
     [key],
   );
@@ -75,7 +74,6 @@ export default function DashboardPage() {
         dateFrom: filters.dateFrom,
         dateTo: filters.dateTo,
         limit: 20,
-        page: 1,
       }),
     [key],
   );
@@ -97,7 +95,6 @@ export default function DashboardPage() {
   return (
     <PageBody>
       <PageHeader
-        title="Dashboard"
         description="Welcome back. Here's your trading overview."
         className="border-none pb-0"
         filters={<DateRangeSelector />}
@@ -188,13 +185,13 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-4">
             <Card className="lg:col-span-2">
               <CardHeader>
-                <CardTitle className="text-base">Zella score</CardTitle>
+                <CardTitle className="text-base">Trader score</CardTitle>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
                   <Skeleton className="h-[300px] w-full" />
                 ) : o ? (
-                  <ZellaScoreCard score={o.zellaScore} breakdown={o.zellaBreakdown} />
+                  <TraderScoreCard score={o.traderScore} breakdown={o.traderScoreBreakdown} />
                 ) : null}
               </CardContent>
             </Card>

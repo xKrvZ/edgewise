@@ -6,6 +6,7 @@ import {
   type Transaction,
   type Updateable,
 } from 'kysely';
+import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { KyselyDao } from '@/database/kysely/kysely.dao';
 import type { DB, JournalEntry } from '@/database/types/db';
 
@@ -14,17 +15,15 @@ export class JournalEntryDao extends KyselyDao<JournalEntryDao> {
   static readonly TABLE = 'journal_entry' as const;
   static readonly TRADE_TABLE = 'journal_entry_trade' as const;
 
-  async findAllByUser(
+  private applyListFilters(
+    query: any,
     userId: string,
-    filters: { dateFrom?: string; dateTo?: string; tradeId?: string } = {},
-  ): Promise<Selectable<JournalEntry>[]> {
-    let query = this.kysely
-      .selectFrom(JournalEntryDao.TABLE)
-      .selectAll(JournalEntryDao.TABLE)
-      .where(`${JournalEntryDao.TABLE}.userId`, '=', userId);
+    filters: { dateFrom?: string; dateTo?: string; tradeId?: string },
+  ): any {
+    let q = query.where(`${JournalEntryDao.TABLE}.userId`, '=', userId);
 
     if (filters.tradeId) {
-      query = query
+      q = q
         .innerJoin(
           JournalEntryDao.TRADE_TABLE,
           `${JournalEntryDao.TRADE_TABLE}.journalEntryId`,
@@ -33,13 +32,52 @@ export class JournalEntryDao extends KyselyDao<JournalEntryDao> {
         .where(`${JournalEntryDao.TRADE_TABLE}.tradeId`, '=', filters.tradeId);
     }
     if (filters.dateFrom) {
-      query = query.where('date', '>=', new Date(filters.dateFrom));
+      q = q.where(`${JournalEntryDao.TABLE}.date`, '>=', new Date(filters.dateFrom));
     }
     if (filters.dateTo) {
-      query = query.where('date', '<=', new Date(filters.dateTo));
+      q = q.where(`${JournalEntryDao.TABLE}.date`, '<=', new Date(filters.dateTo));
     }
 
-    return query.orderBy('date', 'desc').execute();
+    return q;
+  }
+
+  async findCursorPaged(
+    userId: string,
+    filters: { dateFrom?: string; dateTo?: string; tradeId?: string },
+    options: { cursor?: string; limit?: number },
+  ): Promise<PaginatedDto<Selectable<JournalEntry>>> {
+    const limit = options.limit ?? 25;
+
+    return this.paginateWithCursor<Selectable<JournalEntry>>(
+      this.kysely
+        .selectFrom(JournalEntryDao.TABLE)
+        .selectAll(JournalEntryDao.TABLE),
+      {
+        cursor: options.cursor,
+        limit,
+        cursorField: `${JournalEntryDao.TABLE}.date`,
+        tieBreakerField: `${JournalEntryDao.TABLE}.id`,
+        filters,
+        orderBy: { field: 'date', direction: 'desc' },
+        applyFilters: (query) => this.applyListFilters(query, userId, filters),
+      },
+    );
+  }
+
+  async findAllByUser(
+    userId: string,
+    filters: { dateFrom?: string; dateTo?: string; tradeId?: string } = {},
+  ): Promise<Selectable<JournalEntry>[]> {
+    return this.applyListFilters(
+      this.kysely
+        .selectFrom(JournalEntryDao.TABLE)
+        .selectAll(JournalEntryDao.TABLE),
+      userId,
+      filters,
+    )
+      .orderBy(`${JournalEntryDao.TABLE}.date`, 'desc')
+      .orderBy(`${JournalEntryDao.TABLE}.id`, 'desc')
+      .execute();
   }
 
   async findByIdForUser(

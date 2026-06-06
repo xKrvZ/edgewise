@@ -21,7 +21,7 @@ export function JournalTradePicker({ selected, onChange, enabled }: JournalTrade
   const [loadingLastWeek, setLoadingLastWeek] = useState(false);
 
   const recentTrades = useQuery(
-    () => api.trades.list({ limit: 100, page: 1 }),
+    () => api.trades.list({ limit: 100 }),
     [],
     { enabled },
   );
@@ -39,8 +39,8 @@ export function JournalTradePicker({ selected, onChange, enabled }: JournalTrade
     setLoadingLastWeek(true);
     try {
       const dateFrom = subDays(new Date(), 7).toISOString();
-      const page = await api.trades.list({ dateFrom, limit: MAX_JOURNAL_ENTRY_TRADES, page: 1 });
-      const ids = page.items.map((t) => t.id);
+      const result = await api.trades.list({ dateFrom, limit: MAX_JOURNAL_ENTRY_TRADES });
+      const ids = result.items.map((t) => t.id);
       if (ids.length === 0) {
         toast.message('No trades in the last 7 days');
         return;

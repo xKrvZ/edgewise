@@ -33,6 +33,14 @@ import {
 import type { CreateCommunityDto } from '../dtos/create-community.dto';
 import type { CreateInvitationDto } from '../dtos/create-invitation.dto';
 import type { UpdateCommunityDto } from '../dtos/update-community.dto';
+import { PrivacyUserDao } from '@/modules/privacy/daos/privacy-user.dao';
+import { DELETED_USER_DISPLAY_NAME } from '@/modules/privacy/constants/privacy.constants';
+import {
+  collectAvatarSources,
+  resolveAvatarUrlsForUsers,
+} from '@/modules/privacy/utils/resolve-user-avatar.util';
+import { sanitizeInvitationDto } from '@/modules/privacy/utils/sanitize-user.util';
+import { StorageService } from '@/modules/storage/storage.service';
 
 const INVITE_TOKEN_LENGTH = 21;
 
@@ -43,6 +51,8 @@ export class CommunityService {
     private readonly memberDao: CommunityMemberDao,
     private readonly invitationDao: CommunityInvitationDao,
     private readonly statsDao: CommunityStatsDao,
+    private readonly privacyUserDao: PrivacyUserDao,
+    private readonly storage: StorageService,
   ) {}
 
   async list(userId: string): Promise<CommunitySummaryDto[]> {
@@ -63,10 +73,28 @@ export class CommunityService {
 
     const memberCount = await this.memberDao.countByCommunity(id);
     const rows = await this.memberDao.findMembersWithProfiles(id);
+    const deletedUserIds = await this.privacyUserDao.findDeletedUserIds(
+      rows.map((member) => member.userId),
+    );
+    const avatarUrls = await resolveAvatarUrlsForUsers(
+      this.storage,
+      collectAvatarSources(
+        rows.map((member) => ({
+          userId: member.userId,
+          userImage: member.userImage,
+          avatarStorageKey: member.avatarStorageKey,
+        })),
+      ),
+    );
     const members: CommunityMemberDto[] = rows.map((m) => ({
       id: m.id,
       userId: m.userId,
-      displayName: m.displayName,
+      displayName: deletedUserIds.has(m.userId)
+        ? DELETED_USER_DISPLAY_NAME
+        : m.displayName,
+      avatarUrl: deletedUserIds.has(m.userId)
+        ? null
+        : (avatarUrls.get(m.userId) ?? null),
       role: m.role,
       joinedAt: m.joinedAt,
     }));
@@ -163,26 +191,32 @@ export class CommunityService {
     }
 
     const community = await this.communityDao.findById(communityId);
-    return toInvitationDto({
-      id: invitation.id,
-      communityId,
-      communityName: community?.name ?? '',
-      invitedBy: userId,
-      inviterName: null,
-      inviteeEmail: email,
-      inviteeUserId: invitee.id,
-      role: dto.role,
-      status: 'pending',
-      token: invitation.token,
-      createdAt: invitation.createdAt,
-      respondedAt: null,
-    });
+    return sanitizeInvitationDto(
+      toInvitationDto({
+        id: invitation.id,
+        communityId,
+        communityName: community?.name ?? '',
+        invitedBy: userId,
+        inviterName: null,
+        inviteeEmail: email,
+        inviteeUserId: invitee.id,
+        role: dto.role,
+        status: 'pending',
+        token: invitation.token,
+        createdAt: invitation.createdAt,
+        respondedAt: null,
+      }),
+      userId,
+      { canViewInviteeEmail: true },
+    );
   }
 
   async listInvitations(communityId: string, userId: string): Promise<CommunityInvitationDto[]> {
     await this.requireMentorOrOwner(communityId, userId);
     const rows = await this.invitationDao.findPendingByCommunity(communityId);
-    return rows.map(toInvitationDto);
+    return rows.map((row) =>
+      sanitizeInvitationDto(toInvitationDto(row), userId, { canViewInviteeEmail: true }),
+    );
   }
 
   async listMyInvitations(userId: string): Promise<CommunityInvitationDto[]> {
@@ -191,7 +225,7 @@ export class CommunityService {
       return [];
     }
     const rows = await this.invitationDao.findPendingForUser(userId, email);
-    return rows.map(toInvitationDto);
+    return rows.map((row) => sanitizeInvitationDto(toInvitationDto(row), userId));
   }
 
   async acceptInvitation(invitationId: string, userId: string): Promise<CommunityDetailDto> {
@@ -258,20 +292,23 @@ export class CommunityService {
     }
 
     const community = await this.communityDao.findById(invitation.communityId);
-    return toInvitationDto({
-      id: updated.id,
-      communityId: updated.communityId,
-      communityName: community?.name ?? '',
-      invitedBy: updated.invitedBy,
-      inviterName: null,
-      inviteeEmail: updated.inviteeEmail,
-      inviteeUserId: updated.inviteeUserId,
-      role: updated.role,
-      status: updated.status,
-      token: updated.token,
-      createdAt: updated.createdAt,
-      respondedAt: updated.respondedAt,
-    });
+    return sanitizeInvitationDto(
+      toInvitationDto({
+        id: updated.id,
+        communityId: updated.communityId,
+        communityName: community?.name ?? '',
+        invitedBy: updated.invitedBy,
+        inviterName: null,
+        inviteeEmail: updated.inviteeEmail,
+        inviteeUserId: updated.inviteeUserId,
+        role: updated.role,
+        status: updated.status,
+        token: updated.token,
+        createdAt: updated.createdAt,
+        respondedAt: updated.respondedAt,
+      }),
+      userId,
+    );
   }
 
   async getLeaderboard(
@@ -282,6 +319,9 @@ export class CommunityService {
     await this.requireMentorOrOwner(communityId, userId);
 
     const members = await this.memberDao.findMembersWithProfiles(communityId);
+    const deletedUserIds = await this.privacyUserDao.findDeletedUserIds(
+      members.map((member) => member.userId),
+    );
     const periodDays = days;
     const dateFrom = new Date();
     dateFrom.setUTCDate(dateFrom.getUTCDate() - periodDays);
@@ -296,6 +336,17 @@ export class CommunityService {
       tradesByUser.set(t.userId, list);
     }
 
+    const avatarUrls = await resolveAvatarUrlsForUsers(
+      this.storage,
+      collectAvatarSources(
+        members.map((member) => ({
+          userId: member.userId,
+          userImage: member.userImage,
+          avatarStorageKey: member.avatarStorageKey,
+        })),
+      ),
+    );
+
     const entries: CommunityLeaderboardEntryDto[] = members
       .filter((m) => m.role !== 'owner' || members.length === 1)
       .map((member) => {
@@ -304,7 +355,12 @@ export class CommunityService {
         return {
           rank: 0,
           userId: member.userId,
-          displayName: member.displayName,
+          displayName: deletedUserIds.has(member.userId)
+            ? DELETED_USER_DISPLAY_NAME
+            : member.displayName,
+          avatarUrl: deletedUserIds.has(member.userId)
+            ? null
+            : (avatarUrls.get(member.userId) ?? null),
           role: member.role,
           netPnl: money(stats.netPnl),
           winRate: ratio(stats.winRate),

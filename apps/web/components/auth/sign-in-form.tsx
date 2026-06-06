@@ -7,7 +7,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { signIn } from '@/lib/auth-client';
-import { isEmailNotVerifiedError, resolvePostAuthRedirect } from '@/lib/auth-utils';
+import {
+  AUTH_SERVER_UNAVAILABLE_MESSAGE,
+  isEmailNotVerifiedError,
+  isNetworkFetchError,
+  resolvePostAuthRedirect,
+} from '@/lib/auth-utils';
 import {
   authCheckboxClassName,
   authIconChipClassName,
@@ -22,6 +27,7 @@ import { ChevronRight, Loader2, Lock, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 function DiscordIcon({ className }: { className?: string }) {
   return (
@@ -48,26 +54,39 @@ export function SignInForm() {
     setError(null);
     setLoading(true);
 
-    const { error: signInError } = await signIn.email({
-      email,
-      password,
-      rememberMe,
-    });
+    try {
+      const { error: signInError } = await signIn.email({
+        email,
+        password,
+        rememberMe,
+      });
 
-    setLoading(false);
+      setLoading(false);
 
-    if (signInError) {
-      if (isEmailNotVerifiedError(signInError.message)) {
-        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      if (signInError) {
+        if (isEmailNotVerifiedError(signInError.message)) {
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+          return;
+        }
+
+        setError(signInError.message ?? 'Something went wrong');
         return;
       }
 
-      setError(signInError.message ?? 'Something went wrong');
-      return;
-    }
+      router.push(postAuthRedirect);
+      router.refresh();
+    } catch (err) {
+      setLoading(false);
 
-    router.push(postAuthRedirect);
-    router.refresh();
+      if (isNetworkFetchError(err)) {
+        const message = AUTH_SERVER_UNAVAILABLE_MESSAGE;
+        setError(message);
+        toast.error(message);
+        return;
+      }
+
+      throw err;
+    }
   };
 
   const handleDiscord = async () => {

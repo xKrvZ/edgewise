@@ -16,6 +16,10 @@ export class CommentDto {
   authorName: string;
 
   @Expose()
+  @ApiPropertyOptional({ nullable: true, description: 'Resolved author avatar URL' })
+  authorImage: string | null;
+
+  @Expose()
   @ApiProperty({ enum: ['trade', 'playbook'] })
   targetType: CommentTargetType;
 

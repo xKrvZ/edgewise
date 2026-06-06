@@ -1,6 +1,6 @@
 # TradeJournal Feature Matrix
 
-TradeZella-style competitor audit for `apps/web` + `apps/api`.  
+Competitor audit for `apps/web` + `apps/api`.  
 Last updated: 2026-06-06.
 
 ## Summary counts
@@ -40,8 +40,8 @@ Last updated: 2026-06-06.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Dashboard overview | ✅ | Net P&L, Sharpe, drawdown, Zella score |
-| Zella composite score | ✅ | 6-factor breakdown + radar |
+| Dashboard overview | ✅ | Net P&L, Sharpe, drawdown, trader score |
+| Trader composite score | ✅ | 6-factor breakdown + radar |
 | Equity curve | ✅ | Daily cumulative |
 | P&L over time / calendar | ✅ | Bar chart + heatmap + full calendar |
 | Account balance chart | ✅ | Starting balance + cumulative P&L |

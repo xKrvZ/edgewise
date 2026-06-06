@@ -1,11 +1,14 @@
 import type { INestApplicationContext } from "@nestjs/common";
+import { Logger } from "@nestjs/common";
 import { IoAdapter } from "@nestjs/platform-socket.io";
 import { ServerOptions } from "socket.io";
 import { createAdapter } from "@socket.io/redis-adapter";
 import Redis from "ioredis";
 
+const logger = new Logger("SocketIOAdapter");
+
 export class SocketIOAdapter extends IoAdapter {
-  private adapterConstructor: ReturnType<typeof createAdapter>;
+  private adapterConstructor: ReturnType<typeof createAdapter> | undefined;
   private readonly app: INestApplicationContext & {
     getHttpServer?: () => unknown;
   };
@@ -18,7 +21,16 @@ export class SocketIOAdapter extends IoAdapter {
   }
 
   connect(redisClient: Redis): void {
-    this.adapterConstructor = createAdapter(redisClient, redisClient);
+    try {
+      this.adapterConstructor = createAdapter(
+        redisClient.duplicate(),
+        redisClient.duplicate(),
+      );
+    } catch (err) {
+      logger.warn(
+        `Redis adapter unavailable; WebSockets will run without cross-instance sync (${err instanceof Error ? err.message : err})`,
+      );
+    }
   }
 
   createIOServer(port: number, options?: ServerOptions): any {
@@ -38,7 +50,13 @@ export class SocketIOAdapter extends IoAdapter {
 
     const server = super.createIOServer(port, options);
     if (this.adapterConstructor) {
-      server.adapter(this.adapterConstructor);
+      try {
+        server.adapter(this.adapterConstructor);
+      } catch (err) {
+        logger.warn(
+          `Could not attach Redis adapter; WebSockets will run in single-instance mode (${err instanceof Error ? err.message : err})`,
+        );
+      }
     }
     return server;
   }

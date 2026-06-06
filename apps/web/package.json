@@ -9,6 +9,7 @@
     "lint": "biome lint --write ."
   },
   "dependencies": {
+    "@polar-sh/better-auth": "^1.8.4",
     "better-auth": "1.4.14",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

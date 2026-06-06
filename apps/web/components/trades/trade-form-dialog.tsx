@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Stepper } from '@/components/ui/stepper';
 import { Textarea } from '@/components/ui/textarea';
+import { InstrumentSearchCombobox, assetClassToMarketType } from '@/components/trades/instrument-search-combobox';
 import { ApiError, api } from '@/lib/api-client';
 import { formatCurrency, formatDateTime, formatR } from '@/lib/format';
 import { useReferenceData } from '@/lib/hooks/use-reference-data';
@@ -321,11 +322,14 @@ export function TradeFormDialog({
                 </Field>
 
                 <Field label="Symbol" required>
-                  <Input
+                  <InstrumentSearchCombobox
                     autoFocus
                     value={form.symbol}
-                    onChange={(e) => set('symbol', e.target.value)}
-                    placeholder="AAPL"
+                    onChange={(symbol) => set('symbol', symbol)}
+                    onSelect={(instrument) =>
+                      set('marketType', assetClassToMarketType(instrument.assetClass))
+                    }
+                    placeholder="Search ES, AAPL, EURUSD…"
                   />
                 </Field>
 

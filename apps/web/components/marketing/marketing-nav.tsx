@@ -1,5 +1,6 @@
 'use client';
 
+import { MarketingNavActions } from '@/components/marketing/marketing-nav-actions';
 import { NAV_LINKS } from '@/components/marketing/marketing-data';
 import { marketingContainerClass } from '@/components/marketing/marketing-section';
 import {
@@ -11,10 +12,13 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Logo } from '@/components/app/logo';
-import { ArrowRight, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
 
 export function MarketingNav() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/70">
       <div className={`flex items-center justify-between gap-4 py-3.5 sm:py-4 ${marketingContainerClass}`}>
@@ -37,23 +41,11 @@ export function MarketingNav() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 text-sm font-semibold sm:gap-4 md:flex">
-          <Link
-            href="/sign-in"
-            className="rounded-lg px-3 py-2 text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-950"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/sign-in"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-white shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30"
-          >
-            Start for free
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
+        <div className="hidden md:flex">
+          <MarketingNavActions placement="desktop" />
         </div>
 
-        <Sheet>
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
             <button
               type="button"
@@ -69,6 +61,7 @@ export function MarketingNav() {
                 <Logo variant="light" />
               </SheetTitle>
             </SheetHeader>
+            <MarketingNavActions placement="mobile" mobileSection="header" />
             <nav className="mt-8 flex flex-col gap-1" aria-label="Mobile">
               {NAV_LINKS.map(({ label, href }) => (
                 <SheetClose key={href} asChild>
@@ -81,25 +74,11 @@ export function MarketingNav() {
                 </SheetClose>
               ))}
             </nav>
-            <div className="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-8">
-              <SheetClose asChild>
-                <Link
-                  href="/sign-in"
-                  className="rounded-xl border border-slate-200 px-4 py-3 text-center text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-                >
-                  Sign in
-                </Link>
-              </SheetClose>
-              <SheetClose asChild>
-                <Link
-                  href="/sign-in"
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary/25"
-                >
-                  Start for free
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
-              </SheetClose>
-            </div>
+            <MarketingNavActions
+              placement="mobile"
+              mobileSection="footer"
+              onNavigate={() => setMobileOpen(false)}
+            />
           </SheetContent>
         </Sheet>
       </div>

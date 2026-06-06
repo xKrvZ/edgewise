@@ -30,7 +30,7 @@ export const PRICING_SEO = {
     'trading journal pricing',
     'trade journal software comparison',
     'free trading journal',
-    'TradeZella alternative',
+    'trading journal software alternative',
     'Tradervue alternative',
     ...MARKETING_KEYWORDS,
   ],

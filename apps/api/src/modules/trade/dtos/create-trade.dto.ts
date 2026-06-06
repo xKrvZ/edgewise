@@ -26,7 +26,10 @@ export class CreateTradeDto {
   @IsUUID()
   accountId: string;
 
-  @ApiProperty({ example: 'AAPL' })
+  @ApiProperty({
+    example: 'AAPL',
+    description: 'Canonical symbol from the instrument catalog',
+  })
   @IsString()
   @MaxLength(40)
   symbol: string;

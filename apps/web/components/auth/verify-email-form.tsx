@@ -98,7 +98,7 @@ export function VerifyEmailForm() {
             className={`mt-2 ${authPrimaryButtonClassName}`}
             onClick={() => router.push(postAuthRedirect)}
           >
-            Go to dashboard
+            Go to My Journal
           </Button>
         </div>
       </AuthCard>

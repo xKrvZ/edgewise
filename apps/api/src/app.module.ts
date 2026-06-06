@@ -48,6 +48,12 @@ import { SharingModule } from "@/modules/sharing/sharing.module";
 import { CommunityModule } from "@/modules/community/community.module";
 import { CommentModule } from "@/modules/comment/comment.module";
 import { NotificationModule } from "@/modules/notification/notification.module";
+import { InstrumentModule } from "@/modules/instrument/instrument.module";
+import { BillingModule } from "@/modules/billing/billing.module";
+import { AdminModule } from "@/modules/admin/admin.module";
+import { PrivacyModule } from "@/modules/privacy/privacy.module";
+import { PlatformMetricsModule } from "@/modules/platform-metrics/platform-metrics.module";
+import billingConfig from "@/config/billing.config";
 
 @Module({
   imports: [
@@ -61,6 +67,7 @@ import { NotificationModule } from "@/modules/notification/notification.module";
         registerAs('redis', () => redisConfig),
         registerAs('s3', () => s3Config),
         registerAs('email', () => require('@/config/email.config').default),
+        registerAs('billing', () => billingConfig),
       ],
     }),
     EventEmitterModule.forRoot(),
@@ -130,6 +137,11 @@ import { NotificationModule } from "@/modules/notification/notification.module";
     CommunityModule,
     CommentModule,
     NotificationModule,
+    InstrumentModule,
+    BillingModule,
+    PlatformMetricsModule,
+    AdminModule,
+    PrivacyModule,
   ],
   providers: [
     {

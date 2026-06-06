@@ -1,12 +1,14 @@
 'use client';
 
 import { signOut, useSession } from '@/lib/auth-client';
+import { useUserDisplayLabel } from '@/lib/hooks/use-user-display-label';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export function SessionStatus() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
+  const { label: displayLabel } = useUserDisplayLabel();
 
   if (isPending) {
     return (
@@ -36,7 +38,7 @@ export function SessionStatus() {
   return (
     <span className="inline-flex items-center gap-3 rounded-full border border-border bg-card py-1.5 pr-1.5 pl-4 text-sm text-muted-foreground">
       Signed in as{' '}
-      <span className="font-medium text-foreground">{session.user.name || session.user.email}</span>
+      <span className="font-medium text-foreground">{displayLabel}</span>
       <button
         type="button"
         onClick={handleSignOut}

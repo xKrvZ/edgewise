@@ -21,6 +21,10 @@ export class NotificationDto {
   actorName: string;
 
   @Expose()
+  @ApiProperty({ nullable: true, description: 'Resolved actor avatar URL' })
+  actorImage: string | null;
+
+  @Expose()
   @ApiProperty({ format: 'uuid' })
   commentId: string;
 

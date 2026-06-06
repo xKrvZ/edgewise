@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { PrivacyModule } from '@/modules/privacy/privacy.module';
 import { CommunityController } from './controllers/community.controller';
 import { InvitationController } from './controllers/invitation.controller';
 import { CommunityDao } from './daos/community.dao';
@@ -8,6 +9,7 @@ import { CommunityStatsDao } from './daos/community-stats.dao';
 import { CommunityService } from './services/community.service';
 
 @Module({
+  imports: [PrivacyModule],
   controllers: [CommunityController, InvitationController],
   providers: [
     CommunityService,

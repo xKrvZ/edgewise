@@ -3,7 +3,7 @@
 import { DirectionBadge } from '@/components/trades/direction-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTableContent, CardTitle, cardTableStatePaddingClass } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -52,16 +52,16 @@ export function DashboardRecentTrades({
   onRowClick,
 }: DashboardRecentTradesProps) {
   return (
-    <Card className="h-full">
+    <Card className="h-full gap-0">
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle className="text-base">Recent Trades</CardTitle>
         <Button variant="link" size="sm" className="h-auto px-0 text-primary" asChild>
           <Link href="/trades">View All</Link>
         </Button>
       </CardHeader>
-      <CardContent className="px-0">
+      <CardTableContent>
         {isLoading ? (
-          <div className="space-y-2 px-6">
+          <div className={cn(cardTableStatePaddingClass, 'space-y-2')}>
             {Array.from({ length: 5 }).map((_, index) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: fixed skeleton rows.
               <Skeleton key={index} className="h-12 w-full" />
@@ -112,15 +112,16 @@ export function DashboardRecentTrades({
             </TableBody>
           </Table>
         ) : (
-          <div className="px-6">
+          <div className={cardTableStatePaddingClass}>
             <EmptyState
+              variant="embedded"
               icon={Activity}
               title="No trades logged"
               message="Once you log trades, your most recent activity shows up here."
             />
           </div>
         )}
-      </CardContent>
+      </CardTableContent>
     </Card>
   );
 }

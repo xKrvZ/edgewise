@@ -1,4 +1,4 @@
-import { format, parseISO } from 'date-fns';
+import { format, formatDistanceToNow, parseISO } from 'date-fns';
 
 /** Format a number as USD currency. */
 export function formatCurrency(
@@ -70,6 +70,15 @@ export function formatDateTime(value: string | Date | null | undefined): string 
   if (!value) return '—';
   try {
     return format(toDate(value), 'MMM d, yyyy · HH:mm');
+  } catch {
+    return '—';
+  }
+}
+
+export function formatRelativeTime(value: string | Date | null | undefined): string {
+  if (!value) return '—';
+  try {
+    return formatDistanceToNow(toDate(value), { addSuffix: true });
   } catch {
     return '—';
   }

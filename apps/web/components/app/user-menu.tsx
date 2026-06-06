@@ -1,6 +1,6 @@
 'use client';
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatar } from '@/components/shared/user-avatar';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -14,27 +14,25 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ThemeToggleMenu } from '@/components/app/theme-toggle-menu';
 import { signOut, useSession } from '@/lib/auth-client';
+import { useUserDisplayLabel } from '@/lib/hooks/use-user-display-label';
+import { useUserAvatarUrl } from '@/lib/hooks/use-user-avatar-url';
+import { isAdministrator } from '@/lib/roles';
 import { cn } from '@/lib/utils';
-import { ChevronsUpDown, LogOut, UserRound } from 'lucide-react';
+import {
+  BookOpen,
+  ChevronsUpDown,
+  CreditCard,
+  LayoutGrid,
+  LogOut,
+  Shield,
+  User,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-function initials(name?: string | null, email?: string | null): string {
-  if (name) {
-    return name
-      .split(' ')
-      .map((part) => part[0])
-      .filter(Boolean)
-      .slice(0, 2)
-      .join('')
-      .toUpperCase();
-  }
-  return (email?.[0] ?? 'U').toUpperCase();
-}
-
 interface UserMenuProps {
-  /** Compact avatar trigger for headers; sidebar shows name and opens upward. */
-  variant?: 'compact' | 'sidebar';
+  /** Compact avatar trigger for headers; sidebar shows name and opens upward; marketing shows name on light nav. */
+  variant?: 'compact' | 'sidebar' | 'marketing';
   /** Icon-only avatar when the desktop sidebar is collapsed. */
   collapsed?: boolean;
   className?: string;
@@ -43,6 +41,8 @@ interface UserMenuProps {
 export function UserMenu({ variant = 'compact', collapsed = false, className }: UserMenuProps) {
   const router = useRouter();
   const { data: session, isPending } = useSession();
+  const avatarUrl = useUserAvatarUrl();
+  const { label: displayName, fields: displayFields } = useUserDisplayLabel();
 
   if (isPending) {
     return (
@@ -52,7 +52,9 @@ export function UserMenu({ variant = 'compact', collapsed = false, className }: 
             ? collapsed
               ? 'h-10 w-10 rounded-md'
               : 'h-12 w-full rounded-md'
-            : 'h-9 w-9 rounded-full',
+            : variant === 'marketing'
+              ? 'h-8 w-28 rounded-xl'
+              : 'h-9 w-9 rounded-full',
           className,
         )}
       />
@@ -73,7 +75,9 @@ export function UserMenu({ variant = 'compact', collapsed = false, className }: 
     );
   }
 
-  const displayName = user.name ?? 'Trader';
+  const showAdminLink = isAdministrator(
+    (user as { role?: string | string[] | null }).role,
+  );
 
   const sidebarTrigger = collapsed ? (
     <button
@@ -84,12 +88,14 @@ export function UserMenu({ variant = 'compact', collapsed = false, className }: 
       )}
       aria-label={`User menu: ${displayName}`}
     >
-      <Avatar className="h-8 w-8 shrink-0 border border-sidebar-border">
-        <AvatarImage src={user.image ?? undefined} alt={displayName} />
-        <AvatarFallback className="bg-sidebar-accent text-xs text-sidebar-accent-foreground">
-          {initials(user.name, user.email)}
-        </AvatarFallback>
-      </Avatar>
+      <UserAvatar
+        displayName={displayFields.displayName}
+        name={user.name}
+        email={user.email}
+        image={avatarUrl}
+        className="h-8 w-8 shrink-0 border border-sidebar-border"
+        fallbackClassName="bg-sidebar-accent text-xs text-sidebar-accent-foreground"
+      />
     </button>
   ) : (
     <button
@@ -99,12 +105,14 @@ export function UserMenu({ variant = 'compact', collapsed = false, className }: 
         className,
       )}
     >
-      <Avatar className="h-8 w-8 shrink-0 border border-sidebar-border">
-        <AvatarImage src={user.image ?? undefined} alt={displayName} />
-        <AvatarFallback className="bg-sidebar-accent text-xs text-sidebar-accent-foreground">
-          {initials(user.name, user.email)}
-        </AvatarFallback>
-      </Avatar>
+      <UserAvatar
+        displayName={displayFields.displayName}
+        name={user.name}
+        email={user.email}
+        image={avatarUrl}
+        className="h-8 w-8 shrink-0 border border-sidebar-border"
+        fallbackClassName="bg-sidebar-accent text-xs text-sidebar-accent-foreground"
+      />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium text-sidebar-foreground">
           {displayName}
@@ -129,6 +137,28 @@ export function UserMenu({ variant = 'compact', collapsed = false, className }: 
       ) : (
         <DropdownMenuTrigger asChild>{sidebarTrigger}</DropdownMenuTrigger>
       )
+    ) : variant === 'marketing' ? (
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            'flex items-center gap-2.5 rounded-xl px-2 py-1.5 text-sm font-semibold text-slate-800 outline-none transition-colors hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-primary/30',
+            className,
+          )}
+          aria-label={`User menu: ${displayName}`}
+        >
+          <UserAvatar
+            displayName={displayFields.displayName}
+            name={user.name}
+            email={user.email}
+            image={avatarUrl}
+            className="h-8 w-8 shrink-0 border border-slate-200"
+            fallbackClassName="bg-primary/10 text-xs text-primary"
+          />
+          <span className="max-w-[9rem] truncate sm:max-w-[11rem]">{displayName}</span>
+          <ChevronsUpDown className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+        </button>
+      </DropdownMenuTrigger>
     ) : (
       <DropdownMenuTrigger asChild>
         <button
@@ -138,12 +168,14 @@ export function UserMenu({ variant = 'compact', collapsed = false, className }: 
             className,
           )}
         >
-          <Avatar className="h-9 w-9 border border-border">
-            <AvatarImage src={user.image ?? undefined} alt={displayName} />
-            <AvatarFallback className="bg-primary/15 text-xs text-primary">
-              {initials(user.name, user.email)}
-            </AvatarFallback>
-          </Avatar>
+          <UserAvatar
+            displayName={displayFields.displayName}
+            name={user.name}
+            email={user.email}
+            image={avatarUrl}
+            className="h-9 w-9 border border-border"
+            fallbackClassName="bg-primary/15 text-xs text-primary"
+          />
         </button>
       </DropdownMenuTrigger>
     );
@@ -162,14 +194,41 @@ export function UserMenu({ variant = 'compact', collapsed = false, className }: 
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/profile">
-            <UserRound className="h-4 w-4" />
+          <Link href="/account">
+            <LayoutGrid className="h-4 w-4" />
+            {variant === 'marketing' ? 'Account' : 'Account settings'}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/account#profile">
+            <User className="h-4 w-4" />
             Profile
           </Link>
         </DropdownMenuItem>
-        <ThemeToggleMenu />
+        <DropdownMenuItem asChild>
+          <Link href="/account#billing">
+            <CreditCard className="h-4 w-4" />
+            Billing
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/dashboard">
+            <BookOpen className="h-4 w-4" />
+            My Journal
+          </Link>
+        </DropdownMenuItem>
+        {showAdminLink ? (
+          <DropdownMenuItem asChild>
+            <Link href="/admin">
+              <Shield className="h-4 w-4" />
+              Admin
+            </Link>
+          </DropdownMenuItem>
+        ) : null}
+        {variant === 'marketing' ? null : <ThemeToggleMenu />}
         <DropdownMenuSeparator />
         <DropdownMenuItem
+          variant="destructive"
           onClick={async () => {
             await signOut();
             router.push('/sign-in');

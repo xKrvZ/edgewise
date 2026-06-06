@@ -6,7 +6,7 @@ import {
   IsString,
   IsUUID,
 } from 'class-validator';
-import { PageQueryDto } from '@/database/dtos/page.dto';
+import { PaginationDto } from '@/database/dtos/filter.dto';
 import {
   MARKET_TYPES,
   TRADE_DIRECTIONS,
@@ -14,7 +14,7 @@ import {
   type TradeDirection,
 } from '../constants/trade.constants';
 
-export class TradeQueryDto extends PageQueryDto {
+export class TradeQueryDto extends PaginationDto {
   @ApiPropertyOptional({ example: 'AAPL' })
   @IsOptional()
   @IsString()

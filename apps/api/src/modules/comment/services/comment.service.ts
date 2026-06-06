@@ -16,6 +16,14 @@ import {
 } from '../dtos/comment.dto';
 import type { CreateCommentDto } from '../dtos/create-comment.dto';
 import type { UpdateCommentDto } from '../dtos/update-comment.dto';
+import { PrivacyUserDao } from '@/modules/privacy/daos/privacy-user.dao';
+import {
+  collectAvatarSources,
+  resolveAvatarUrlsForUsers,
+  resolveUserAvatarUrl,
+} from '@/modules/privacy/utils/resolve-user-avatar.util';
+import { sanitizeAuthorPresentation } from '@/modules/privacy/utils/sanitize-user.util';
+import { StorageService } from '@/modules/storage/storage.service';
 import { CommentPermissionService } from './comment-permission.service';
 
 @Injectable()
@@ -24,6 +32,8 @@ export class CommentService {
     private readonly commentDao: CommentDao,
     private readonly permissionService: CommentPermissionService,
     private readonly notificationDao: NotificationDao,
+    private readonly privacyUserDao: PrivacyUserDao,
+    private readonly storage: StorageService,
   ) {}
 
   async getAccess(
@@ -75,7 +85,20 @@ export class CommentService {
     }
 
     const rows = await this.commentDao.findByTarget(targetType, targetId);
-    return this.buildThread(rows);
+    const deletedUserIds = await this.privacyUserDao.findDeletedUserIds(
+      rows.map((row) => row.authorId),
+    );
+    const avatarUrls = await resolveAvatarUrlsForUsers(
+      this.storage,
+      collectAvatarSources(
+        rows.map((row) => ({
+          userId: row.authorId,
+          userImage: row.userImage,
+          avatarStorageKey: row.avatarStorageKey,
+        })),
+      ),
+    );
+    return this.buildThread(rows, deletedUserIds, avatarUrls);
   }
 
   async create(userId: string, dto: CreateCommentDto): Promise<CommentDto> {
@@ -155,7 +178,7 @@ export class CommentService {
       isReply: !!dto.parentId,
     });
 
-    return this.toDto(row);
+    return this.toDto(row, new Set<string>());
   }
 
   async update(
@@ -172,7 +195,7 @@ export class CommentService {
     if (!row) {
       throw new NotFoundException(`Comment ${id} not found`);
     }
-    return this.toDto(row);
+    return this.toDto(row, new Set<string>());
   }
 
   async remove(id: string, userId: string): Promise<void> {
@@ -248,6 +271,8 @@ export class CommentService {
       id: string;
       authorId: string;
       authorName: string;
+      userImage: string | null;
+      avatarStorageKey: string | null;
       targetType: string;
       targetId: string;
       communityId: string;
@@ -256,15 +281,25 @@ export class CommentService {
       createdAt: Date;
       updatedAt: Date;
     }>,
+    deletedUserIds: ReadonlySet<string>,
+    avatarUrls: Map<string, string | null>,
   ): CommentDto[] {
     const byId = new Map<string, CommentDto>();
     const roots: CommentDto[] = [];
 
     for (const row of rows) {
+      const author = sanitizeAuthorPresentation(
+        row.authorId,
+        row.authorName,
+        deletedUserIds,
+      );
       byId.set(row.id, {
         id: row.id,
-        authorId: row.authorId,
-        authorName: row.authorName,
+        authorId: author.authorId,
+        authorName: author.authorName,
+        authorImage: deletedUserIds.has(row.authorId)
+          ? null
+          : (avatarUrls.get(row.authorId) ?? null),
         targetType: row.targetType as CommentTargetType,
         targetId: row.targetId,
         communityId: row.communityId,
@@ -292,22 +327,40 @@ export class CommentService {
     return roots;
   }
 
-  private toDto(row: {
-    id: string;
-    authorId: string;
-    authorName: string;
-    targetType: string;
-    targetId: string;
-    communityId: string;
-    parentId: string | null;
-    body: string;
-    createdAt: Date;
-    updatedAt: Date;
-  }): CommentDto {
+  private async toDto(
+    row: {
+      id: string;
+      authorId: string;
+      authorName: string;
+      userImage: string | null;
+      avatarStorageKey: string | null;
+      targetType: string;
+      targetId: string;
+      communityId: string;
+      parentId: string | null;
+      body: string;
+      createdAt: Date;
+      updatedAt: Date;
+    },
+    deletedUserIds: ReadonlySet<string>,
+  ): Promise<CommentDto> {
+    const author = sanitizeAuthorPresentation(
+      row.authorId,
+      row.authorName,
+      deletedUserIds,
+    );
+    const authorImage = deletedUserIds.has(row.authorId)
+      ? null
+      : await resolveUserAvatarUrl(this.storage, {
+          userImage: row.userImage,
+          avatarStorageKey: row.avatarStorageKey,
+        });
+
     return {
       id: row.id,
-      authorId: row.authorId,
-      authorName: row.authorName,
+      authorId: author.authorId,
+      authorName: author.authorName,
+      authorImage,
       targetType: row.targetType as CommentTargetType,
       targetId: row.targetId,
       communityId: row.communityId,

@@ -22,7 +22,7 @@ export function StatCard({
 }: StatCardProps) {
   return (
     <Card className="transition-[border-color,box-shadow] duration-150 hover:border-primary/20 hover:shadow-sm">
-      <CardContent className="flex flex-col gap-2 pt-6">
+      <CardContent className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {label}

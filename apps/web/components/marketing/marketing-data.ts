@@ -319,7 +319,7 @@ export const FAQ_ITEMS: FaqItem[] = [
       'Edgewise includes a backtesting journal so you can log simulated trades alongside live ones. Compare backtest vs. live performance, tag setups across both, and build playbooks from validated data.',
   },
   {
-    question: 'How is Edgewise different from TradeZella or Tradervue?',
+    question: 'How is Edgewise different from Tradervue or traditional journals?',
     answer:
       'Edgewise combines trade journaling, tick-by-tick replay, AI trade review, prop firm tracking, community tools, and backtesting in one platform — with a generous free tier. See our detailed comparison on the pricing page for a feature-by-feature breakdown.',
   },
@@ -462,14 +462,14 @@ export interface ComparisonFeature {
   name: string;
   description?: string;
   edgewise: ComparisonValue;
-  tradezella: ComparisonValue;
+  otherJournal: ComparisonValue;
   tradervue: ComparisonValue;
   edgewonk: ComparisonValue;
 }
 
 export const COMPETITOR_LABELS = {
   edgewise: 'Edgewise',
-  tradezella: 'TradeZella',
+  otherJournal: 'Other journals',
   tradervue: 'Tradervue',
   edgewonk: 'Edgewonk-style',
 } as const;
@@ -478,63 +478,63 @@ export const COMPETITOR_COMPARISON: ComparisonFeature[] = [
   {
     name: 'Trade journal & logging',
     edgewise: true,
-    tradezella: true,
+    otherJournal: true,
     tradervue: true,
     edgewonk: true,
   },
   {
     name: 'Trade replay',
     edgewise: true,
-    tradezella: true,
+    otherJournal: true,
     tradervue: 'limited',
     edgewonk: false,
   },
   {
     name: 'AI trade review',
     edgewise: true,
-    tradezella: 'partial',
+    otherJournal: 'partial',
     tradervue: false,
     edgewonk: false,
   },
   {
     name: 'Trading analytics dashboard',
     edgewise: true,
-    tradezella: true,
+    otherJournal: true,
     tradervue: true,
     edgewonk: 'partial',
   },
   {
     name: 'Prop firm account tracking',
     edgewise: true,
-    tradezella: 'partial',
+    otherJournal: 'partial',
     tradervue: 'partial',
     edgewonk: false,
   },
   {
     name: 'Community & mentorship',
     edgewise: true,
-    tradezella: 'partial',
+    otherJournal: 'partial',
     tradervue: false,
     edgewonk: false,
   },
   {
     name: 'Backtesting journal',
     edgewise: true,
-    tradezella: 'partial',
+    otherJournal: 'partial',
     tradervue: 'limited',
     edgewonk: false,
   },
   {
     name: 'Free tier',
     edgewise: true,
-    tradezella: 'limited',
+    otherJournal: 'limited',
     tradervue: 'limited',
     edgewonk: false,
   },
   {
     name: 'Playbooks & mistake tracking',
     edgewise: true,
-    tradezella: true,
+    otherJournal: true,
     tradervue: 'partial',
     edgewonk: true,
   },

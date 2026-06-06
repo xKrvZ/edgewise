@@ -1,4 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { InstrumentService } from '@/modules/instrument/services/instrument.service';
 import {
   CANDLE_INTERVALS,
   type CandleInterval,
@@ -18,6 +19,7 @@ export class MarketDataService {
   constructor(
     @Inject(MARKET_DATA_PROVIDER)
     private readonly provider: MarketDataProvider,
+    private readonly instrumentService: InstrumentService,
   ) {}
 
   get providerId(): string {
@@ -39,5 +41,25 @@ export class MarketDataService {
     interval: CandleInterval,
   ): Promise<Candle[]> {
     return this.provider.getCandles({ symbol, from, to, interval });
+  }
+
+  /**
+   * Fetches candles for a logged trade symbol by resolving the catalog entry
+   * to the provider feed symbol (trade.symbol → instrument → providerSymbol).
+   */
+  async getCandlesForTradeSymbol(
+    tradeSymbol: string,
+    from: number,
+    to: number,
+    interval: CandleInterval,
+  ): Promise<Candle[]> {
+    const providerSymbol =
+      await this.instrumentService.resolveProviderSymbol(tradeSymbol);
+    if (!providerSymbol) {
+      throw new NotFoundException(
+        `No market-data mapping for trade symbol "${tradeSymbol}"`,
+      );
+    }
+    return this.getCandles(providerSymbol, from, to, interval);
   }
 }

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Insertable, Selectable } from 'kysely';
+import { resolveUserDisplayLabel } from '@/common/utils/resolve-user-display.util';
 import { KyselyDao } from '@/database/kysely/kysely.dao';
 import type { CommunityMember } from '@/database/types/db';
 
@@ -11,6 +12,8 @@ export interface MemberWithProfile {
   joinedAt: Date;
   displayName: string;
   userName: string | null;
+  userImage: string | null;
+  avatarStorageKey: string | null;
 }
 
 @Injectable()
@@ -52,6 +55,9 @@ export class CommunityMemberDao extends KyselyDao<CommunityMemberDao> {
         'community_member.joinedAt as joinedAt',
         'trader_profile.displayName as displayName',
         'user.name as userName',
+        'user.email as userEmail',
+        'user.image as userImage',
+        'trader_profile.avatarStorageKey as avatarStorageKey',
       ])
       .where('community_member.communityId', '=', communityId)
       .orderBy('community_member.joinedAt', 'asc')
@@ -63,8 +69,14 @@ export class CommunityMemberDao extends KyselyDao<CommunityMemberDao> {
       userId: row.userId,
       role: row.role,
       joinedAt: row.joinedAt,
-      displayName: row.displayName ?? row.userName ?? 'Trader',
+      displayName: resolveUserDisplayLabel({
+        displayName: row.displayName,
+        name: row.userName,
+        email: row.userEmail,
+      }),
       userName: row.userName,
+      userImage: row.userImage,
+      avatarStorageKey: row.avatarStorageKey,
     }));
   }
 

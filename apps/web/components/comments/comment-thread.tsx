@@ -1,6 +1,7 @@
 'use client';
 
 import { CommentForm } from '@/components/comments/comment-form';
+import { UserAvatar } from '@/components/shared/user-avatar';
 import { Button } from '@/components/ui/button';
 import { useSession } from '@/lib/auth-client';
 import { api } from '@/lib/api-client';
@@ -114,9 +115,16 @@ function CommentItem({
     <div className={depth > 0 ? 'ml-6 border-l border-border pl-4' : undefined}>
       <div className="rounded-lg border border-border bg-card p-3">
         <div className="mb-1 flex items-start justify-between gap-2">
-          <div>
-            <p className="text-sm font-medium">{comment.authorName}</p>
-            <p className="text-xs text-muted-foreground">{formatDateTime(comment.createdAt)}</p>
+          <div className="flex min-w-0 items-start gap-2.5">
+            <UserAvatar
+              name={comment.authorName}
+              image={comment.authorImage}
+              className="mt-0.5 h-8 w-8 shrink-0"
+            />
+            <div className="min-w-0">
+              <p className="text-sm font-medium">{comment.authorName}</p>
+              <p className="text-xs text-muted-foreground">{formatDateTime(comment.createdAt)}</p>
+            </div>
           </div>
           {canDelete && (
             <Button

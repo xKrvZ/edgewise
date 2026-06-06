@@ -14,7 +14,7 @@ import { TradeMetricsBar } from '@/components/trades/trade-metrics-bar';
 import { TradesFilterBar } from '@/components/trades/trades-filter-bar';
 import { TradesTable } from '@/components/trades/trades-table';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardTableContent } from '@/components/ui/card';
 import { api } from '@/lib/api-client';
 import { useQuery } from '@/lib/hooks/use-query';
 import { useReferenceData } from '@/lib/hooks/use-reference-data';
@@ -57,6 +57,8 @@ export default function TradesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [cursor, setCursor] = useState<string | undefined>();
+
   const filters: TradeFilters = useMemo(
     () => ({
       symbol: filterStore.symbol || undefined,
@@ -67,7 +69,7 @@ export default function TradesPage() {
       accountId: selectedAccountId ?? undefined,
       dateFrom: from ?? undefined,
       dateTo: to ?? undefined,
-      page: filterStore.page,
+      cursor,
       limit: filterStore.limit,
     }),
     [
@@ -76,13 +78,29 @@ export default function TradesPage() {
       filterStore.marketType,
       filterStore.playbookId,
       filterStore.tagId,
-      filterStore.page,
       filterStore.limit,
       selectedAccountId,
       from,
       to,
+      cursor,
     ],
   );
+
+  const filterKey = JSON.stringify({
+    symbol: filters.symbol,
+    direction: filters.direction,
+    marketType: filters.marketType,
+    playbookId: filters.playbookId,
+    tagId: filters.tagId,
+    accountId: filters.accountId,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+    limit: filters.limit,
+  });
+
+  useEffect(() => {
+    setCursor(undefined);
+  }, [filterKey]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -99,8 +117,11 @@ export default function TradesPage() {
     );
   }, [filters.symbol, filters.direction, filters.marketType, filters.playbookId, filters.tagId]);
 
-  const filterKey = JSON.stringify(filters);
-  const { data, isLoading, error, refetch } = useQuery(() => api.trades.list(filters), [filterKey]);
+  const filterKeyForQuery = JSON.stringify(filters);
+  const { data, isLoading, error, refetch } = useQuery(
+    () => api.trades.list(filters),
+    [filterKeyForQuery],
+  );
 
   const playbookNames = useMemo(
     () => Object.fromEntries(playbooks.map((p) => [p.id, p.name])),
@@ -111,15 +132,18 @@ export default function TradesPage() {
     () => (data?.items ?? []).map((t) => withTradeRelations(t, { tags, mistakes })),
     [data, tags, mistakes],
   );
-  const total = data?.total ?? 0;
-  const pageCount = data?.pageCount ?? 1;
+  const hasPreviousPage = Boolean(data?.previousCursor);
+  const hasNextPage = Boolean(data?.nextCursor);
 
   const summary = useMemo(
-    () => summarizeTrades(trades, total, pageCount),
-    [trades, total, pageCount],
+    () =>
+      summarizeTrades(trades, {
+        isSinglePage: !hasPreviousPage && !hasNextPage,
+      }),
+    [trades, hasPreviousPage, hasNextPage],
   );
   const featuredTrade = summary.mostRecent;
-  const showTable = total > 1;
+  const showTable = trades.length > 1;
 
   function openCreate() {
     setEditing(undefined);
@@ -203,9 +227,9 @@ export default function TradesPage() {
           )}
 
           {showTable && (
-            <ListSection title="All trades" countLabel={`${total} total`}>
+            <ListSection title="All trades" countLabel={`${trades.length} on this page`}>
               <Card>
-                <CardContent className="px-0">
+                <CardTableContent>
                   <TradesTable
                     trades={trades}
                     playbookNames={playbookNames}
@@ -213,31 +237,30 @@ export default function TradesPage() {
                     onEdit={openEdit}
                     onDelete={setDeleting}
                   />
-                </CardContent>
+                </CardTableContent>
               </Card>
             </ListSection>
           )}
 
           <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
             <span className="tabular-nums">
-              Page {filterStore.page} of {pageCount} · {total} trade
-              {total === 1 ? '' : 's'}
+              {trades.length} trade{trades.length === 1 ? '' : 's'} on this page
             </span>
-            {pageCount > 1 && (
+            {(hasPreviousPage || hasNextPage) && (
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={filterStore.page <= 1}
-                  onClick={() => filterStore.setPage(filterStore.page - 1)}
+                  disabled={!hasPreviousPage}
+                  onClick={() => setCursor(data?.previousCursor ?? undefined)}
                 >
                   Previous
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={filterStore.page >= pageCount}
-                  onClick={() => filterStore.setPage(filterStore.page + 1)}
+                  disabled={!hasNextPage}
+                  onClick={() => setCursor(data?.nextCursor ?? undefined)}
                 >
                   Next
                 </Button>

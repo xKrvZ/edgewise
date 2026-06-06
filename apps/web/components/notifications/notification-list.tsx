@@ -1,5 +1,6 @@
 'use client';
 
+import { UserAvatar } from '@/components/shared/user-avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { api } from '@/lib/api-client';
@@ -71,14 +72,21 @@ export function NotificationList({
                 type="button"
                 onClick={() => onSelect(notification)}
                 className={cn(
-                  'w-full px-3 py-3 text-left transition-colors hover:bg-muted/50',
+                  'flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/50',
                   !notification.read && 'bg-primary/5',
                 )}
               >
-                <p className="text-sm leading-snug">{notificationLabel(notification)}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {notification.communityName} · {formatDateTime(notification.createdAt)}
-                </p>
+                <UserAvatar
+                  name={notification.actorName}
+                  image={notification.actorImage}
+                  className="mt-0.5 h-8 w-8 shrink-0"
+                />
+                <span className="min-w-0 flex-1">
+                  <p className="text-sm leading-snug">{notificationLabel(notification)}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {notification.communityName} · {formatDateTime(notification.createdAt)}
+                  </p>
+                </span>
               </button>
             </li>
           ))}

@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 import type { Selectable } from 'kysely';
 import type { JournalEntry } from '@/database/types/db';
+import { PaginationDto } from '@/database/dtos/filter.dto';
 import { MAX_JOURNAL_ENTRY_TRADES } from '../constants/journal-entry.constants';
 
 export class JournalEntryTradeSummaryDto {
@@ -125,7 +126,7 @@ export class UpdateJournalEntryDto {
   mood?: string;
 }
 
-export class JournalEntryQueryDto {
+export class JournalEntryQueryDto extends PaginationDto {
   @ApiPropertyOptional({ type: String, format: 'date' })
   @IsOptional()
   @IsDateString()

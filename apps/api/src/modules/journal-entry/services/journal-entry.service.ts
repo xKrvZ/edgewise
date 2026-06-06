@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { TradeDao } from '@/modules/trade/daos/trade.dao';
 import { JournalEntryDao } from '../daos/journal-entry.dao';
 import {
@@ -25,13 +26,25 @@ export class JournalEntryService {
   async list(
     userId: string,
     query: JournalEntryQueryDto,
-  ): Promise<JournalEntryDto[]> {
-    const rows = await this.journalEntryDao.findAllByUser(userId, {
-      dateFrom: query.dateFrom,
-      dateTo: query.dateTo,
-      tradeId: query.tradeId,
+  ): Promise<PaginatedDto<JournalEntryDto>> {
+    const page = await this.journalEntryDao.findCursorPaged(
+      userId,
+      {
+        dateFrom: query.dateFrom,
+        dateTo: query.dateTo,
+        tradeId: query.tradeId,
+      },
+      {
+        cursor: query.cursor,
+        limit: query.limit ?? 25,
+      },
+    );
+
+    return new PaginatedDto({
+      items: await this.toDtosWithTrades(userId, page.items),
+      previousCursor: page.previousCursor,
+      nextCursor: page.nextCursor,
     });
-    return this.toDtosWithTrades(userId, rows);
   }
 
   async getById(id: string, userId: string): Promise<JournalEntryDto> {

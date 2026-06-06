@@ -3,10 +3,13 @@
  * Keep in sync when adding new authenticated app pages.
  */
 export const PROTECTED_ROUTE_PREFIXES = [
+  '/account',
   '/accounts',
+  '/admin',
   '/ai-review',
   '/analytics',
   '/backtesting',
+  '/billing',
   '/community',
   '/dashboard',
   '/journal',
@@ -17,10 +20,23 @@ export const PROTECTED_ROUTE_PREFIXES = [
   '/trades',
 ] as const;
 
-export const DEFAULT_AUTHENTICATED_REDIRECT = '/dashboard';
+/** Routes authenticated users can access without an active subscription. */
+export const SUBSCRIPTION_EXEMPT_ROUTE_PREFIXES = [
+  '/account',
+  '/admin',
+  '/billing',
+] as const;
+
+export const DEFAULT_AUTHENTICATED_REDIRECT = '/account';
 
 export function isProtectedRoute(pathname: string): boolean {
   return PROTECTED_ROUTE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+export function isSubscriptionExemptRoute(pathname: string): boolean {
+  return SUBSCRIPTION_EXEMPT_ROUTE_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }

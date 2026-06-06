@@ -1,7 +1,9 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Logger, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '@/redis/constants/redis.constants';
+
+const logger = new Logger('RedisModule');
 
 @Global()
 @Module({
@@ -15,12 +17,21 @@ import { REDIS_CLIENT } from '@/redis/constants/redis.constants';
         const password = configService.get<string>('redis.password');
         const db = configService.get<number>('redis.db');
 
-        return new Redis({
+        const client = new Redis({
           port,
           host,
           password,
           db,
+          // Avoid crashing the process when Redis is down (e.g. Docker not running).
+          maxRetriesPerRequest: null,
+          retryStrategy: (times) => Math.min(times * 200, 5_000),
         });
+
+        client.on('error', (err) => {
+          logger.warn(`Redis unavailable: ${err.message}`);
+        });
+
+        return client;
       },
       inject: [ConfigService],
     },

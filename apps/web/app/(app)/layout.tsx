@@ -1,6 +1,7 @@
 import { AppContent } from '@/components/app/app-content';
 import { Sidebar } from '@/components/app/sidebar';
 import { AuthGuard } from '@/components/auth/auth-guard';
+import { SubscriptionGuard } from '@/components/auth/subscription-guard';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { ReactNode } from 'react';
 import { Suspense } from 'react';
@@ -16,10 +17,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         }
       >
         <AuthGuard>
-          <div className="flex h-screen overflow-hidden bg-background">
-            <Sidebar />
-            <AppContent>{children}</AppContent>
-          </div>
+          <SubscriptionGuard>
+            <div className="flex h-screen overflow-hidden bg-background">
+              <Sidebar />
+              <AppContent>{children}</AppContent>
+            </div>
+          </SubscriptionGuard>
         </AuthGuard>
       </Suspense>
     </TooltipProvider>

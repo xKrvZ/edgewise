@@ -10,9 +10,27 @@ import cookieConfig from "@/config/cookie.config";
 import { sendEmail } from "@/modules/email/utils/send-email";
 import { ROLES } from "@/auth/constants/roles.constants";
 import { ac, roles } from "@/auth/permissions";
+import { createPolarAuthPlugin } from "@/auth/polar.plugin";
+import { runPlatformMetricsTask } from "@/modules/platform-metrics/bridge/platform-metrics.bridge";
+
+const polarAuthPlugin = createPolarAuthPlugin();
 
 export const authOptions: BetterAuthOptions = {
     basePath: '/api/auth',
+    databaseHooks: {
+        user: {
+            create: {
+                after: async (user) => {
+                    void runPlatformMetricsTask((service) =>
+                        service.recordUserRegistered({
+                            id: user.id,
+                            createdAt: user.createdAt,
+                        }),
+                    );
+                },
+            },
+        },
+    },
     emailAndPassword: {
         enabled: true,
         sendResetPassword: async ({ user, url, token }, request) => {
@@ -107,7 +125,8 @@ The Edgewise Team`,
         admin({
             ac,
             roles,
-            adminRoles: [ROLES.ADMINISTRATOR]
+            defaultRole: 'user',
+            adminRoles: [ROLES.ADMINISTRATOR],
         }),
         jwt(),
         emailOTP({
@@ -195,6 +214,7 @@ The Edgewise Team`,
             consentPage: "/consent",
             allowDynamicClientRegistration: true,
         }),
+        ...(polarAuthPlugin ? [polarAuthPlugin] : []),
     ],
 } as any;
 

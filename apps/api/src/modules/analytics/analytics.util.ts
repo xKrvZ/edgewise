@@ -331,7 +331,7 @@ export function drawdown(dailyPnl: DailyPnl[]): DrawdownSummary {
   return { maxDrawdown: maxDd, maxDrawdownPct: maxDdPct, curve };
 }
 
-export interface ZellaBreakdown {
+export interface TraderScoreBreakdown {
   winRate: number;
   profitFactor: number;
   avgWinLoss: number;
@@ -340,7 +340,7 @@ export interface ZellaBreakdown {
   consistency: number;
 }
 
-export interface ZellaInputs {
+export interface TraderScoreInputs {
   winRate: number; // 0-1
   profitFactor: number | null;
   avgWinner: number;
@@ -362,9 +362,9 @@ const clamp100 = (n: number): number => Math.max(0, Math.min(100, n));
  * avgWin/avgLoss 3.0, recoveryFactor 3.0. Drawdown score is 100 minus the
  * drawdown %. Consistency is 1 - stddev/|mean| of daily P&L (clamped).
  */
-export function zellaScore(inputs: ZellaInputs): {
+export function computeTraderScore(inputs: TraderScoreInputs): {
   score: number;
-  breakdown: ZellaBreakdown;
+  breakdown: TraderScoreBreakdown;
 } {
   const winRateScore = clamp100(inputs.winRate * 100);
 
@@ -397,7 +397,7 @@ export function zellaScore(inputs: ZellaInputs): {
       ? 0
       : clamp100((1 - stdev(inputs.dailyPnl) / m) * 100);
 
-  const breakdown: ZellaBreakdown = {
+  const breakdown: TraderScoreBreakdown = {
     winRate: round(winRateScore, 1),
     profitFactor: round(profitFactorScore, 1),
     avgWinLoss: round(avgWinLossScore, 1),

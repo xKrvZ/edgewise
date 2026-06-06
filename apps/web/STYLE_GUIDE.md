@@ -77,7 +77,7 @@ chart props.
 | `--primary-foreground` | `238 50% 9%` | `238 100% 99%` |
 
 Use for: primary buttons, links, focus rings, active sidebar item, text
-selection, KPI gauges (win-rate/profit-factor donuts, Zella radar/score).
+selection, KPI gauges (win-rate/profit-factor donuts, trader score radar).
 **Do not** use to color a P&L number, candle, or up/down bar.
 
 ### 2.3 Status & data semantics

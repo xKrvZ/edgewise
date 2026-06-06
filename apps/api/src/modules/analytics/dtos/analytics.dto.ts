@@ -48,7 +48,7 @@ export class WorstMistakeDto {
   @Expose() @ApiProperty({ example: -940.25 }) pnlImpact: number;
 }
 
-export class ZellaBreakdownDto {
+export class TraderScoreBreakdownDto {
   @Expose() @ApiProperty({ example: 60, description: 'Sub-score 0-100' }) winRate: number;
   @Expose() @ApiProperty({ example: 75, description: 'Sub-score 0-100' }) profitFactor: number;
   @Expose() @ApiProperty({ example: 50, description: 'Sub-score 0-100' }) avgWinLoss: number;
@@ -84,12 +84,12 @@ export class AnalyticsOverviewDto {
   @Expose() @ApiProperty({ example: 940.5, description: 'Max peak-to-trough drop (absolute)' }) maxDrawdown: number;
   @Expose() @ApiProperty({ example: 12.5, nullable: true, description: 'Max drawdown as % of peak' }) maxDrawdownPct: number | null;
   @Expose() @ApiProperty({ example: 2.1, nullable: true, description: 'netPnl / maxDrawdown' }) recoveryFactor: number | null;
-  @Expose() @ApiProperty({ example: 68, description: 'Composite health score 0-100' }) zellaScore: number;
+  @Expose() @ApiProperty({ example: 68, description: 'Composite trader health score 0-100' }) traderScore: number;
 
   @Expose()
-  @ApiProperty({ type: ZellaBreakdownDto })
-  @Type(() => ZellaBreakdownDto)
-  zellaBreakdown: ZellaBreakdownDto;
+  @ApiProperty({ type: TraderScoreBreakdownDto })
+  @Type(() => TraderScoreBreakdownDto)
+  traderScoreBreakdown: TraderScoreBreakdownDto;
 
   @Expose() @ApiProperty({ example: 20, description: 'Distinct trading days' }) tradingDays: number;
   @Expose() @ApiProperty({ example: 12, description: 'Days with net positive P&L' }) profitableDays: number;

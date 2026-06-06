@@ -43,7 +43,7 @@ export default function JournalPage() {
   const [deleting, setDeleting] = useState<JournalEntry | undefined>(undefined);
 
   const entries = useMemo(() => {
-    const list = data ?? [];
+    const list = data?.items ?? [];
     return [...list].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [data]);
 

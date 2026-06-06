@@ -48,6 +48,13 @@ export const ACCOUNT_CURRENCIES: AccountCurrency[] = [
 export const CHALLENGE_STATUSES: ChallengeStatus[] = ['active', 'passed', 'failed'];
 
 // ==================== Pagination ====================
+export interface Paginated<T> {
+  items: T[];
+  previousCursor: string | null;
+  nextCursor: string | null;
+}
+
+/** @deprecated Offset pagination — only used where cursor is not yet adopted. */
 export interface Page<T> {
   items: T[];
   total: number;
@@ -64,6 +71,8 @@ export interface RawPage<T> {
   page?: number;
   limit?: number;
   pageCount?: number;
+  previousCursor?: string | null;
+  nextCursor?: string | null;
 }
 
 // ==================== Account ====================
@@ -278,13 +287,26 @@ export interface TradeFilters {
   accountId?: string;
   direction?: TradeDirection;
   marketType?: MarketType;
-  page?: number;
+  cursor?: string;
   limit?: number;
 }
 
 // ==================== Tag / Mistake ====================
 export type TagCategory = 'setup' | 'mistake' | 'custom';
 export const TAG_CATEGORIES: TagCategory[] = ['setup', 'mistake', 'custom'];
+
+// ==================== Instruments ====================
+export interface Instrument {
+  id: string;
+  symbol: string;
+  name: string;
+  assetClass: MarketType;
+  exchange: string | null;
+  currency: string | null;
+  providerSymbol: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
 
 export interface Tag {
   id: string;
@@ -509,6 +531,8 @@ export interface JournalEntryFilters {
   dateFrom?: string;
   dateTo?: string;
   tradeId?: string;
+  cursor?: string;
+  limit?: number;
 }
 
 // ==================== Analytics ====================
@@ -532,7 +556,7 @@ export interface MistakeRef {
   pnlImpact: number;
 }
 
-export interface ZellaBreakdown {
+export interface TraderScoreBreakdown {
   winRate: number;
   profitFactor: number;
   avgWinLoss: number;
@@ -565,8 +589,8 @@ export interface AnalyticsOverview {
   maxDrawdown: number;
   maxDrawdownPct: number | null;
   recoveryFactor: number | null;
-  zellaScore: number;
-  zellaBreakdown: ZellaBreakdown;
+  traderScore: number;
+  traderScoreBreakdown: TraderScoreBreakdown;
   tradingDays: number;
   profitableDays: number;
   greenDayRate: number;
@@ -694,6 +718,7 @@ export interface CommunityMember {
   id: string;
   userId: string;
   displayName: string;
+  avatarUrl: string | null;
   role: CommunityMemberRole;
   joinedAt: string;
 }
@@ -735,6 +760,7 @@ export interface CommunityLeaderboardEntry {
   rank: number;
   userId: string;
   displayName: string;
+  avatarUrl: string | null;
   role: CommunityMemberRole;
   netPnl: number;
   winRate: number;
@@ -765,6 +791,7 @@ export interface Comment {
   id: string;
   authorId: string;
   authorName: string;
+  authorImage: string | null;
   targetType: CommentTargetType;
   targetId: string;
   communityId: string;
@@ -807,6 +834,7 @@ export interface Notification {
   type: NotificationType;
   actorId: string;
   actorName: string;
+  actorImage: string | null;
   commentId: string;
   targetType: CommentTargetType;
   targetId: string;
@@ -821,6 +849,6 @@ export interface UnreadCount {
 }
 
 export interface NotificationQuery {
-  page?: number;
+  cursor?: string;
   limit?: number;
 }

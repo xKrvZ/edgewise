@@ -1,11 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import type { Insertable, Selectable, Updateable } from 'kysely';
+import { resolveUserDisplayLabel } from '@/common/utils/resolve-user-display.util';
 import { KyselyDao } from '@/database/kysely/kysely.dao';
 import type { Comment } from '@/database/types/db';
 import type { CommentTargetType } from '../constants/comment.constants';
 
 export interface CommentWithAuthor extends Selectable<Comment> {
   authorName: string;
+  userImage: string | null;
+  avatarStorageKey: string | null;
 }
 
 @Injectable()
@@ -24,6 +27,9 @@ export class CommentDao extends KyselyDao<CommentDao> {
       .select([
         'trader_profile.displayName as profileDisplayName',
         'user.name as userName',
+        'user.email as userEmail',
+        'user.image as userImage',
+        'trader_profile.avatarStorageKey as avatarStorageKey',
       ])
       .where('comment.targetType', '=', targetType)
       .where('comment.targetId', '=', targetId)
@@ -40,7 +46,13 @@ export class CommentDao extends KyselyDao<CommentDao> {
       body: row.body,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
-      authorName: row.profileDisplayName ?? row.userName ?? 'Trader',
+      authorName: resolveUserDisplayLabel({
+        displayName: row.profileDisplayName,
+        name: row.userName,
+        email: row.userEmail,
+      }),
+      userImage: row.userImage,
+      avatarStorageKey: row.avatarStorageKey,
     }));
   }
 
@@ -66,13 +78,25 @@ export class CommentDao extends KyselyDao<CommentDao> {
     const author = await this.kysely
       .selectFrom('user')
       .leftJoin('trader_profile', 'trader_profile.userId', 'user.id')
-      .select(['trader_profile.displayName as profileDisplayName', 'user.name as userName'])
+      .select([
+        'trader_profile.displayName as profileDisplayName',
+        'user.name as userName',
+        'user.email as userEmail',
+        'user.image as userImage',
+        'trader_profile.avatarStorageKey as avatarStorageKey',
+      ])
       .where('user.id', '=', row.authorId)
       .executeTakeFirst();
 
     return {
       ...row,
-      authorName: author?.profileDisplayName ?? author?.userName ?? 'Trader',
+      authorName: resolveUserDisplayLabel({
+        displayName: author?.profileDisplayName,
+        name: author?.userName,
+        email: author?.userEmail,
+      }),
+      userImage: author?.userImage ?? null,
+      avatarStorageKey: author?.avatarStorageKey ?? null,
     };
   }
 
@@ -95,13 +119,25 @@ export class CommentDao extends KyselyDao<CommentDao> {
     const author = await this.kysely
       .selectFrom('user')
       .leftJoin('trader_profile', 'trader_profile.userId', 'user.id')
-      .select(['trader_profile.displayName as profileDisplayName', 'user.name as userName'])
+      .select([
+        'trader_profile.displayName as profileDisplayName',
+        'user.name as userName',
+        'user.email as userEmail',
+        'user.image as userImage',
+        'trader_profile.avatarStorageKey as avatarStorageKey',
+      ])
       .where('user.id', '=', row.authorId)
       .executeTakeFirst();
 
     return {
       ...row,
-      authorName: author?.profileDisplayName ?? author?.userName ?? 'Trader',
+      authorName: resolveUserDisplayLabel({
+        displayName: author?.profileDisplayName,
+        name: author?.userName,
+        email: author?.userEmail,
+      }),
+      userImage: author?.userImage ?? null,
+      avatarStorageKey: author?.avatarStorageKey ?? null,
     };
   }
 

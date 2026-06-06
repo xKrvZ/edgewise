@@ -48,7 +48,7 @@ export function MarketingComparisonTable({
       <div className="-mx-4 overflow-x-auto rounded-none border-y border-slate-200 bg-white px-4 shadow-sm sm:mx-0 sm:rounded-3xl sm:border sm:px-0">
         <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
           <caption className="sr-only">
-            Feature comparison of Edgewise vs TradeZella, Tradervue, and Edgewonk-style journals
+            Feature comparison of Edgewise vs other journals, Tradervue, and Edgewonk-style journals
           </caption>
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50/80">
@@ -62,7 +62,7 @@ export function MarketingComparisonTable({
                 {COMPETITOR_LABELS.edgewise}
               </th>
               <th scope="col" className="px-4 py-4 text-center font-medium text-slate-600 sm:px-5">
-                {COMPETITOR_LABELS.tradezella}
+                {COMPETITOR_LABELS.otherJournal}
               </th>
               <th scope="col" className="px-4 py-4 text-center font-medium text-slate-600 sm:px-5">
                 {COMPETITOR_LABELS.tradervue}
@@ -73,7 +73,7 @@ export function MarketingComparisonTable({
             </tr>
           </thead>
           <tbody>
-            {COMPETITOR_COMPARISON.map(({ name, edgewise, tradezella, tradervue, edgewonk }, i) => (
+            {COMPETITOR_COMPARISON.map(({ name, edgewise, otherJournal, tradervue, edgewonk }, i) => (
               <tr
                 key={name}
                 className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}
@@ -88,7 +88,7 @@ export function MarketingComparisonTable({
                   <ComparisonCell value={edgewise} />
                 </td>
                 <td className={`px-4 text-center sm:px-5 ${compact ? 'py-3' : 'py-4'}`}>
-                  <ComparisonCell value={tradezella} />
+                  <ComparisonCell value={otherJournal} />
                 </td>
                 <td className={`px-4 text-center sm:px-5 ${compact ? 'py-3' : 'py-4'}`}>
                   <ComparisonCell value={tradervue} />

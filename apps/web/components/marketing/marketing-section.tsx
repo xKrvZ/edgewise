@@ -18,6 +18,10 @@ export const marketingHeroPaddingClass =
 /** Gap from section header block to content grid. */
 export const marketingSectionContentClass = 'mt-12';
 
+/** White card surface used on marketing and hub account pages. */
+export const marketingCardClass =
+  'rounded-2xl border-slate-200 bg-white shadow-sm';
+
 type MarketingSectionProps = ComponentPropsWithoutRef<'section'> & {
   compact?: boolean;
   hero?: boolean;

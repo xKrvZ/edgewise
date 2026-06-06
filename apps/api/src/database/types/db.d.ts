@@ -9,6 +9,8 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
+export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
+
 export type Json = JsonValue;
 
 export type JsonArray = JsonValue[];
@@ -114,6 +116,18 @@ export interface CommunityMember {
   joinedAt: Generated<Timestamp>;
   role: string;
   userId: string;
+}
+
+export interface Instrument {
+  assetClass: string;
+  createdAt: Generated<Timestamp>;
+  currency: string | null;
+  exchange: string | null;
+  id: Generated<string>;
+  isActive: Generated<boolean>;
+  name: string;
+  providerSymbol: string | null;
+  symbol: string;
 }
 
 export interface JournalEntry {
@@ -226,6 +240,28 @@ export interface OauthRefreshToken {
   sessionId: string | null;
   token: string;
   userId: string;
+}
+
+export interface PlatformDailyMetric {
+  metadata: Generated<Json>;
+  metric: string;
+  metricDate: Timestamp;
+  updatedAt: Generated<Timestamp>;
+  value: Generated<Numeric>;
+}
+
+export interface PlatformEvent {
+  actorUserId: string | null;
+  amountCents: Int8 | null;
+  createdAt: Generated<Timestamp>;
+  currency: string | null;
+  id: Generated<string>;
+  idempotencyKey: string;
+  occurredAt: Timestamp;
+  payload: Generated<Json>;
+  source: string;
+  type: string;
+  userId: string | null;
 }
 
 export interface Playbook {
@@ -381,10 +417,13 @@ export interface TradingSession {
 }
 
 export interface User {
+  anonymizedAt: Timestamp | null;
   banExpires: Timestamp | null;
   banned: boolean | null;
   banReason: string | null;
   createdAt: Generated<Timestamp>;
+  deletedAt: Timestamp | null;
+  deletionRequestedAt: Timestamp | null;
   email: string;
   emailVerified: boolean;
   id: string;
@@ -392,6 +431,18 @@ export interface User {
   name: string;
   role: string | null;
   updatedAt: Generated<Timestamp>;
+}
+
+export interface UserSubscription {
+  createdAt: Generated<Timestamp>;
+  currentPeriodEnd: Timestamp | null;
+  id: Generated<string>;
+  polarCustomerId: string | null;
+  polarSubscriptionId: string | null;
+  productId: string | null;
+  status: Generated<string>;
+  updatedAt: Generated<Timestamp>;
+  userId: string;
 }
 
 export interface Verification {
@@ -411,6 +462,7 @@ export interface DB {
   community: Community;
   community_invitation: CommunityInvitation;
   community_member: CommunityMember;
+  instrument: Instrument;
   journal_entry: JournalEntry;
   journal_entry_trade: JournalEntryTrade;
   jwks: Jwks;
@@ -420,6 +472,8 @@ export interface DB {
   oauthClient: OauthClient;
   oauthConsent: OauthConsent;
   oauthRefreshToken: OauthRefreshToken;
+  platform_daily_metric: PlatformDailyMetric;
+  platform_event: PlatformEvent;
   playbook: Playbook;
   playbook_checklist_item: PlaybookChecklistItem;
   screenshot: Screenshot;
@@ -433,5 +487,6 @@ export interface DB {
   trading_account: TradingAccount;
   trading_session: TradingSession;
   user: User;
+  user_subscription: UserSubscription;
   verification: Verification;
 }

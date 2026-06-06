@@ -23,7 +23,7 @@ import {
   R_BUCKETS,
   sharpeRatio,
   toStat,
-  zellaScore,
+  computeTraderScore,
   type AnalyticsMistakeRow,
   type AnalyticsTrade,
 } from '../analytics.util';
@@ -84,7 +84,7 @@ export class AnalyticsComputationService {
     const profitableDays = daily.filter((d) => d.pnl > 0).length;
     const sharpe = sharpeRatio(dailyValues);
 
-    const zella = zellaScore({
+    const traderScoreResult = computeTraderScore({
       winRate: core.winRate,
       profitFactor: core.profitFactor,
       avgWinner,
@@ -121,8 +121,8 @@ export class AnalyticsComputationService {
       maxDrawdownPct:
         dd.maxDrawdownPct === null ? null : round(dd.maxDrawdownPct, 2),
       recoveryFactor: recoveryFactor === null ? null : round(recoveryFactor, 3),
-      zellaScore: zella.score,
-      zellaBreakdown: zella.breakdown,
+      traderScore: traderScoreResult.score,
+      traderScoreBreakdown: traderScoreResult.breakdown,
       tradingDays: daily.length,
       profitableDays,
       greenDayRate: daily.length > 0 ? ratio(profitableDays / daily.length) : 0,

@@ -1,10 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Insertable, Selectable, Updateable } from 'kysely';
 import type { Trade } from '@/database/types/db';
-import { PageDto } from '@/database/dtos/page.dto';
+import { PaginatedDto } from '@/database/dtos/paginated.dto';
 import { toNumber, toRequiredNumber } from '@/database/utils/numeric.util';
 import { AnalyticsCacheService } from '@/modules/analytics/cache/analytics-cache.service';
 import { CommunityMemberDao } from '@/modules/community/daos/community-member.dao';
+import { InstrumentService } from '@/modules/instrument/services/instrument.service';
 import { TradeDao } from '../daos/trade.dao';
 import { TradeDto, toTradeDto } from '../dtos/trade.dto';
 import { CreateTradeDto } from '../dtos/create-trade.dto';
@@ -24,42 +25,41 @@ export class TradeService {
     private readonly tradeDao: TradeDao,
     private readonly analyticsCache: AnalyticsCacheService,
     private readonly communityMemberDao: CommunityMemberDao,
+    private readonly instrumentService: InstrumentService,
   ) {}
 
-  async list(userId: string, query: TradeQueryDto): Promise<PageDto<TradeDto>> {
-    const page = query.page ?? 1;
+  async list(userId: string, query: TradeQueryDto): Promise<PaginatedDto<TradeDto>> {
     const limit = query.limit ?? 25;
-    const { items, total } = await this.tradeDao.findPaged(
-      userId,
-      {
-        symbol: query.symbol,
-        dateFrom: query.dateFrom,
-        dateTo: query.dateTo,
-        setupId: query.setupId,
-        playbookId: query.playbookId,
-        tagId: query.tagId,
-        accountId: query.accountId,
-        direction: query.direction,
-        marketType: query.marketType,
-      },
-      page,
+    const filters = {
+      symbol: query.symbol,
+      dateFrom: query.dateFrom,
+      dateTo: query.dateTo,
+      setupId: query.setupId,
+      playbookId: query.playbookId,
+      tagId: query.tagId,
+      accountId: query.accountId,
+      direction: query.direction,
+      marketType: query.marketType,
+    };
+
+    const page = await this.tradeDao.findCursorPaged(userId, filters, {
+      cursor: query.cursor,
       limit,
-    );
+    });
 
     const { tags, mistakes } = await this.tradeDao.getRelationIdsForTrades(
-      items.map((t) => t.id),
+      page.items.map((t) => t.id),
     );
 
-    return new PageDto<TradeDto>({
-      items: items.map((row) =>
+    return new PaginatedDto<TradeDto>({
+      items: page.items.map((row) =>
         toTradeDto(row, {
           tagIds: tags.get(row.id) ?? [],
           mistakeIds: mistakes.get(row.id) ?? [],
         }),
       ),
-      total,
-      page,
-      limit,
+      previousCursor: page.previousCursor,
+      nextCursor: page.nextCursor,
     });
   }
 
@@ -82,6 +82,7 @@ export class TradeService {
   }
 
   async create(userId: string, dto: CreateTradeDto): Promise<TradeDto> {
+    const symbol = await this.resolveSymbol(dto.symbol);
     const tagIds = await this.resolveTagIds(userId, dto.tagIds);
     const mistakeIds = await this.resolveMistakeIds(userId, dto.mistakeIds);
 
@@ -103,7 +104,7 @@ export class TradeService {
     const insert: Insertable<Trade> = {
       userId,
       accountId: dto.accountId,
-      symbol: dto.symbol,
+      symbol,
       marketType: dto.marketType,
       direction: dto.direction,
       entryPrice: dto.entryPrice,
@@ -162,6 +163,9 @@ export class TradeService {
     const stopLoss =
       dto.stopLoss !== undefined ? dto.stopLoss : toNumber(existing.stopLoss);
 
+    const symbol =
+      dto.symbol !== undefined ? await this.resolveSymbol(dto.symbol) : undefined;
+
     const derived = this.computeDerived({
       direction,
       entryPrice,
@@ -175,7 +179,7 @@ export class TradeService {
 
     const data: Updateable<Trade> = {
       ...(dto.accountId !== undefined ? { accountId: dto.accountId } : {}),
-      ...(dto.symbol !== undefined ? { symbol: dto.symbol } : {}),
+      ...(symbol !== undefined ? { symbol } : {}),
       ...(dto.marketType !== undefined ? { marketType: dto.marketType } : {}),
       ...(dto.direction !== undefined ? { direction: dto.direction } : {}),
       ...(dto.entryPrice !== undefined ? { entryPrice: dto.entryPrice } : {}),
@@ -271,6 +275,20 @@ export class TradeService {
     }
 
     return { status, pnl, rMultiple };
+  }
+
+  private async resolveSymbol(symbol: string): Promise<string> {
+    const normalized = symbol.trim().toUpperCase();
+    if (!normalized) {
+      throw new BadRequestException('Symbol is required');
+    }
+    const known = await this.instrumentService.isKnownSymbol(normalized);
+    if (!known) {
+      throw new BadRequestException(
+        `Unknown symbol "${normalized}". Select a symbol from the instrument catalog.`,
+      );
+    }
+    return normalized;
   }
 
   private async resolveTagIds(
