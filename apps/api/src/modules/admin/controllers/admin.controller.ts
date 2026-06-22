@@ -30,6 +30,7 @@ import { AdminStatsQueryDto } from '../dtos/admin-stats-query.dto';
 import { AdminStatsDto } from '../dtos/admin-stats.dto';
 import {
   AdminBanUserDto,
+  AdminUpdateAccountLimitDto,
   AdminUpdateUserRoleDto,
   AdminUpdateUserSubscriptionDto,
   AdminUserDetailDto,
@@ -206,6 +207,21 @@ export class AdminController {
     @Req() req: Request,
   ): Promise<AdminUserDetailDto> {
     return this.adminUsersService.updateSubscription(
+      id,
+      body,
+      this.resolveActorUserId(req),
+    );
+  }
+
+  @Patch('users/:id/account-limit')
+  @ApiOperation({ summary: 'Set or clear per-user max trading accounts override' })
+  @ApiOkResponse({ type: AdminUserDetailDto })
+  async updateAccountLimit(
+    @Param('id') id: string,
+    @Body() body: AdminUpdateAccountLimitDto,
+    @Req() req: Request,
+  ): Promise<AdminUserDetailDto> {
+    return this.adminUsersService.updateAccountLimit(
       id,
       body,
       this.resolveActorUserId(req),

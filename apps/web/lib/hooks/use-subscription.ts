@@ -36,6 +36,12 @@ export function useSubscription() {
         provider: 'mock',
         status: 'inactive',
         features: [],
+        planId: 'none',
+        maxAccounts: 0,
+        accountCount: 0,
+        aiReviewTokensRemaining: 0,
+        aiReviewTokensLimit: 0,
+        aiReviewTokensUnlimited: false,
       });
     } finally {
       setIsLoading(false);

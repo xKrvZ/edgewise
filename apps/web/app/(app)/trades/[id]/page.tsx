@@ -22,6 +22,7 @@ import { formatCurrency, formatDateTime, formatR, pnlColor } from '@/lib/format'
 import { useQuery } from '@/lib/hooks/use-query';
 import { useReferenceData } from '@/lib/hooks/use-reference-data';
 import { resolveTradeMistakes, resolveTradeTags } from '@/lib/trade-relations';
+import { SHOW_BACKTEST_AND_REPLAY } from '@/lib/product-visibility';
 import { cn } from '@/lib/utils';
 import { Pencil, Play, Share2, Star, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -109,12 +110,14 @@ export default function TradeDetailPage() {
           </Badge>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href={`/replay?tradeId=${trade.id}`}>
-              <Play className="h-4 w-4" />
-              Replay
-            </Link>
-          </Button>
+          {SHOW_BACKTEST_AND_REPLAY ? (
+            <Button variant="outline" asChild>
+              <Link href={`/replay?tradeId=${trade.id}`}>
+                <Play className="h-4 w-4" />
+                Replay
+              </Link>
+            </Button>
+          ) : null}
           <Button variant="outline" onClick={() => setShareOpen(true)}>
             <Share2 className="h-4 w-4" />
             Share

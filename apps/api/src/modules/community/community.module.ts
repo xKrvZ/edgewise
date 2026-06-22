@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
+import { BillingModule } from '@/modules/billing/billing.module';
 import { PrivacyModule } from '@/modules/privacy/privacy.module';
 import { CommunityController } from './controllers/community.controller';
 import { InvitationController } from './controllers/invitation.controller';
@@ -9,7 +10,7 @@ import { CommunityStatsDao } from './daos/community-stats.dao';
 import { CommunityService } from './services/community.service';
 
 @Module({
-  imports: [PrivacyModule],
+  imports: [forwardRef(() => BillingModule), PrivacyModule],
   controllers: [CommunityController, InvitationController],
   providers: [
     CommunityService,

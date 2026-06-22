@@ -1,3 +1,5 @@
+import { filterHiddenPlatformFeatures } from '@/lib/product-visibility';
+
 /**
  * Internal Edgewise feature slugs — mirror of API PLATFORM_FEATURES.
  * Polar benefit slugs are mapped server-side; the web app only consumes feature lists from the API.
@@ -30,8 +32,9 @@ export const FEATURE_LABELS: Record<PlatformFeature, string> = {
 };
 
 export function formatFeatureList(features: PlatformFeature[]): string {
-  if (features.length === 0) {
+  const visibleFeatures = filterHiddenPlatformFeatures(features);
+  if (visibleFeatures.length === 0) {
     return 'No features enabled';
   }
-  return features.map((feature) => FEATURE_LABELS[feature] ?? feature).join(', ');
+  return visibleFeatures.map((feature) => FEATURE_LABELS[feature] ?? feature).join(', ');
 }

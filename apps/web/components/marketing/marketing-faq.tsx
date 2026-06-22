@@ -32,7 +32,7 @@ export function MarketingFaq() {
       />
 
       <div
-        className={`grid w-full gap-4 sm:gap-5 lg:grid-cols-2 lg:gap-6 lg:gap-x-8 ${marketingSectionContentClass}`}
+        className={`flex w-full flex-col gap-4 sm:gap-5 ${marketingSectionContentClass}`}
       >
         {FAQ_ITEMS.map(({ question, answer }) => (
           <FaqItem key={question} question={question} answer={answer} />

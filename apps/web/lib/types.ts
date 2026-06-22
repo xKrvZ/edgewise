@@ -114,7 +114,6 @@ export interface CreateAccountInput {
   trailingDrawdown?: boolean;
   challengeStatus?: ChallengeStatus | null;
   challengeStartedAt?: string | null;
-  daysTraded?: number;
   breakevenRange?: number;
 }
 export type UpdateAccountInput = Partial<CreateAccountInput>;

@@ -30,12 +30,23 @@ import type {
 } from '../dtos/admin-billing.dto';
 
 const MOCK_PLANS: AdminPlanDto[] = [
-  { id: 'free', name: 'Free', slug: 'free', productId: null },
+  {
+    id: 'starter',
+    name: 'Starter',
+    slug: 'starter',
+    productId: 'mock-starter',
+  },
   {
     id: 'pro',
     name: 'Pro',
     slug: 'pro',
     productId: billingConfig.polar.productId || 'mock-pro',
+  },
+  {
+    id: 'elite',
+    name: 'Elite',
+    slug: 'elite',
+    productId: 'mock-elite',
   },
 ];
 
@@ -87,14 +98,14 @@ export class AdminBillingService {
 
     if (this.billingService.isMockMode()) {
       const plan = this.resolveMockPlan(body);
-      if (plan.slug !== 'free') {
+      if (plan.slug !== 'none' && plan.slug !== 'free') {
         this.mockCancelAtPeriodEndUserIds.delete(userId);
       }
       await this.subscriptionDao.upsertAdminPlan(userId, {
-        status: plan.slug === 'free' ? 'inactive' : 'active',
+        status: plan.slug === 'none' || plan.slug === 'free' ? 'inactive' : 'active',
         productId: plan.productId,
         currentPeriodEnd:
-          plan.slug === 'free'
+          plan.slug === 'none' || plan.slug === 'free'
             ? null
             : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       });
@@ -354,7 +365,7 @@ export class AdminBillingService {
       displayName: user.displayName,
       status: user.subscriptionStatus ?? 'inactive',
       productId: user.productId,
-      planName: plan?.name ?? (user.subscriptionStatus === 'active' ? 'Pro' : 'Free'),
+      planName: plan?.name ?? (user.subscriptionStatus === 'active' ? 'Pro' : 'No plan'),
       currentPeriodEnd: user.currentPeriodEnd?.toISOString() ?? null,
       provider: this.billingService.isMockMode() ? 'mock' : 'polar',
     };
@@ -362,14 +373,14 @@ export class AdminBillingService {
 
   private resolvePlanLabel(user: AdminUserRecord): string | null {
     if (!user.subscriptionStatus || user.subscriptionStatus === 'inactive') {
-      return 'Free';
+      return 'No plan';
     }
     return user.productId ?? 'Pro';
   }
 
   private resolvePlanSlug(user: AdminUserRecord, plans: AdminPlanDto[]): string | null {
     if (!user.subscriptionStatus || user.subscriptionStatus === 'inactive') {
-      return 'free';
+      return 'none';
     }
 
     const matched = plans.find((plan) => plan.productId && plan.productId === user.productId);
@@ -379,10 +390,19 @@ export class AdminBillingService {
   private resolveMockPlan(body: AdminChangePlanDto): AdminPlanDto {
     const slug = (body.planSlug ?? body.productId ?? '').toLowerCase();
     if (slug === 'free' || slug === 'inactive' || slug === 'none') {
-      return MOCK_PLANS[0]!;
+      return { id: 'none', name: 'No plan', slug: 'none', productId: null };
+    }
+    if (slug === 'team') {
+      return MOCK_PLANS.find((plan) => plan.slug === 'elite')!;
     }
     if (slug === 'pro' || slug === 'active' || slug === billingConfig.polar.productId) {
-      return MOCK_PLANS[1]!;
+      return MOCK_PLANS.find((plan) => plan.slug === 'pro')!;
+    }
+    if (slug === 'starter') {
+      return MOCK_PLANS.find((plan) => plan.slug === 'starter')!;
+    }
+    if (slug === 'elite') {
+      return MOCK_PLANS.find((plan) => plan.slug === 'elite')!;
     }
 
     const byProduct = MOCK_PLANS.find((plan) => plan.productId === body.productId);
@@ -395,7 +415,7 @@ export class AdminBillingService {
       return bySlug;
     }
 
-    throw new BadRequestException('Unknown plan. Use free or pro in mock billing mode.');
+    throw new BadRequestException('Unknown plan. Use starter, pro, or elite in mock billing mode.');
   }
 
   private async resolveTargetProductId(

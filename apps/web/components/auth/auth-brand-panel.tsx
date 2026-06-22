@@ -1,5 +1,6 @@
 import { Logo } from '@/components/app/logo';
-import { BookOpen, RotateCcw, Sparkles } from 'lucide-react';
+import { SHOW_BACKTEST_AND_REPLAY } from '@/lib/product-visibility';
+import { BarChart3, BookOpen, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 const FEATURES = [
@@ -13,11 +14,21 @@ const FEATURES = [
     title: 'AI-powered insights',
     description: 'Uncover winning patterns and blind spots',
   },
-  {
-    icon: RotateCcw,
-    title: 'Replay & backtest',
-    description: 'Sharpen your edge and test with confidence',
-  },
+  ...(SHOW_BACKTEST_AND_REPLAY
+    ? ([
+        {
+          icon: BarChart3,
+          title: 'Replay & backtest',
+          description: 'Sharpen your edge and test with confidence',
+        },
+      ] as const)
+    : [
+        {
+          icon: BarChart3,
+          title: 'Trading analytics',
+          description: 'Track performance and spot patterns in your data',
+        },
+      ]),
 ] as const;
 
 interface AuthBrandPanelProps {

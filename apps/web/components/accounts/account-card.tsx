@@ -7,10 +7,19 @@ import { Progress } from '@/components/ui/progress';
 import { formatCurrency } from '@/lib/format';
 import type { Account, ChallengeStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, CheckCircle2, Pencil, Trash2, Wallet, XCircle } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Eye,
+  Pencil,
+  Trash2,
+  Wallet,
+  XCircle,
+} from 'lucide-react';
 
 interface AccountCardProps {
   account: Account;
+  onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
@@ -36,7 +45,7 @@ function hasRiskLimits(account: Account): boolean {
   );
 }
 
-export function AccountCard({ account, onEdit, onDelete }: AccountCardProps) {
+export function AccountCard({ account, onView, onEdit, onDelete }: AccountCardProps) {
   const showRisk = hasRiskLimits(account);
   const profit = account.currentBalance - account.startingBalance;
   const profitPct =
@@ -79,9 +88,6 @@ export function AccountCard({ account, onEdit, onDelete }: AccountCardProps) {
           <p className="mt-0.5 text-sm text-muted-foreground">
             {account.broker ?? TYPE_LABELS[account.type]} ·{' '}
             {formatCurrency(account.startingBalance, { compact: true })} starting
-            {account.daysTraded > 0
-              ? ` · ${account.daysTraded} day${account.daysTraded === 1 ? '' : 's'}`
-              : ''}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
@@ -158,10 +164,20 @@ export function AccountCard({ account, onEdit, onDelete }: AccountCardProps) {
         )}
 
         <div className="flex justify-end gap-1">
-          <Button variant="ghost" size="icon-sm" onClick={onEdit}>
+          <Button variant="outline" size="sm" onClick={onView}>
+            <Eye className="h-4 w-4" />
+            View
+          </Button>
+          <Button variant="ghost" size="icon-sm" onClick={onEdit} aria-label="Edit journal">
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon-sm" className="text-destructive" onClick={onDelete}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="text-destructive"
+            onClick={onDelete}
+            aria-label="Delete journal"
+          >
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>

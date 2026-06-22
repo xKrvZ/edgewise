@@ -94,7 +94,7 @@ export function SignUpForm() {
   return (
     <AuthCard
       title="Create your account"
-      description="Start logging trades and building your edge — free forever."
+      description="Start logging trades and building your edge — from $10/month on Starter."
       footer={
         <p className="text-center text-sm text-slate-600">
           Already have an account?{' '}

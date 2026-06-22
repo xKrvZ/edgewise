@@ -42,9 +42,81 @@ const checkoutSlug =
   process.env.POLAR_ENTITLEMENT_SLUG?.trim() ||
   featureToPolarSlug.journal;
 
+/** Billing plan identifiers used for per-account limits. */
+export type BillingPlanId = 'starter' | 'pro' | 'elite';
+
+/** User-facing plan labels (title case). */
+export const BILLING_PLAN_LABELS: Record<BillingPlanId, string> = {
+  starter: 'Starter',
+  pro: 'Pro',
+  elite: 'Elite',
+};
+
+/**
+ * Trading accounts included per subscription plan.
+ * Pricing is per-account — each plan includes a fixed number of trade journals.
+ *
+ * | Plan    | maxAccounts | Price (USD)   | Typical use                          |
+ * |---------|-------------|---------------|--------------------------------------|
+ * | starter | 1           | $10/mo ($8/mo annual) | Single journal, core platform access |
+ * | pro     | 5           | $29/mo        | Multiple accounts, full feature set  |
+ * | elite   | 15          | $49/mo        | Power users / multi-strategy traders |
+ */
+export const PLAN_ACCOUNT_LIMITS: Record<BillingPlanId, number> = {
+  starter: 1,
+  pro: 5,
+  elite: 15,
+};
+
+/**
+ * On-demand AI review tokens included per subscription plan (monthly allowance).
+ * `null` = unlimited (Elite).
+ *
+ * | Plan    | tokens/month | Notes                          |
+ * |---------|--------------|--------------------------------|
+ * | starter | 10           | Core journaling + limited AI   |
+ * | pro     | 100          | Full feature set               |
+ * | elite   | unlimited    | No deduction, always allowed   |
+ */
+export const PLAN_AI_REVIEW_TOKEN_LIMITS: Record<BillingPlanId, number | null> = {
+  starter: 10,
+  pro: 100,
+  elite: null,
+};
+
+/** Tokens consumed per on-demand trade AI review request. */
+export const AI_REVIEW_TOKEN_COST = 1;
+
+/** Maps Polar product IDs to billing plans (extend via POLAR_PRODUCT_ID env). */
+function buildProductIdToPlan(): Record<string, BillingPlanId> {
+  const map: Record<string, BillingPlanId> = {};
+  const productId = process.env.POLAR_PRODUCT_ID?.trim();
+  if (productId) {
+    map[productId] = 'pro';
+  }
+  const eliteProductId =
+    process.env.POLAR_ELITE_PRODUCT_ID?.trim() || process.env.POLAR_TEAM_PRODUCT_ID?.trim();
+  if (eliteProductId) {
+    map[eliteProductId] = 'elite';
+  }
+  const starterProductId = process.env.POLAR_STARTER_PRODUCT_ID?.trim();
+  if (starterProductId) {
+    map[starterProductId] = 'starter';
+  }
+  return map;
+}
+
 const billingConfig = {
   provider: provider === 'polar' || (hasPolarToken && provider !== 'mock') ? 'polar' : 'mock',
   featureToPolarSlug,
+  planAccountLimits: PLAN_ACCOUNT_LIMITS,
+  planAiReviewTokenLimits: PLAN_AI_REVIEW_TOKEN_LIMITS,
+  aiReviewTokenCost: AI_REVIEW_TOKEN_COST,
+  productIdToPlan: buildProductIdToPlan(),
+  /** Default plan when mock billing grants access without a stored productId. */
+  mockDefaultPlan: (process.env.MOCK_BILLING_PLAN?.trim() || 'pro') as BillingPlanId,
+  /** Plan assigned to the demo seed user (unlimited-tier cap). */
+  demoPlan: 'elite' as BillingPlanId,
   polar: {
     accessToken: process.env.POLAR_ACCESS_TOKEN ?? '',
     webhookSecret: process.env.POLAR_WEBHOOK_SECRET ?? '',

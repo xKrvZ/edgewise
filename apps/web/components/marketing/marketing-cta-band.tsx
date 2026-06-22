@@ -26,11 +26,7 @@ export function MarketingCtaBand() {
             <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-primary-foreground/90">
               <span className="inline-flex items-center gap-1.5">
                 <Check className="h-4 w-4 text-primary-foreground/80" aria-hidden="true" />
-                Free forever plan
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Check className="h-4 w-4 text-primary-foreground/80" aria-hidden="true" />
-                No credit card required
+                Starter from $10/month
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <Check className="h-4 w-4 text-primary-foreground/80" aria-hidden="true" />
@@ -44,7 +40,7 @@ export function MarketingCtaBand() {
               href="/sign-in"
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-7 py-4 text-sm font-bold text-primary shadow-lg transition-all hover:-translate-y-0.5 hover:bg-primary/5 hover:shadow-xl sm:min-w-[11rem] sm:text-base"
             >
-              Start for free
+              Get started
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
             <Link

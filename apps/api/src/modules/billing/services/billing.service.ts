@@ -1,11 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createPolarClient } from '@/auth/polar.plugin';
 import billingConfig from '@/config/billing.config';
+import { AccountService } from '@/modules/account/services/account.service';
 import { DEFAULT_ACCESS_FEATURE } from '../constants/features.constants';
 import type { UserFeaturesDto } from '../dtos/user-features.dto';
 import type { EntitlementsDto } from '../dtos/entitlements.dto';
 import type { InvoiceRowDto, InvoicesPageDto } from '../dtos/invoice.dto';
 import { SubscriptionDao } from '../daos/subscription.dao';
+import { AccountLimitService } from './account-limit.service';
+import { AiReviewTokenService } from './ai-review-token.service';
 import { FeatureAccessService } from './feature-access.service';
 import {
   asCustomerStateLike,
@@ -50,6 +53,9 @@ export class BillingService {
   constructor(
     private readonly subscriptionDao: SubscriptionDao,
     private readonly featureAccess: FeatureAccessService,
+    private readonly accountLimitService: AccountLimitService,
+    private readonly aiReviewTokenService: AiReviewTokenService,
+    private readonly accountService: AccountService,
   ) {}
 
   isMockMode(): boolean {
@@ -64,6 +70,17 @@ export class BillingService {
     const provider = this.featureAccess.getProviderKind();
     const features = await this.featureAccess.listFeatures(userId, email);
     const active = features.includes(DEFAULT_ACCESS_FEATURE);
+    const accountCount = await this.accountService.countByUser(userId);
+    const quota = await this.accountLimitService.getQuota(userId, accountCount, email);
+    const tokenBalance = await this.aiReviewTokenService.getBalance(userId, email);
+    const accountFields = {
+      planId: quota.planId,
+      maxAccounts: quota.maxAccounts,
+      accountCount: quota.accountCount,
+      aiReviewTokensRemaining: tokenBalance.tokensRemaining,
+      aiReviewTokensLimit: tokenBalance.tokensLimit,
+      aiReviewTokensUnlimited: tokenBalance.unlimited,
+    };
 
     if (this.isMockMode()) {
       const stored = await this.subscriptionDao.findByUserId(userId);
@@ -75,6 +92,7 @@ export class BillingService {
         productId: billingConfig.polar.productId || null,
         currentPeriodEnd: stored?.currentPeriodEnd?.toISOString() ?? null,
         polarCustomerId: null,
+        ...accountFields,
       };
     }
 
@@ -89,6 +107,7 @@ export class BillingService {
         productId: null,
         currentPeriodEnd: null,
         polarCustomerId: null,
+        ...accountFields,
       };
     }
 
@@ -108,6 +127,7 @@ export class BillingService {
             ? periodEnd
             : null,
       polarCustomerId: record.id ?? null,
+      ...accountFields,
     };
   }
 

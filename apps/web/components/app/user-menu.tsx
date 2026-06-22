@@ -19,13 +19,13 @@ import { useUserAvatarUrl } from '@/lib/hooks/use-user-avatar-url';
 import { isAdministrator } from '@/lib/roles';
 import { cn } from '@/lib/utils';
 import {
-  BookOpen,
   ChevronsUpDown,
   CreditCard,
   LayoutGrid,
   LogOut,
   Shield,
   User,
+  Wallet,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -196,7 +196,7 @@ export function UserMenu({ variant = 'compact', collapsed = false, className }: 
         <DropdownMenuItem asChild>
           <Link href="/account">
             <LayoutGrid className="h-4 w-4" />
-            {variant === 'marketing' ? 'Account' : 'Account settings'}
+            Account
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
@@ -212,9 +212,9 @@ export function UserMenu({ variant = 'compact', collapsed = false, className }: 
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/dashboard">
-            <BookOpen className="h-4 w-4" />
-            My Journal
+          <Link href="/account#trading-accounts">
+            <Wallet className="h-4 w-4" />
+            Journals
           </Link>
         </DropdownMenuItem>
         {showAdminLink ? (

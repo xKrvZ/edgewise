@@ -1,5 +1,6 @@
 import { FAQ_ITEMS } from '@/components/marketing/marketing-data';
 import { MARKETING_SEO, marketingCanonicalUrl } from '@/components/marketing/marketing-seo';
+import { SHOW_BACKTEST_AND_REPLAY } from '@/lib/product-visibility';
 
 interface MarketingJsonLdProps {
   includeFaq?: boolean;
@@ -19,18 +20,19 @@ export function MarketingJsonLd({ includeFaq = true }: MarketingJsonLdProps) {
     image: marketingCanonicalUrl(MARKETING_SEO.ogImage),
     offers: {
       '@type': 'Offer',
-      price: '0',
+      price: '10',
       priceCurrency: 'USD',
-      description: 'Free forever plan with trade journaling, replay, and basic analytics',
+      description: SHOW_BACKTEST_AND_REPLAY
+        ? 'Starter plan with trade journaling, replay, and basic analytics'
+        : 'Starter plan with trade journaling and basic analytics',
     },
     featureList: [
       'Trade journal and performance tracking',
-      'Tick-by-tick trade replay',
+      ...(SHOW_BACKTEST_AND_REPLAY ? (['Tick-by-tick trade replay', 'Backtesting journal'] as const) : []),
       'AI trade review',
       'Trading analytics dashboard',
       'Prop firm account tracking',
       'Community and mentorship tools',
-      'Backtesting journal',
     ],
   };
 

@@ -81,7 +81,7 @@ export class AdminChangePlanDto {
   productId?: string;
 
   @ApiPropertyOptional({
-    description: 'Plan slug — mock: free|pro; polar: product slug when available',
+    description: 'Plan slug — mock: starter|pro|elite|none; polar: product slug when available',
   })
   @ValidateIf((body: AdminChangePlanDto) => !body.productId)
   @IsString()

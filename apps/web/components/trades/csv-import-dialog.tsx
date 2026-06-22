@@ -260,7 +260,7 @@ export function CsvImportDialog({
                 <Label className="text-xs text-muted-foreground">Account</Label>
                 <Select value={accountId} onValueChange={setAccountId}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select account" />
+                    <SelectValue placeholder="Select journal" />
                   </SelectTrigger>
                   <SelectContent>
                     {accounts.map((a) => (

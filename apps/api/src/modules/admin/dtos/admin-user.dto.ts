@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Max, Min, ValidateIf } from 'class-validator';
 import { ALL_ROLES } from '@/auth/constants/roles.constants';
 import { PLATFORM_FEATURES } from '@/modules/billing/constants/features.constants';
 
@@ -116,6 +116,29 @@ export class AdminUserSubscriptionDto {
   adminEditable!: boolean;
 }
 
+export class AdminUserAccountQuotaDto {
+  @ApiProperty({ description: 'Number of trading accounts the user currently has' })
+  accountCount!: number;
+
+  @ApiProperty({ description: 'Effective max trading accounts (override or plan default)' })
+  maxAccounts!: number;
+
+  @ApiProperty({ description: 'Max trading accounts included on the current plan' })
+  planMaxAccounts!: number;
+
+  @ApiProperty({
+    nullable: true,
+    description: 'Admin override when set; null means use plan default',
+  })
+  maxTradingAccountsOverride!: number | null;
+
+  @ApiProperty({
+    enum: ['starter', 'pro', 'elite', 'none'],
+    description: 'Billing plan used when no override is set',
+  })
+  planId!: 'starter' | 'pro' | 'elite' | 'none';
+}
+
 export class AdminUserDetailDto extends AdminUserRowDto {
   @ApiProperty({ nullable: true })
   banReason!: string | null;
@@ -125,6 +148,9 @@ export class AdminUserDetailDto extends AdminUserRowDto {
 
   @ApiProperty({ type: AdminUserSubscriptionDto })
   subscription!: AdminUserSubscriptionDto;
+
+  @ApiProperty({ type: AdminUserAccountQuotaDto })
+  accountQuota!: AdminUserAccountQuotaDto;
 }
 
 export class AdminUpdateUserRoleDto {
@@ -148,4 +174,20 @@ export class AdminBanUserDto {
   @IsOptional()
   @IsString()
   banReason?: string;
+}
+
+export class AdminUpdateAccountLimitDto {
+  @ApiPropertyOptional({
+    nullable: true,
+    minimum: 0,
+    maximum: 500,
+    description: 'Per-user max trading accounts. Pass null to clear override and use plan default.',
+    example: 25,
+  })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsInt()
+  @Min(0)
+  @Max(500)
+  maxTradingAccounts?: number | null;
 }

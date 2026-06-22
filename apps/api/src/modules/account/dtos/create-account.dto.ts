@@ -3,7 +3,6 @@ import {
   IsBoolean,
   IsDateString,
   IsIn,
-  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -90,12 +89,6 @@ export class CreateAccountDto {
   @IsOptional()
   @IsDateString()
   challengeStartedAt?: string | null;
-
-  @ApiPropertyOptional({ default: 0 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  daysTraded?: number;
 
   @ApiPropertyOptional({
     example: 5,

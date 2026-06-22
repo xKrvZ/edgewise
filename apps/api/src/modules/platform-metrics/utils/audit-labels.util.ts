@@ -18,6 +18,7 @@ const AUDIT_LABELS: Record<string, string> = {
   [PLATFORM_EVENT_TYPE.ADMIN_SUBSCRIPTION_CANCELED]: 'Subscription canceled by administrator',
   [PLATFORM_EVENT_TYPE.ADMIN_ORDER_REFUNDED]: 'Order refunded by administrator',
   [PLATFORM_EVENT_TYPE.ADMIN_DISCOUNT_GRANTED]: 'Discount granted by administrator',
+  [PLATFORM_EVENT_TYPE.ADMIN_ACCOUNT_LIMIT_CHANGED]: 'Account limit changed by administrator',
 };
 
 export function formatAuditEventLabel(type: PlatformEventType | string): string {
@@ -56,6 +57,30 @@ export function formatAuditEventDetail(
       return null;
     case PLATFORM_EVENT_TYPE.ADMIN_USER_BANNED:
       return typeof payload.banReason === 'string' ? payload.banReason : null;
+    case PLATFORM_EVENT_TYPE.ADMIN_ACCOUNT_LIMIT_CHANGED: {
+      const previous =
+        payload.previousOverride === null || typeof payload.previousOverride === 'number'
+          ? payload.previousOverride
+          : typeof payload.previousMaxAccounts === 'number'
+            ? payload.previousMaxAccounts
+            : null;
+      const next =
+        payload.newOverride === null || typeof payload.newOverride === 'number'
+          ? payload.newOverride
+          : typeof payload.newMaxAccounts === 'number'
+            ? payload.newMaxAccounts
+            : null;
+      if (previous === null && typeof next === 'number') {
+        return `Plan default → ${next} (override)`;
+      }
+      if (typeof previous === 'number' && next === null) {
+        return `${previous} (override) → plan default`;
+      }
+      if (typeof previous === 'number' && typeof next === 'number') {
+        return `${previous} → ${next}`;
+      }
+      return null;
+    }
     case PLATFORM_EVENT_TYPE.ORDER_PAID:
     case PLATFORM_EVENT_TYPE.ORDER_REFUNDED:
       if (typeof payload.amount === 'number') {

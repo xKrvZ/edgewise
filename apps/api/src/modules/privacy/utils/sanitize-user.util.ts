@@ -126,5 +126,6 @@ export function sanitizeAdminUserDetail(
     banReason: null,
     banExpires: null,
     subscription: user.subscription,
+    accountQuota: user.accountQuota,
   };
 }

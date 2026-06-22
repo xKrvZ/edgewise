@@ -1,4 +1,5 @@
 import type { PlatformFeature } from '@/lib/features';
+import type { BillingPlanId } from '@/lib/billing-plans';
 
 export interface UserFeaturesStatus {
   active: boolean;
@@ -8,6 +9,12 @@ export interface UserFeaturesStatus {
   productId?: string | null;
   currentPeriodEnd?: string | null;
   polarCustomerId?: string | null;
+  planId?: BillingPlanId;
+  maxAccounts?: number;
+  accountCount?: number;
+  aiReviewTokensRemaining?: number | null;
+  aiReviewTokensLimit?: number | null;
+  aiReviewTokensUnlimited?: boolean;
 }
 
 /** @deprecated Use UserFeaturesStatus — retained for deprecated /billing/entitlements alias. */

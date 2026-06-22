@@ -354,6 +354,18 @@ export interface Trade {
   visibility: Generated<string>;
 }
 
+export interface TradeAiReview {
+  createdAt: Generated<Timestamp>;
+  generatedAt: Timestamp;
+  id: Generated<string>;
+  insights: Generated<Json>;
+  mistakesFlagged: Generated<Json>;
+  suggestions: Generated<Json>;
+  summary: string;
+  tradeId: string;
+  userId: string;
+}
+
 export interface TradeMistake {
   mistakeId: string;
   tradeId: string;
@@ -417,6 +429,8 @@ export interface TradingSession {
 }
 
 export interface User {
+  aiReviewTokensPeriodStart: Timestamp | null;
+  aiReviewTokensRemaining: number | null;
   anonymizedAt: Timestamp | null;
   banExpires: Timestamp | null;
   banned: boolean | null;
@@ -428,6 +442,7 @@ export interface User {
   emailVerified: boolean;
   id: string;
   image: string | null;
+  maxTradingAccountsOverride: number | null;
   name: string;
   role: string | null;
   updatedAt: Generated<Timestamp>;
@@ -480,6 +495,7 @@ export interface DB {
   session: Session;
   tag: Tag;
   trade: Trade;
+  trade_ai_review: TradeAiReview;
   trade_mistake: TradeMistake;
   trade_tag: TradeTag;
   trader_profile: TraderProfile;

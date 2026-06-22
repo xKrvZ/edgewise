@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AccountModule } from '@/modules/account/account.module';
 import { BillingModule } from '@/modules/billing/billing.module';
 import { PlatformMetricsModule } from '@/modules/platform-metrics/platform-metrics.module';
 import { AdminController } from './controllers/admin.controller';
@@ -10,7 +11,7 @@ import { AdminBillingService } from './services/admin-billing.service';
 import { AdminUsersService } from './services/admin-users.service';
 
 @Module({
-  imports: [BillingModule, PlatformMetricsModule],
+  imports: [AccountModule, BillingModule, PlatformMetricsModule],
   controllers: [AdminController],
   providers: [
     AdminService,

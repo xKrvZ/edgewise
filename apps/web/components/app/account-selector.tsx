@@ -1,7 +1,5 @@
 'use client';
 
-import { AccountFormDialog } from '@/components/accounts/account-form-dialog';
-import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -14,12 +12,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { api } from '@/lib/api-client';
+import { useSubscription } from '@/lib/hooks/use-subscription';
 import type { Account } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useAccountStore } from '@/stores/account-store';
-import { ChevronsUpDown, Pencil, Plus, Trash2, Wallet } from 'lucide-react';
+import { ChevronsUpDown, Settings2, Wallet } from 'lucide-react';
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { toast } from 'sonner';
 
 const ALL = '__all__';
 
@@ -42,13 +41,11 @@ export function AccountSelector({
   collapsed = false,
   className,
 }: AccountSelectorProps) {
-  const { selectedAccountId, setSelectedAccountId } = useAccountStore();
+  const { selectedAccountId, setSelectedAccountId, accountsRevision } = useAccountStore();
+  const { status: billingStatus } = useSubscription();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<Account | undefined>(undefined);
-  const [deleting, setDeleting] = useState<Account | undefined>(undefined);
 
   const loadAccounts = useCallback(async () => {
     try {
@@ -63,52 +60,16 @@ export function AccountSelector({
 
   useEffect(() => {
     loadAccounts();
-  }, [loadAccounts]);
+  }, [loadAccounts, accountsRevision]);
 
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
-  const triggerLabel = selectedAccount?.name ?? 'All accounts';
+  const triggerLabel = selectedAccount?.name ?? 'All journals';
+  const maxAccounts = billingStatus?.maxAccounts ?? null;
+  const accountCount = accounts.length;
 
   function handleSelect(value: string) {
     setSelectedAccountId(value === ALL ? null : value);
     setOpen(false);
-  }
-
-  function openCreate() {
-    setOpen(false);
-    setEditing(undefined);
-    setFormOpen(true);
-  }
-
-  function openEdit(account: Account) {
-    setOpen(false);
-    setEditing(account);
-    setFormOpen(true);
-  }
-
-  function openDelete(account: Account) {
-    setOpen(false);
-    setDeleting(account);
-  }
-
-  async function confirmDelete() {
-    if (!deleting) return;
-    try {
-      await api.accounts.remove(deleting.id);
-      toast.success('Account deleted');
-      if (selectedAccountId === deleting.id) {
-        setSelectedAccountId(null);
-      }
-      await loadAccounts();
-    } catch {
-      toast.error('Failed to delete account');
-    }
-  }
-
-  function handleSaved(saved: Account) {
-    loadAccounts();
-    if (!editing) {
-      setSelectedAccountId(saved.id);
-    }
   }
 
   const trigger = (
@@ -124,7 +85,7 @@ export function AccountSelector({
         variant !== 'sidebar' && 'h-9 w-[190px] justify-between',
         className,
       )}
-      aria-label={`Select account: ${triggerLabel}`}
+      aria-label={`Select journal: ${triggerLabel}`}
     >
       {collapsed ? (
         <Wallet className="h-4 w-4 shrink-0" />
@@ -161,13 +122,13 @@ export function AccountSelector({
           className={cn(variant === 'sidebar' ? 'w-(--radix-dropdown-menu-trigger-width)' : 'w-56')}
         >
           <DropdownMenuLabel className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            Account
+            Journal
           </DropdownMenuLabel>
           <DropdownMenuCheckboxItem
             checked={selectedAccountId === null}
             onCheckedChange={() => handleSelect(ALL)}
           >
-            All accounts
+            All journals
           </DropdownMenuCheckboxItem>
           {accounts.length > 0 && <DropdownMenuSeparator />}
           {accounts.map((account) => (
@@ -187,47 +148,22 @@ export function AccountSelector({
             </DropdownMenuCheckboxItem>
           ))}
           {!loading && accounts.length === 0 && (
-            <p className="px-2 py-1.5 text-xs text-muted-foreground">No accounts yet</p>
-          )}
-          {selectedAccount && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => openEdit(selectedAccount)}>
-                <Pencil />
-                Edit account
-              </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onClick={() => openDelete(selectedAccount)}>
-                <Trash2 />
-                Delete account
-              </DropdownMenuItem>
-            </>
+            <p className="px-2 py-1.5 text-xs text-muted-foreground">No journals yet</p>
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={openCreate}>
-            <Plus />
-            Create account
+          {maxAccounts != null && maxAccounts > 0 ? (
+            <p className="px-2 py-1 text-xs text-muted-foreground">
+              {accountCount}/{maxAccounts} journals used
+            </p>
+          ) : null}
+          <DropdownMenuItem asChild>
+            <Link href="/account#trading-accounts" onClick={() => setOpen(false)}>
+              <Settings2 />
+              Manage journals
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <AccountFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        account={editing}
-        onSaved={handleSaved}
-      />
-      <ConfirmDialog
-        open={Boolean(deleting)}
-        onOpenChange={(o) => !o && setDeleting(undefined)}
-        title="Delete this account?"
-        description={
-          deleting
-            ? `${deleting.name} and its trades will be removed. This cannot be undone.`
-            : undefined
-        }
-        confirmLabel="Delete"
-        onConfirm={confirmDelete}
-      />
     </>
   );
 }

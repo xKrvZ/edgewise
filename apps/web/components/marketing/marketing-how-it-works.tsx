@@ -14,11 +14,11 @@ export function MarketingHowItWorks() {
 
         <div className={`relative ${marketingSectionContentClass}`}>
           <div
-            className="absolute left-[12.5%] right-[12.5%] top-8 hidden h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent md:block"
+            className="absolute left-[16.67%] right-[16.67%] top-8 hidden h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent md:block"
             aria-hidden="true"
           />
 
-          <div className="grid gap-10 md:grid-cols-4 md:gap-6 lg:gap-8">
+          <div className="grid justify-center gap-10 md:grid-cols-3 md:gap-6 lg:gap-8">
             {HOW_IT_WORKS_STEPS.map(({ step, icon: Icon, title, description }) => (
               <div key={title} className="relative flex flex-col items-center text-center">
                 <div className="relative z-10 mb-6">

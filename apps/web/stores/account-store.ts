@@ -2,9 +2,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 interface AccountState {
-  /** Currently selected account id, or null for "All accounts". */
+  /** Currently selected journal id, or null for "All journals". */
   selectedAccountId: string | null;
   setSelectedAccountId: (id: string | null) => void;
+  /** Bumped when accounts are created, updated, or deleted elsewhere in the app. */
+  accountsRevision: number;
+  bumpAccountsRevision: () => void;
 }
 
 export const useAccountStore = create<AccountState>()(
@@ -12,7 +15,13 @@ export const useAccountStore = create<AccountState>()(
     (set) => ({
       selectedAccountId: null,
       setSelectedAccountId: (id) => set({ selectedAccountId: id }),
+      accountsRevision: 0,
+      bumpAccountsRevision: () =>
+        set((state) => ({ accountsRevision: state.accountsRevision + 1 })),
     }),
-    { name: 'edgewise.account' },
+    {
+      name: 'edgewise.account',
+      partialize: (state) => ({ selectedAccountId: state.selectedAccountId }),
+    },
   ),
 );

@@ -93,7 +93,6 @@ export function AccountFormDialog({
   const [trailingDrawdown, setTrailingDrawdown] = useState(false);
   const [challengeStatus, setChallengeStatus] = useState<ChallengeStatus>('active');
   const [challengeStartedAt, setChallengeStartedAt] = useState('');
-  const [daysTraded, setDaysTraded] = useState('0');
   const [breakevenRange, setBreakevenRange] = useState('0');
   const [saving, setSaving] = useState(false);
 
@@ -116,7 +115,6 @@ export function AccountFormDialog({
     setChallengeStartedAt(
       account?.challengeStartedAt?.slice(0, 10) ?? format(new Date(), 'yyyy-MM-dd'),
     );
-    setDaysTraded(String(account?.daysTraded ?? 0));
     setBreakevenRange(String(account?.breakevenRange ?? 0));
   }, [open, account]);
 
@@ -145,7 +143,7 @@ export function AccountFormDialog({
 
   async function handleSubmit() {
     if (!nameValid) {
-      toast.error('Account name is required');
+      toast.error('Journal name is required');
       wizard.goTo(0);
       return;
     }
@@ -171,7 +169,6 @@ export function AccountFormDialog({
       challengeStatus: riskLimitsEnabled ? challengeStatus : null,
       challengeStartedAt:
         riskLimitsEnabled && challengeStartedAt ? new Date(challengeStartedAt).toISOString() : null,
-      daysTraded: riskLimitsEnabled ? Number(daysTraded) || 0 : 0,
       breakevenRange: Number(breakevenRange) || 0,
     };
 
@@ -180,11 +177,11 @@ export function AccountFormDialog({
       const saved = account
         ? await api.accounts.update(account.id, payload)
         : await api.accounts.create(payload);
-      toast.success(account ? 'Account updated' : 'Account created');
+      toast.success(account ? 'Journal updated' : 'Journal created');
       onSaved?.(saved);
       onOpenChange(false);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Failed to save account');
+      toast.error(err instanceof ApiError ? err.message : 'Failed to save journal');
     } finally {
       setSaving(false);
     }
@@ -195,9 +192,9 @@ export function AccountFormDialog({
       <DialogContent className="gap-0 p-0 sm:max-w-lg">
         <DialogHeader className="space-y-4 border-b px-6 py-4">
           <div className="space-y-1.5 text-left">
-            <DialogTitle>{account ? 'Edit account' : 'New account'}</DialogTitle>
+            <DialogTitle>{account ? 'Edit journal' : 'New journal'}</DialogTitle>
             <DialogDescription>
-              Create a trading account and optionally set risk limits.
+              Create a journal and optionally set risk limits.
             </DialogDescription>
           </div>
           <Stepper
@@ -329,7 +326,6 @@ export function AccountFormDialog({
                       value={maxLossLimit}
                       onChange={setMaxLossLimit}
                     />
-                    <NumberField label="Days traded" value={daysTraded} onChange={setDaysTraded} />
                     <div className="col-span-2 flex items-center justify-between rounded-md border px-3 py-2">
                       <div>
                         <Label className="text-sm">Trailing drawdown</Label>
@@ -403,7 +399,6 @@ export function AccountFormDialog({
                       value={maxLossLimit.trim() ? formatCurrency(Number(maxLossLimit)) : '—'}
                     />
                     <ReviewRow label="Trailing drawdown" value={trailingDrawdown ? 'Yes' : 'No'} />
-                    <ReviewRow label="Days traded" value={daysTraded || '0'} />
                     <ReviewRow label="Status" value={STATUS_LABELS[challengeStatus]} />
                     <ReviewRow label="Started" value={challengeStartedAt || '—'} />
                   </>

@@ -1,21 +1,9 @@
-import {
-  DEFAULT_AUTHENTICATED_REDIRECT,
-  isAuthRoute,
-  isProtectedRoute,
-} from '@/lib/auth-routes';
+import { isAuthRoute, isProtectedRoute } from '@/lib/auth-routes';
 import { getSessionCookie } from 'better-auth/cookies';
 import { type NextRequest, NextResponse } from 'next/server';
 
 function hasSession(request: NextRequest): boolean {
   return getSessionCookie(request) !== null;
-}
-
-function safeCallbackUrl(value: string | null): string | null {
-  if (!value || !value.startsWith('/') || value.startsWith('//')) {
-    return null;
-  }
-
-  return value;
 }
 
 function isMaintenanceMode(): boolean {
@@ -31,14 +19,9 @@ export function middleware(request: NextRequest) {
 
   const isAuthenticated = hasSession(request);
 
+  // Auth pages validate the session client-side. Cookie presence alone is not
+  // enough — stale tokens caused a middleware ↔ AuthGuard redirect loop.
   if (isAuthRoute(pathname)) {
-    if (isAuthenticated) {
-      const callbackUrl =
-        safeCallbackUrl(request.nextUrl.searchParams.get('callbackUrl')) ??
-        DEFAULT_AUTHENTICATED_REDIRECT;
-      return NextResponse.redirect(new URL(callbackUrl, request.url));
-    }
-
     return NextResponse.next();
   }
 

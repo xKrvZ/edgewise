@@ -46,7 +46,7 @@ export function MarketingPricingPlans({ className }: MarketingPricingPlansProps)
             <span className="ml-1.5 text-xs font-bold text-emerald-500">Save 20%</span>
           </button>
         </div>
-        <p className="text-xs text-slate-400">Billing preview — paid plans launching soon</p>
+        <p className="text-xs text-slate-400">Starter from $10/month — Pro and Elite launch soon</p>
       </div>
 
       <div className="mx-auto mt-8 grid w-full max-w-7xl gap-6 lg:grid-cols-3 lg:gap-8">
@@ -65,7 +65,7 @@ export function MarketingPricingPlans({ className }: MarketingPricingPlansProps)
             comingSoon,
           }) => {
             const price = annual ? annualPrice : monthlyPrice;
-            const showAnnualNote = annual && !comingSoon && name !== 'Free';
+            const showAnnualNote = annual && !comingSoon;
 
             return (
               <div

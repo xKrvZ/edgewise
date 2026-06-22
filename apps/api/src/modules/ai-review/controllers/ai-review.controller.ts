@@ -1,5 +1,12 @@
-import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, NotFoundException, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import {
+  ApiCreatedResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
 import { AiReviewService } from '../services/ai-review.service';
 import {
@@ -29,15 +36,40 @@ export class AiReviewController {
 
   @Get('trades/:tradeId')
   @ApiOperation({
-    summary: 'Generate an AI-style review for a single trade',
+    summary: 'Get a stored AI review for a single trade',
     description:
-      'Returns trade-specific insights, flagged mistakes, and actionable suggestions. Currently backed by a deterministic mock provider.',
+      'Returns a previously requested trade review. Does not generate a new review or consume tokens.',
   })
   @ApiOkResponse({ type: TradeAiReviewDto })
-  async generateForTrade(
+  @ApiNotFoundResponse({ description: 'No AI review has been requested for this trade yet' })
+  async getTradeReview(
     @Param('tradeId', ParseUUIDPipe) tradeId: string,
     @Session() session: UserSession,
   ): Promise<TradeAiReviewDto> {
-    return this.aiReviewService.generateTradeReview(session.user.id, tradeId);
+    const review = await this.aiReviewService.getStoredTradeReview(session.user.id, tradeId);
+    if (!review) {
+      throw new NotFoundException('No AI review for this trade yet');
+    }
+    return review;
+  }
+
+  @Post('trades/:tradeId')
+  @ApiOperation({
+    summary: 'Request an on-demand AI review for a single trade',
+    description:
+      'Consumes one AI review token (unless on Elite). Generates and stores the review. Returns 402 when out of tokens.',
+  })
+  @ApiCreatedResponse({ type: TradeAiReviewDto })
+  @ApiNotFoundResponse({ description: 'Trade not found' })
+  @ApiResponse({ status: 402, description: 'No AI review tokens remaining' })
+  async requestTradeReview(
+    @Param('tradeId', ParseUUIDPipe) tradeId: string,
+    @Session() session: UserSession,
+  ): Promise<TradeAiReviewDto> {
+    return this.aiReviewService.requestTradeReview(
+      session.user.id,
+      tradeId,
+      session.user.email,
+    );
   }
 }

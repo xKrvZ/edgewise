@@ -10,6 +10,16 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
+import {
+  HIDDEN_COMPARISON_FEATURE_NAMES,
+  HIDDEN_MARKETING_SPOTLIGHT_IDS,
+  pricingFeatureVisible,
+  SHOW_BACKTEST_AND_REPLAY,
+} from '@/lib/product-visibility';
+
+/** Support contact for custom enterprise / high-volume account quotes. */
+export const SUPPORT_EMAIL = 'support@edgewise.app';
+export const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL}`;
 
 export const NAV_LINKS = [
   { label: 'Features', href: '/#features' },
@@ -83,7 +93,7 @@ export interface MarketingFeature {
   accent: 'indigo' | 'emerald' | 'sky' | 'amber' | 'rose';
 }
 
-export const FEATURE_GRID: MarketingFeature[] = [
+const FEATURE_GRID_ALL: MarketingFeature[] = [
   {
     icon: TrendingUp,
     title: 'Journal & Track',
@@ -117,6 +127,10 @@ export const FEATURE_GRID: MarketingFeature[] = [
   },
 ];
 
+export const FEATURE_GRID = SHOW_BACKTEST_AND_REPLAY
+  ? FEATURE_GRID_ALL
+  : FEATURE_GRID_ALL.filter((feature) => feature.title !== 'Trade Replay');
+
 export interface FeatureSpotlight {
   id: string;
   eyebrow: string;
@@ -128,7 +142,7 @@ export interface FeatureSpotlight {
   reversed?: boolean;
 }
 
-export const FEATURE_SPOTLIGHTS: FeatureSpotlight[] = [
+const FEATURE_SPOTLIGHTS_ALL: FeatureSpotlight[] = [
   {
     id: 'trade-replay',
     eyebrow: 'Trade replay',
@@ -208,6 +222,13 @@ export const FEATURE_SPOTLIGHTS: FeatureSpotlight[] = [
   },
 ];
 
+export const FEATURE_SPOTLIGHTS = SHOW_BACKTEST_AND_REPLAY
+  ? FEATURE_SPOTLIGHTS_ALL
+  : FEATURE_SPOTLIGHTS_ALL.filter(
+      (spotlight) =>
+        !(HIDDEN_MARKETING_SPOTLIGHT_IDS as readonly string[]).includes(spotlight.id),
+    );
+
 export const FEATURE_ACCENT_STYLES: Record<
   MarketingFeature['accent'],
   { icon: string; ring: string }
@@ -282,7 +303,7 @@ export interface FaqItem {
   answer: string;
 }
 
-export const FAQ_ITEMS: FaqItem[] = [
+const FAQ_ITEMS_ALL: FaqItem[] = [
   {
     question: 'What is a trading journal and why do I need one?',
     answer:
@@ -309,9 +330,9 @@ export const FAQ_ITEMS: FaqItem[] = [
       'Absolutely. Edgewise supports futures, forex, and other intraday markets. Log trades with screenshots, tag setups, and filter analytics by instrument or session. The workflow is tuned for day traders who review between sessions.',
   },
   {
-    question: 'Is there a free plan?',
+    question: 'Is there a Starter plan?',
     answer:
-      'Yes. The Free plan includes unlimited trade journal entries, trade replay, basic trading analytics, and limited AI trade review — no credit card required. Pro and Team tiers with advanced features are coming soon.',
+      'Yes. Starter is $10/month and includes unlimited trade journal entries, trade replay, basic trading analytics, and limited AI trade review. Pro and Elite tiers with advanced features are coming soon.',
   },
   {
     question: 'Does Edgewise include backtesting?',
@@ -321,9 +342,20 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How is Edgewise different from Tradervue or traditional journals?',
     answer:
-      'Edgewise combines trade journaling, tick-by-tick replay, AI trade review, prop firm tracking, community tools, and backtesting in one platform — with a generous free tier. See our detailed comparison on the pricing page for a feature-by-feature breakdown.',
+      'Edgewise combines trade journaling, tick-by-tick replay, AI trade review, prop firm tracking, community tools, and backtesting in one platform — starting at $10/month on Starter. See our detailed comparison on the pricing page for a feature-by-feature breakdown.',
   },
 ];
+
+const HIDDEN_FAQ_QUESTIONS = [
+  'How does trade replay work?',
+  'Does Edgewise include backtesting?',
+] as const;
+
+export const FAQ_ITEMS = SHOW_BACKTEST_AND_REPLAY
+  ? FAQ_ITEMS_ALL
+  : FAQ_ITEMS_ALL.filter(
+      (item) => !(HIDDEN_FAQ_QUESTIONS as readonly string[]).includes(item.question),
+    );
 
 export interface HowItWorksStep {
   step: number;
@@ -332,7 +364,7 @@ export interface HowItWorksStep {
   description: string;
 }
 
-export const HOW_IT_WORKS_STEPS: HowItWorksStep[] = [
+const HOW_IT_WORKS_STEPS_ALL: HowItWorksStep[] = [
   {
     step: 1,
     icon: BookOpen,
@@ -359,6 +391,12 @@ export const HOW_IT_WORKS_STEPS: HowItWorksStep[] = [
   },
 ];
 
+export const HOW_IT_WORKS_STEPS = (
+  SHOW_BACKTEST_AND_REPLAY
+    ? HOW_IT_WORKS_STEPS_ALL
+    : HOW_IT_WORKS_STEPS_ALL.filter((step) => step.title !== 'Replay')
+).map((step, index) => ({ ...step, step: index + 1 }));
+
 export interface PricingPlan {
   name: string;
   monthlyPrice: string;
@@ -373,14 +411,15 @@ export interface PricingPlan {
   comingSoon?: boolean;
 }
 
-export const PRICING_PLANS: PricingPlan[] = [
+const PRICING_PLANS_ALL: PricingPlan[] = [
   {
-    name: 'Free',
-    monthlyPrice: '$0',
-    annualPrice: '$0',
-    period: 'forever',
+    name: 'Starter',
+    monthlyPrice: '$10',
+    annualPrice: '$8',
+    period: 'per month',
     description: 'Full trade journal software to start logging, replaying, and reviewing today.',
     features: [
+      '1 journal',
       'Unlimited trade journal entries',
       'Trade replay & screenshots',
       'Basic trading analytics dashboard',
@@ -388,7 +427,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       'Prop firm account tracking',
       'Playbooks & mistake tags',
     ],
-    cta: 'Start for free',
+    cta: 'Get started',
     ctaHref: '/sign-in',
     highlighted: true,
     badge: 'Recommended',
@@ -400,11 +439,11 @@ export const PRICING_PLANS: PricingPlan[] = [
     period: 'per month',
     description: 'Advanced trading analytics and unlimited AI review for scaling traders.',
     features: [
-      'Everything in Free',
+      '5 journals',
+      'Everything in Starter',
       'Unlimited AI trade reviews',
       'Advanced analytics & filters',
       'Backtesting journal',
-      'Community leaderboards',
       'Priority support',
     ],
     cta: 'Join early access',
@@ -413,17 +452,17 @@ export const PRICING_PLANS: PricingPlan[] = [
     comingSoon: true,
   },
   {
-    name: 'Team',
+    name: 'Elite',
     monthlyPrice: '$49',
     annualPrice: '$39',
-    period: 'per seat / month',
+    period: 'per month',
     description: 'For mentors, prop firm cohorts, and trading communities.',
     features: [
+      '15 journals',
       'Everything in Pro',
       'Private community spaces',
       'Mentor dashboards & invites',
-      'Shared playbooks & leaderboards',
-      'Bulk member onboarding',
+      'Shared playbooks',
       'Dedicated support',
     ],
     cta: 'Join early access',
@@ -433,11 +472,18 @@ export const PRICING_PLANS: PricingPlan[] = [
   },
 ];
 
-export const PRICING_FAQ: FaqItem[] = [
+export const PRICING_PLANS = SHOW_BACKTEST_AND_REPLAY
+  ? PRICING_PLANS_ALL
+  : PRICING_PLANS_ALL.map((plan) => ({
+      ...plan,
+      features: plan.features.filter(pricingFeatureVisible),
+    }));
+
+const PRICING_FAQ_ALL: FaqItem[] = [
   {
-    question: 'Is there a free plan?',
+    question: 'Is there a Starter plan?',
     answer:
-      'Yes. Edgewise Free includes unlimited trade journal entries, trade replay, basic trading analytics, and limited AI trade review. No credit card required.',
+      'Yes. Edgewise Starter is $10/month and includes unlimited trade journal entries, trade replay, basic trading analytics, and limited AI trade review.',
   },
   {
     question: 'Can I use Edgewise for prop firms?',
@@ -445,9 +491,9 @@ export const PRICING_FAQ: FaqItem[] = [
       'Yes. Track multiple prop firm accounts, monitor drawdown and consistency rules, and replay sessions when rules are broken. Built for eval and funded phases.',
   },
   {
-    question: 'When will Pro and Team launch?',
+    question: 'When will Pro and Elite launch?',
     answer:
-      'Pro and Team tiers are in early access. Sign up free today and you will be first in line when paid plans launch. Early users keep founding-member pricing.',
+      'Pro and Elite tiers are in early access. Subscribe to Starter today and you will be first in line when advanced plans launch. Early users keep founding-member pricing.',
   },
   {
     question: 'Can I switch between monthly and annual billing?',
@@ -455,6 +501,24 @@ export const PRICING_FAQ: FaqItem[] = [
       'Annual billing will be available at launch with roughly 20% savings. The toggle on this page previews planned pricing — billing is not live yet.',
   },
 ];
+
+export const PRICING_FAQ = SHOW_BACKTEST_AND_REPLAY
+  ? PRICING_FAQ_ALL
+  : PRICING_FAQ_ALL.map((item) =>
+      item.question === 'Is there a Starter plan?'
+        ? {
+            ...item,
+            answer:
+              'Yes. Edgewise Starter is $10/month and includes unlimited trade journal entries, basic trading analytics, and limited AI trade review.',
+          }
+        : item.question === 'Can I use Edgewise for prop firms?'
+          ? {
+              ...item,
+              answer:
+                'Yes. Track multiple prop firm accounts, monitor drawdown and consistency rules, and review sessions when rules are broken. Built for eval and funded phases.',
+            }
+          : item,
+    );
 
 export type ComparisonValue = boolean | 'partial' | 'limited';
 
@@ -474,7 +538,7 @@ export const COMPETITOR_LABELS = {
   edgewonk: 'Edgewonk-style',
 } as const;
 
-export const COMPETITOR_COMPARISON: ComparisonFeature[] = [
+const COMPETITOR_COMPARISON_ALL: ComparisonFeature[] = [
   {
     name: 'Trade journal & logging',
     edgewise: true,
@@ -525,7 +589,7 @@ export const COMPETITOR_COMPARISON: ComparisonFeature[] = [
     edgewonk: false,
   },
   {
-    name: 'Free tier',
+    name: 'Starter tier',
     edgewise: true,
     otherJournal: 'limited',
     tradervue: 'limited',
@@ -540,6 +604,13 @@ export const COMPETITOR_COMPARISON: ComparisonFeature[] = [
   },
 ];
 
+export const COMPETITOR_COMPARISON = SHOW_BACKTEST_AND_REPLAY
+  ? COMPETITOR_COMPARISON_ALL
+  : COMPETITOR_COMPARISON_ALL.filter(
+      (feature) =>
+        !(HIDDEN_COMPARISON_FEATURE_NAMES as readonly string[]).includes(feature.name),
+    );
+
 export interface BlogPost {
   title: string;
   excerpt: string;
@@ -549,7 +620,7 @@ export interface BlogPost {
   coverImage: string;
 }
 
-export const BLOG_POSTS: BlogPost[] = [
+const BLOG_POSTS_ALL: BlogPost[] = [
   {
     title: '5 journaling habits that separate profitable traders',
     excerpt:
@@ -578,6 +649,10 @@ export const BLOG_POSTS: BlogPost[] = [
     coverImage: '/marketing/blog-psychology.png',
   },
 ];
+
+export const BLOG_POSTS = SHOW_BACKTEST_AND_REPLAY
+  ? BLOG_POSTS_ALL
+  : BLOG_POSTS_ALL.filter((post) => !post.title.toLowerCase().includes('replay'));
 
 export interface ResourceLink {
   icon: LucideIcon;
@@ -618,7 +693,7 @@ export const RESOURCE_LINKS: ResourceLink[] = [
     title: 'Support',
     description: 'Get help with your account, imports, and feature questions.',
     linkLabel: 'Get support',
-    href: '#',
+    href: SUPPORT_MAILTO,
     accent: 'amber',
   },
 ];
@@ -635,7 +710,9 @@ export const FOOTER_COLUMNS = [
     title: 'Product',
     links: [
       { label: 'Features', href: '/#features' },
-      { label: 'Trade replay', href: '/#trade-replay' },
+      ...(SHOW_BACKTEST_AND_REPLAY
+        ? [{ label: 'Trade replay', href: '/#trade-replay' } as const]
+        : []),
       { label: 'AI trade review', href: '/#ai-review' },
       { label: 'Pricing', href: '/pricing' },
       { label: 'Compare', href: '/pricing#compare' },

@@ -2,6 +2,7 @@
 
 import { AccountSettingsRow } from '@/components/account/account-settings-row';
 import { AccountSettingsSection } from '@/components/account/account-settings-section';
+import { AdminAccountLimitSection } from '@/components/admin/admin-account-limit-section';
 import { AdminInvoiceTable } from '@/components/admin/admin-invoice-table';
 import { AdminSubscriptionSection } from '@/components/admin/admin-subscription-section';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
@@ -208,6 +209,14 @@ export function AdminUserDetailPanel({ userId }: AdminUserDetailPanelProps) {
 
       <AccountSettingsSection title="Subscription">
         <AdminSubscriptionSection userId={userId} />
+      </AccountSettingsSection>
+
+      <AccountSettingsSection title="Trading accounts">
+        <AdminAccountLimitSection
+          userId={userId}
+          quota={user.accountQuota}
+          onUpdated={setUser}
+        />
       </AccountSettingsSection>
 
       <AccountSettingsSection title="Invoices">

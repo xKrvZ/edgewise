@@ -56,7 +56,7 @@ export default function PricingPage() {
           <MarketingSectionHeader
             eyebrow="Pricing & compare"
             title="Plans for every stage of your trading journey"
-            description="Start free with a full trading journal. Compare Edgewise to Tradervue and traditional journals — then pick the plan that fits."
+            description="Start with a full trading journal on Starter for $10/month. Compare Edgewise to Tradervue and traditional journals — then pick the plan that fits."
             align="center"
           />
         </MarketingSection>
@@ -67,7 +67,7 @@ export default function PricingPage() {
           <MarketingSectionHeader
             eyebrow="Compare"
             title="Edgewise vs other trading journals"
-            description="A factual feature comparison across trade replay, AI review, prop firm tracking, backtesting, and free tiers."
+            description="A factual feature comparison across trade replay, AI review, prop firm tracking, backtesting, and plan tiers."
           />
           <div className={marketingSectionContentClass}>
             <MarketingComparisonTable />

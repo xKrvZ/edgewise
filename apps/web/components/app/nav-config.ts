@@ -1,3 +1,4 @@
+import { SHOW_BACKTEST_AND_REPLAY } from '@/lib/product-visibility';
 import {
   BarChart3,
   BookOpen,
@@ -39,8 +40,12 @@ export const NAV_SECTIONS: NavSection[] = [
     label: 'Strategy',
     items: [
       { label: 'Playbooks', href: '/playbooks', icon: BookOpenCheck },
-      { label: 'Backtesting', href: '/backtesting', icon: FlaskConical },
-      { label: 'Replay', href: '/replay', icon: Play },
+      ...(SHOW_BACKTEST_AND_REPLAY
+        ? ([
+            { label: 'Backtesting', href: '/backtesting', icon: FlaskConical },
+            { label: 'Replay', href: '/replay', icon: Play },
+          ] as const)
+        : []),
     ],
   },
 ];

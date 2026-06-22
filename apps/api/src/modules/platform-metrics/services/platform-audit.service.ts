@@ -211,6 +211,30 @@ export class PlatformAuditService {
     });
   }
 
+  async recordAdminAccountLimitChanged(params: {
+    actorUserId: string;
+    userId: string;
+    previousOverride: number | null;
+    newOverride: number | null;
+    previousMaxAccounts: number;
+    newMaxAccounts: number;
+  }): Promise<void> {
+    await this.platformEventDao.insertAuditEvent({
+      source: PLATFORM_EVENT_SOURCE.ADMIN,
+      type: PLATFORM_EVENT_TYPE.ADMIN_ACCOUNT_LIMIT_CHANGED,
+      idempotencyKey: `admin:account_limit.changed:${randomUUID()}`,
+      userId: params.userId,
+      actorUserId: params.actorUserId,
+      occurredAt: new Date(),
+      payload: {
+        previousOverride: params.previousOverride,
+        newOverride: params.newOverride,
+        previousMaxAccounts: params.previousMaxAccounts,
+        newMaxAccounts: params.newMaxAccounts,
+      },
+    });
+  }
+
   private toAuditEntry(row: {
     id: string;
     type: string;

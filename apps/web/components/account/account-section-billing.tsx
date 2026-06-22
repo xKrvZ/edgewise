@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ApiError, api } from '@/lib/api-client';
 import { authClient } from '@/lib/auth-client';
 import { useSubscription } from '@/lib/hooks/use-subscription';
+import { formatPlanLabel, BILLING_PLAN_LABELS } from '@/lib/billing-plans';
 import { formatFeatureList } from '@/lib/features';
 import type { InvoiceRow } from '@/lib/types/billing';
 import { CreditCard, ExternalLink, Sparkles } from 'lucide-react';
@@ -67,9 +68,11 @@ export function AccountSectionBilling() {
 
   const planLabel = isLoading
     ? 'Loading…'
-    : isSubscribed
-      ? 'Edgewise Pro'
-      : 'No active plan';
+    : isSubscribed && status?.planId && status.planId !== 'none'
+      ? `Edgewise ${BILLING_PLAN_LABELS[status.planId]}`
+      : isSubscribed
+        ? 'Edgewise'
+        : 'No active plan';
 
   const renewalText =
     status?.currentPeriodEnd && isSubscribed
@@ -79,12 +82,25 @@ export function AccountSectionBilling() {
   const featuresText =
     features.length > 0 ? `Features: ${formatFeatureList(features)}` : undefined;
 
+  const accountLimitText =
+    status?.maxAccounts != null && status.maxAccounts > 0
+      ? `${status.accountCount ?? 0} of ${status.maxAccounts} journals used`
+      : undefined;
+
+  const aiReviewTokenText = status?.aiReviewTokensUnlimited
+    ? 'Unlimited AI review tokens'
+    : status?.aiReviewTokensLimit != null && status.aiReviewTokensLimit > 0
+      ? `${status.aiReviewTokensRemaining ?? status.aiReviewTokensLimit} of ${status.aiReviewTokensLimit} AI review tokens left this month`
+      : undefined;
+
+  const planIdLabel = formatPlanLabel(status?.planId);
+
   return (
     <div className="space-y-8">
       {!isSubscribed && !isLoading ? (
         <p className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
           Your subscription is inactive. Subscribe to access the dashboard, trades, analytics, and
-          trading accounts.
+          journals.
         </p>
       ) : null}
 
@@ -107,7 +123,7 @@ export function AccountSectionBilling() {
                 : { label: 'Inactive', variant: 'secondary' }
           }
           value={planLabel}
-          description={renewalText ?? featuresText}
+          description={renewalText ?? accountLimitText ?? featuresText}
           actions={
             isSubscribed && status?.polarCustomerId && !isMock ? (
               <Button
@@ -150,6 +166,22 @@ export function AccountSectionBilling() {
                 {actionLoading === 'checkout' ? 'Opening…' : 'Complete'}
               </Button>
             }
+          />
+        ) : null}
+        {isSubscribed && accountLimitText ? (
+          <AccountSettingsRow
+            icon={Sparkles}
+            label="Journals"
+            value={planIdLabel ?? 'Included'}
+            description={`${accountLimitText}. Each plan includes a fixed number of trade journals; upgrade to add more.`}
+          />
+        ) : null}
+        {isSubscribed && aiReviewTokenText ? (
+          <AccountSettingsRow
+            icon={Sparkles}
+            label="AI review tokens"
+            value={planIdLabel ?? 'Included'}
+            description={`${aiReviewTokenText}. On-demand trade reviews consume one token each.`}
           />
         ) : null}
       </AccountSettingsSection>

@@ -12,6 +12,7 @@ import { MarketingPageShell } from '@/components/marketing/marketing-page-shell'
 import { MarketingPricing } from '@/components/marketing/marketing-pricing';
 import { MarketingReplaySection } from '@/components/marketing/marketing-replay-section';
 import { MarketingResources } from '@/components/marketing/marketing-resources';
+import { SHOW_BACKTEST_AND_REPLAY } from '@/lib/product-visibility';
 import { MarketingStatsRow } from '@/components/marketing/marketing-stats-row';
 import { MarketingTrustedBy } from '@/components/marketing/marketing-trusted-by';
 import { MarketingUseCases } from '@/components/marketing/marketing-use-cases';
@@ -71,7 +72,7 @@ export default function Home() {
         <MarketingFeatureSpotlights />
         <MarketingUseCases />
         <MarketingHowItWorks />
-        <MarketingReplaySection />
+        {SHOW_BACKTEST_AND_REPLAY ? <MarketingReplaySection /> : null}
         <MarketingStatsRow />
         <MarketingComparisonTeaser />
         <MarketingPricing showFaq={false} />

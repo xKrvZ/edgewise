@@ -25,11 +25,11 @@ export const MARKETING_SEO = {
 export const PRICING_SEO = {
   title: 'Pricing — Edgewise Trading Journal & Analytics',
   description:
-    'Compare Edgewise plans and alternatives. Free trade journal with replay, AI review, and prop firm tracking. Pro and Team tiers coming soon.',
+    'Compare Edgewise plans and alternatives. Starter trade journal from $10/month with replay, AI review, and prop firm tracking. Pro and Elite tiers coming soon.',
   keywords: [
     'trading journal pricing',
     'trade journal software comparison',
-    'free trading journal',
+    'affordable trading journal',
     'trading journal software alternative',
     'Tradervue alternative',
     ...MARKETING_KEYWORDS,

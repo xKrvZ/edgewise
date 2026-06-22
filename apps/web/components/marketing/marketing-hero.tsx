@@ -38,7 +38,7 @@ export function MarketingHero() {
               href="/sign-in"
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30 sm:px-7 sm:py-4 sm:text-base"
             >
-              Start journaling free
+              Get started
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
             <a
@@ -53,11 +53,11 @@ export function MarketingHero() {
           <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500">
             <span className="inline-flex items-center gap-1.5">
               <Check className="h-4 w-4 text-primary" aria-hidden="true" />
-              No credit card required
+              Starter from $10/month
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Check className="h-4 w-4 text-primary" aria-hidden="true" />
-              Free forever plan
+              Cancel anytime
             </span>
           </div>
         </div>

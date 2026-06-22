@@ -503,8 +503,10 @@ export const api = {
   // -------------------- AI Review --------------------
   aiReview: {
     generate: (query?: AiReviewQuery) => request<AiReview>('/ai-review', { query }),
-    generateForTrade: (tradeId: string) =>
+    getTradeReview: (tradeId: string) =>
       request<TradeAiReview>(`/ai-review/trades/${tradeId}`),
+    requestTradeReview: (tradeId: string) =>
+      request<TradeAiReview>(`/ai-review/trades/${tradeId}`, { method: 'POST' }),
   },
 
   // -------------------- Community --------------------
@@ -610,6 +612,11 @@ export const api = {
         request<import('@/lib/types/admin').AdminUserDetail>(`/admin/users/${id}/subscription`, {
           method: 'PATCH',
           body: { status },
+        }),
+      updateAccountLimit: (id: string, maxTradingAccounts: number | null) =>
+        request<import('@/lib/types/admin').AdminUserDetail>(`/admin/users/${id}/account-limit`, {
+          method: 'PATCH',
+          body: { maxTradingAccounts },
         }),
       ban: (id: string, banReason?: string) =>
         request<import('@/lib/types/admin').AdminUserDetail>(`/admin/users/${id}/ban`, {

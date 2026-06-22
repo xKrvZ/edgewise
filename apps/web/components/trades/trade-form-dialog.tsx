@@ -309,7 +309,7 @@ export function TradeFormDialog({
                 <Field label="Account" required>
                   <Select value={form.accountId} onValueChange={(v) => set('accountId', v)}>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select account" />
+                      <SelectValue placeholder="Select journal" />
                     </SelectTrigger>
                     <SelectContent>
                       {accounts.map((a) => (

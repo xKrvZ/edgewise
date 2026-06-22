@@ -1,6 +1,10 @@
 import { FEATURE_ACCENT_STYLES, FEATURE_GRID } from '@/components/marketing/marketing-data';
 import { MarketingSection, marketingSectionContentClass } from '@/components/marketing/marketing-section';
 import { MarketingSectionHeader } from '@/components/marketing/marketing-section-header';
+import { cn } from '@/lib/utils';
+
+const featureGridColsClass =
+  FEATURE_GRID.length >= 5 ? 'lg:grid-cols-3 xl:grid-cols-5' : 'lg:grid-cols-4';
 
 export function MarketingFeatureGrid() {
   return (
@@ -11,7 +15,13 @@ export function MarketingFeatureGrid() {
         description="Trading journal software with replay, analytics, AI review, and prop firm tracking — built for futures and forex day traders."
       />
 
-      <div className={`${marketingSectionContentClass} grid gap-6 sm:grid-cols-2 lg:grid-cols-5 lg:gap-8`}>
+      <div
+        className={cn(
+          marketingSectionContentClass,
+          'grid gap-6 sm:grid-cols-2 lg:gap-8',
+          featureGridColsClass,
+        )}
+      >
         {FEATURE_GRID.map(({ icon: Icon, title, description, accent }) => {
           const styles = FEATURE_ACCENT_STYLES[accent];
 

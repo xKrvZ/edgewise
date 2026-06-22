@@ -9,9 +9,11 @@ import {
   addMonths,
   eachDayOfInterval,
   endOfMonth,
+  endOfWeek,
   format,
   isSameMonth,
   startOfMonth,
+  startOfWeek,
   subMonths,
 } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -40,22 +42,28 @@ export function CalendarHeatmap({ data, initialMonth }: CalendarHeatmapProps) {
 
   const [month, setMonth] = useState(() => startOfMonth(latest));
 
-  const days = useMemo(() => {
-    const start = startOfMonth(month);
-    const end = endOfMonth(month);
-    return eachDayOfInterval({ start, end });
+  const weeks = useMemo(() => {
+    const gridStart = startOfWeek(startOfMonth(month));
+    const gridEnd = endOfWeek(endOfMonth(month));
+    const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
+    const chunked: Date[][] = [];
+    for (let i = 0; i < days.length; i += 7) {
+      chunked.push(days.slice(i, i + 7));
+    }
+    return chunked;
   }, [month]);
-
-  const leadingBlanks = startOfMonth(month).getDay();
 
   const monthTotal = useMemo(() => {
     let total = 0;
-    for (const day of days) {
-      const entry = byDate.get(format(day, 'yyyy-MM-dd'));
-      if (entry) total += entry.pnl;
+    for (const week of weeks) {
+      for (const day of week) {
+        if (!isSameMonth(day, month)) continue;
+        const entry = byDate.get(format(day, 'yyyy-MM-dd'));
+        if (entry) total += entry.pnl;
+      }
     }
     return total;
-  }, [days, byDate]);
+  }, [weeks, byDate, month]);
 
   const maxAbs = useMemo(() => {
     let m = 1;
@@ -92,55 +100,111 @@ export function CalendarHeatmap({ data, initialMonth }: CalendarHeatmapProps) {
           <div key={d}>{d}</div>
         ))}
       </div>
-      <div className="mt-1 grid grid-cols-7 gap-1">
-        {Array.from({ length: leadingBlanks }).map((_, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: fixed blanks.
-          <div key={`blank-${i}`} />
-        ))}
-        {days.map((day) => {
-          const key = format(day, 'yyyy-MM-dd');
-          const entry = byDate.get(key);
-          const pnl = entry?.pnl ?? 0;
-          const intensity = entry ? Math.min(1, Math.abs(pnl) / maxAbs) : 0;
-          const bg = !entry
-            ? undefined
-            : pnl >= 0
-              ? `hsl(var(--success) / ${0.12 + intensity * 0.55})`
-              : `hsl(var(--destructive) / ${0.12 + intensity * 0.55})`;
-          const cell = (
-            <div
-              className={cn(
-                'flex aspect-square flex-col items-center justify-center rounded-md border text-[11px] tabular-nums transition-colors',
-                entry ? 'border-transparent' : 'border-border/60',
-                !isSameMonth(day, month) && 'opacity-40',
-              )}
-              style={{ backgroundColor: bg }}
-            >
-              <span
-                className={cn('font-medium', entry ? 'text-foreground' : 'text-muted-foreground')}
-              >
-                {format(day, 'd')}
-              </span>
-            </div>
-          );
 
-          if (!entry) return <div key={key}>{cell}</div>;
+      <div className="mt-1 flex flex-col gap-1">
+        {weeks.map((week) => {
+          const weekKey = format(week[0], 'yyyy-MM-dd');
+          let weekPnl = 0;
+          let weekHasData = false;
+          for (const day of week) {
+            const entry = byDate.get(format(day, 'yyyy-MM-dd'));
+            if (entry) {
+              weekPnl += entry.pnl;
+              weekHasData = true;
+            }
+          }
+
           return (
-            <Tooltip key={key}>
-              <TooltipTrigger asChild>{cell}</TooltipTrigger>
-              <TooltipContent>
-                <div className="text-xs">
-                  <p className="font-medium">{format(day, 'MMM d')}</p>
-                  <p className={pnl >= 0 ? 'text-success' : 'text-destructive'}>
-                    {formatCurrency(pnl, { signed: true })}
-                  </p>
-                  <p className="text-muted-foreground">
-                    {entry.trades} trade{entry.trades === 1 ? '' : 's'} · {entry.winRate.toFixed(0)}
-                    % win
-                  </p>
-                </div>
-              </TooltipContent>
-            </Tooltip>
+            <div key={weekKey} className="grid grid-cols-7 gap-1">
+              {week.map((day) => {
+                const key = format(day, 'yyyy-MM-dd');
+                const entry = byDate.get(key);
+                const inMonth = isSameMonth(day, month);
+                const isSaturday = day.getDay() === 6;
+                const pnl = entry?.pnl ?? 0;
+                const hasDaily = !!entry && inMonth;
+                const intensity = hasDaily ? Math.min(1, Math.abs(pnl) / maxAbs) : 0;
+                const bg =
+                  !hasDaily || !entry
+                    ? undefined
+                    : pnl >= 0
+                      ? `hsl(var(--success) / ${0.12 + intensity * 0.55})`
+                      : `hsl(var(--destructive) / ${0.12 + intensity * 0.55})`;
+
+                const cell = (
+                  <div
+                    className={cn(
+                      'flex aspect-square min-h-0 flex-col items-center justify-center gap-px rounded-md border p-0.5 text-[11px] tabular-nums transition-colors',
+                      hasDaily ? 'border-transparent' : 'border-border/60',
+                      !inMonth && 'opacity-40',
+                    )}
+                    style={{ backgroundColor: bg }}
+                  >
+                    <span
+                      className={cn(
+                        'text-[10px] font-medium leading-none',
+                        hasDaily || (isSaturday && weekHasData) ? 'text-foreground' : 'text-muted-foreground',
+                      )}
+                    >
+                      {format(day, 'd')}
+                    </span>
+                    {isSaturday && weekHasData && (
+                      <span
+                        className={cn(
+                          'max-w-full truncate text-[8px] font-medium leading-none sm:text-[9px]',
+                          weekPnl >= 0 ? 'text-success/80' : 'text-destructive/80',
+                        )}
+                        title="Week total"
+                      >
+                        W {formatCurrency(weekPnl, { compact: true, signed: true })}
+                      </span>
+                    )}
+                    {hasDaily && (
+                      <span
+                        className={cn(
+                          'max-w-full truncate text-[9px] font-semibold leading-none sm:text-[10px]',
+                          pnl >= 0 ? 'text-success' : 'text-destructive',
+                        )}
+                      >
+                        {formatCurrency(pnl, { compact: true, signed: true })}
+                      </span>
+                    )}
+                  </div>
+                );
+
+                const showTooltip = hasDaily || (isSaturday && weekHasData);
+                if (!showTooltip) {
+                  return <div key={key}>{cell}</div>;
+                }
+
+                return (
+                  <Tooltip key={key}>
+                    <TooltipTrigger asChild>{cell}</TooltipTrigger>
+                    <TooltipContent>
+                      <div className="text-xs">
+                        <p className="font-medium">{format(day, 'MMM d')}</p>
+                        {isSaturday && weekHasData && (
+                          <p className={weekPnl >= 0 ? 'text-success' : 'text-destructive'}>
+                            Week: {formatCurrency(weekPnl, { signed: true })}
+                          </p>
+                        )}
+                        {hasDaily && entry && (
+                          <>
+                            <p className={pnl >= 0 ? 'text-success' : 'text-destructive'}>
+                              Day: {formatCurrency(pnl, { signed: true })}
+                            </p>
+                            <p className="text-muted-foreground">
+                              {entry.trades} trade{entry.trades === 1 ? '' : 's'} ·{' '}
+                              {entry.winRate.toFixed(0)}% win
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </div>
           );
         })}
       </div>

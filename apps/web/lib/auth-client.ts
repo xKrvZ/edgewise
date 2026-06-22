@@ -20,6 +20,9 @@ const authBaseURL = resolveAuthBaseURL();
 
 export const authClient = createAuthClient({
   baseURL: authBaseURL,
+  fetchOptions: {
+    timeout: 10_000,
+  },
   plugins: [adminClient(), emailOTPClient(), jwtClient(), polarClient()],
 });
 

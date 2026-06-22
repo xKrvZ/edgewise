@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
@@ -40,13 +41,19 @@ export class CommunityController {
   constructor(private readonly communityService: CommunityService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a community (creator becomes owner)' })
+  @ApiOperation({ summary: 'Create a community (creator becomes owner, Elite plan required)' })
   @ApiCreatedResponse({ type: CommunityDetailDto })
+  @ApiForbiddenResponse({ description: 'Elite plan required to create communities' })
   async create(
     @Body() dto: CreateCommunityDto,
     @Session() session: UserSession,
   ): Promise<CommunityDetailDto> {
-    return this.communityService.create(session.user.id, dto);
+    return this.communityService.create(
+      session.user.id,
+      dto,
+      session.user.email,
+      session.user.role,
+    );
   }
 
   @Get()

@@ -132,11 +132,20 @@ export interface AdminRefundResult {
   currency: string;
 }
 
+export interface AdminUserAccountQuota {
+  accountCount: number;
+  maxAccounts: number;
+  planMaxAccounts: number;
+  maxTradingAccountsOverride: number | null;
+  planId: 'starter' | 'pro' | 'elite' | 'none';
+}
+
 export interface AdminUserDetail extends AdminUserRow {
   image: string | null;
   banReason: string | null;
   banExpires: string | null;
   subscription: AdminUserSubscription;
+  accountQuota: AdminUserAccountQuota;
 }
 
 export type AdminSubscriptionStatus = 'active' | 'inactive' | 'canceled';

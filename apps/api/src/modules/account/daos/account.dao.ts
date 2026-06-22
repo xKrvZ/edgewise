@@ -59,6 +59,33 @@ export class AccountDao extends KyselyDao<AccountDao> {
     return row ?? null;
   }
 
+  async countByUser(userId: string): Promise<number> {
+    const row = await this.kysely
+      .selectFrom(AccountDao.TABLE)
+      .select((eb) => eb.fn.countAll<number>().as('count'))
+      .where('userId', '=', userId)
+      .executeTakeFirst();
+    return Number(row?.count ?? 0);
+  }
+
+  async listScreenshotStorageKeysForAccount(
+    accountId: string,
+    userId: string,
+  ): Promise<string[]> {
+    const rows = await this.kysely
+      .selectFrom('screenshot')
+      .innerJoin('trade', 'trade.id', 'screenshot.tradeId')
+      .select('screenshot.storageKey')
+      .where('trade.accountId', '=', accountId)
+      .where('trade.userId', '=', userId)
+      .where('screenshot.storageKey', 'is not', null)
+      .execute();
+
+    return rows
+      .map((row) => row.storageKey)
+      .filter((key): key is string => typeof key === 'string' && key.length > 0);
+  }
+
   async deleteForUser(id: string, userId: string): Promise<boolean> {
     const result = await this.kysely
       .deleteFrom(AccountDao.TABLE)

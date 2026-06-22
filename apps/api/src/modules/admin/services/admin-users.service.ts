@@ -10,7 +10,10 @@ import { createPolarClient } from '@/auth/polar.plugin';
 import billingConfig from '@/config/billing.config';
 import type { InvoicesPageDto } from '@/modules/billing/dtos/invoice.dto';
 import { SubscriptionDao } from '@/modules/billing/daos/subscription.dao';
+import { UserAccountLimitDao } from '@/modules/billing/daos/user-account-limit.dao';
+import { AccountLimitService } from '@/modules/billing/services/account-limit.service';
 import { BillingService } from '@/modules/billing/services/billing.service';
+import { AccountDao } from '@/modules/account/daos/account.dao';
 import { PlatformAuditService } from '@/modules/platform-metrics/services/platform-audit.service';
 import type { AdminUserRecord } from '../daos/admin.dao';
 import { AdminDao } from '../daos/admin.dao';
@@ -18,6 +21,8 @@ import type { AdminUsersQueryDto } from '../dtos/admin-user.dto';
 import {
   AdminUpdateUserRoleDto,
   AdminUpdateUserSubscriptionDto,
+  AdminUpdateAccountLimitDto,
+  AdminUserAccountQuotaDto,
   AdminUserDetailDto,
   AdminUserRowDto,
   AdminUsersPageDto,
@@ -41,6 +46,9 @@ export class AdminUsersService {
     private readonly adminDao: AdminDao,
     private readonly billingService: BillingService,
     private readonly subscriptionDao: SubscriptionDao,
+    private readonly accountLimitService: AccountLimitService,
+    private readonly userAccountLimitDao: UserAccountLimitDao,
+    private readonly accountDao: AccountDao,
     private readonly authService: AuthService,
     private readonly platformAuditService: PlatformAuditService,
     private readonly storage: StorageService,
@@ -70,6 +78,7 @@ export class AdminUsersService {
     }
 
     const subscription = await this.buildSubscriptionDto(user);
+    const accountQuota = await this.buildAccountQuotaDto(user);
     const row = await this.toUserRow(user);
     return sanitizeAdminUserDetail({
       ...row,
@@ -78,6 +87,7 @@ export class AdminUsersService {
       banExpires: user.banExpires?.toISOString() ?? null,
       anonymizedAt: user.anonymizedAt?.toISOString() ?? null,
       subscription,
+      accountQuota,
     });
   }
 
@@ -140,6 +150,57 @@ export class AdminUsersService {
       userId,
       previousStatus: existing.subscriptionStatus,
       newStatus: body.status,
+    });
+
+    return this.getUser(userId);
+  }
+
+  async updateAccountLimit(
+    userId: string,
+    body: AdminUpdateAccountLimitDto,
+    actorUserId: string,
+  ): Promise<AdminUserDetailDto> {
+    if (!('maxTradingAccounts' in body)) {
+      throw new BadRequestException('maxTradingAccounts is required');
+    }
+
+    const value = body.maxTradingAccounts ?? null;
+    if (value != null) {
+      if (!Number.isInteger(value) || value < 0 || value > 500) {
+        throw new BadRequestException('maxTradingAccounts must be an integer between 0 and 500');
+      }
+    }
+
+    const existing = await this.adminDao.findUserById(userId);
+    if (!existing) {
+      throw new NotFoundException('User not found');
+    }
+
+    const accountCount = await this.accountDao.countByUser(userId);
+    const previousQuota = await this.accountLimitService.getQuota(
+      userId,
+      accountCount,
+      existing.email,
+    );
+
+    const updated = await this.userAccountLimitDao.setOverride(userId, value);
+    if (!updated) {
+      throw new NotFoundException('User not found');
+    }
+
+    const nextQuota = await this.accountLimitService.getQuota(
+      userId,
+      accountCount,
+      existing.email,
+    );
+
+    await this.platformAuditService.recordAdminAccountLimitChanged({
+      actorUserId,
+      userId,
+      previousOverride: previousQuota.override,
+      newOverride: nextQuota.override,
+      previousMaxAccounts: previousQuota.maxAccounts,
+      newMaxAccounts: nextQuota.maxAccounts,
     });
 
     return this.getUser(userId);
@@ -243,6 +304,19 @@ export class AdminUsersService {
           : null,
       features: userFeatures.features,
       adminEditable: isMock || Boolean(createPolarClient()),
+    };
+  }
+
+  private async buildAccountQuotaDto(user: AdminUserRecord): Promise<AdminUserAccountQuotaDto> {
+    const accountCount = await this.accountDao.countByUser(user.id);
+    const quota = await this.accountLimitService.getQuota(user.id, accountCount, user.email);
+
+    return {
+      accountCount: quota.accountCount,
+      maxAccounts: quota.maxAccounts,
+      planMaxAccounts: quota.planMaxAccounts,
+      maxTradingAccountsOverride: quota.override,
+      planId: quota.planId,
     };
   }
 }

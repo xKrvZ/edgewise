@@ -22,7 +22,7 @@ export function MarketingFooter() {
               href="/sign-in"
               className="inline-flex items-center text-sm font-semibold text-primary transition-colors hover:text-primary/80"
             >
-              Start for free →
+              Get started →
             </Link>
           </div>
 

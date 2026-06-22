@@ -1,5 +1,6 @@
 'use client';
 
+import { CreateAccountCta } from '@/components/accounts/create-account-cta';
 import { DirectionBadge } from '@/components/trades/direction-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,9 +16,10 @@ import {
 } from '@/components/ui/table';
 import { EmptyState } from '@/components/shared/empty-state';
 import { formatCurrency, formatDate, pnlColor } from '@/lib/format';
+import { useActiveAccounts } from '@/lib/hooks/use-active-accounts';
 import type { Trade } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Activity, ChevronRight } from 'lucide-react';
+import { Activity, ChevronRight, Wallet } from 'lucide-react';
 import Link from 'next/link';
 
 interface DashboardRecentTradesProps {
@@ -51,6 +53,8 @@ export function DashboardRecentTrades({
   isLoading,
   onRowClick,
 }: DashboardRecentTradesProps) {
+  const { needsAccountFirst, isLoading: accountsLoading } = useActiveAccounts();
+
   return (
     <Card className="h-full gap-0">
       <CardHeader className="flex-row items-center justify-between">
@@ -115,9 +119,16 @@ export function DashboardRecentTrades({
           <div className={cardTableStatePaddingClass}>
             <EmptyState
               variant="embedded"
-              icon={Activity}
-              title="No trades logged"
-              message="Once you log trades, your most recent activity shows up here."
+              icon={needsAccountFirst ? Wallet : Activity}
+              title={needsAccountFirst ? 'Create a journal first' : 'No trades logged'}
+              message={
+                needsAccountFirst
+                  ? 'Add a journal before you can log or import trades.'
+                  : 'Once you log trades, your most recent activity shows up here.'
+              }
+              action={
+                accountsLoading ? undefined : needsAccountFirst ? <CreateAccountCta /> : undefined
+              }
             />
           </div>
         )}

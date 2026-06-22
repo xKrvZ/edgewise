@@ -1,6 +1,7 @@
 'use client';
 
 import { PeriodAiReviewCard } from '@/components/ai-review/period-ai-review-card';
+import { CreateAccountCta } from '@/components/accounts/create-account-cta';
 import { DateRangeSelector } from '@/components/app/date-range-selector';
 import { PageHeader } from '@/components/app/page-header';
 import { AccountBalanceChart } from '@/components/charts/account-balance-chart';
@@ -12,6 +13,7 @@ import { DashboardEquityChart } from '@/components/dashboard/dashboard-equity-ch
 import { DashboardKpiGrid } from '@/components/dashboard/dashboard-kpi-grid';
 import { DashboardMonthlyBars } from '@/components/dashboard/dashboard-monthly-bars';
 import { DashboardPerformanceDonut } from '@/components/dashboard/dashboard-performance-donut';
+import { DashboardAccountActions } from '@/components/dashboard/dashboard-account-actions';
 import { DashboardRecentTrades } from '@/components/dashboard/dashboard-recent-trades';
 import { ProgressTracker } from '@/components/dashboard/progress-tracker';
 import { TraderScoreCard } from '@/components/dashboard/trader-score-card';
@@ -34,10 +36,11 @@ import {
   pnlColor,
 } from '@/lib/format';
 import { filtersKey, useGlobalFilters } from '@/lib/hooks/use-global-filters';
+import { useActiveAccounts } from '@/lib/hooks/use-active-accounts';
 import { useQuery } from '@/lib/hooks/use-query';
 import { useReferenceData } from '@/lib/hooks/use-reference-data';
 import { withTradeRelations } from '@/lib/trade-relations';
-import { Activity, BookOpenCheck, Clock, Gauge, Plus, TrendingDown, TriangleAlert } from 'lucide-react';
+import { Activity, BookOpenCheck, Clock, Gauge, Plus, TrendingDown, TriangleAlert, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo } from 'react';
@@ -55,6 +58,7 @@ export default function DashboardPage() {
   const filters = useGlobalFilters();
   const key = filtersKey(filters);
   const { playbooks, tags, mistakes } = useReferenceData();
+  const { needsAccountFirst, isLoading: accountsLoading } = useActiveAccounts();
 
   const dashboard = useQuery(() => api.analytics.dashboard(filters), [key]);
   const recent = useQuery(
@@ -106,9 +110,12 @@ export default function DashboardPage() {
                 Log trade
               </Link>
             </Button>
-            <Button variant="outline" asChild>
-              <Link href="/trades">View all trades</Link>
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" asChild>
+                <Link href="/trades">View all trades</Link>
+              </Button>
+              <DashboardAccountActions />
+            </div>
           </>
         }
       />
@@ -348,7 +355,7 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">P&L calendar heatmap</CardTitle>
+              <CardTitle className="text-base">P&L calendar</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -383,16 +390,24 @@ export default function DashboardPage() {
               ) : (
                 <div className="px-6">
                   <EmptyState
-                    icon={Activity}
-                    title="No trades logged"
-                    message="Once you log trades, your activity shows up here."
+                    icon={needsAccountFirst ? Wallet : Activity}
+                    title={needsAccountFirst ? 'Create a journal first' : 'No trades logged'}
+                    message={
+                      needsAccountFirst
+                        ? 'Add a journal before you can log or import trades.'
+                        : 'Once you log trades, your activity shows up here.'
+                    }
                     action={
-                      <Button asChild>
-                        <Link href="/trades">
-                          <Plus className="h-4 w-4" />
-                          Log trade
-                        </Link>
-                      </Button>
+                      accountsLoading ? undefined : needsAccountFirst ? (
+                        <CreateAccountCta />
+                      ) : (
+                        <Button asChild>
+                          <Link href="/trades">
+                            <Plus className="h-4 w-4" />
+                            Log trade
+                          </Link>
+                        </Button>
+                      )
                     }
                   />
                 </div>

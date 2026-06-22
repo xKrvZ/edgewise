@@ -49,10 +49,10 @@ VALUES
     25000, 28950.50, false, NULL, NULL, NULL, NULL, false, NULL, NULL, 0,
     NOW() - INTERVAL '120 days', NOW()),
   ('a0000000-0000-4000-8000-000000000002', 'demo_user', 'FTMO 100k Funded', 'FTMO', 'prop', 'USD',
-    100000, 104300.00, false, 'FTMO', 10000, 5000, 10000, false, 'active', NOW() - INTERVAL '30 days', 14,
+    100000, 104300.00, false, 'FTMO', 10000, 5000, 10000, false, 'active', NOW() - INTERVAL '30 days', 0,
     NOW() - INTERVAL '60 days', NOW()),
   ('f0000000-0000-4000-8000-000000000002', 'demo_user', 'The Funded Trader Challenge', 'The Funded Trader', 'prop', 'USD',
-    50000, 52100.00, false, 'The Funded Trader', 4000, 2500, 5000, true, 'active', NOW() - INTERVAL '18 days', 9,
+    50000, 52100.00, false, 'The Funded Trader', 4000, 2500, 5000, true, 'active', NOW() - INTERVAL '18 days', 0,
     NOW() - INTERVAL '18 days', NOW());
 
 -- ==================== Trading sessions ====================

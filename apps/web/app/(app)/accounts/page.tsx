@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 
-/** Legacy route — account management lives in the sidebar selector. */
+/** Legacy route — journal management lives in account settings. */
 export default function AccountsRedirectPage() {
-  redirect('/dashboard');
+  redirect('/account#trading-accounts');
 }

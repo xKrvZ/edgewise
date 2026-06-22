@@ -49,7 +49,7 @@ export function MarketingFeatureSpotlights() {
                     href="/sign-in"
                     className="mt-8 inline-flex items-center gap-2 text-sm font-bold text-primary transition-colors hover:text-primary/80"
                   >
-                    Try {eyebrow} free
+                    Get started with {eyebrow}
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </Link>
                 </div>

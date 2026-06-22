@@ -51,7 +51,7 @@ export class AccountController {
     @Body() dto: CreateAccountDto,
     @Session() session: UserSession,
   ): Promise<AccountDto> {
-    return this.accountService.create(session.user.id, dto);
+    return this.accountService.create(session.user.id, dto, session.user.email);
   }
 
   @Patch(':id')

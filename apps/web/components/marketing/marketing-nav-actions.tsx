@@ -79,7 +79,7 @@ function MarketingLoggedOutActions({
 
   const ctaLink = (
     <Link href="/sign-in" className={ctaClass} onClick={onNavigate}>
-      Start for free
+      Get started
       <ArrowRight className="h-4 w-4" aria-hidden="true" />
     </Link>
   );

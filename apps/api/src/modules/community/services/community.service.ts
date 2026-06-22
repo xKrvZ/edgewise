@@ -40,6 +40,7 @@ import {
   resolveAvatarUrlsForUsers,
 } from '@/modules/privacy/utils/resolve-user-avatar.util';
 import { sanitizeInvitationDto } from '@/modules/privacy/utils/sanitize-user.util';
+import { AccountLimitService } from '@/modules/billing/services/account-limit.service';
 import { StorageService } from '@/modules/storage/storage.service';
 
 const INVITE_TOKEN_LENGTH = 21;
@@ -53,6 +54,7 @@ export class CommunityService {
     private readonly statsDao: CommunityStatsDao,
     private readonly privacyUserDao: PrivacyUserDao,
     private readonly storage: StorageService,
+    private readonly accountLimitService: AccountLimitService,
   ) {}
 
   async list(userId: string): Promise<CommunitySummaryDto[]> {
@@ -102,7 +104,14 @@ export class CommunityService {
     return toCommunityDetailDto(community, memberCount, membership.role, members);
   }
 
-  async create(userId: string, dto: CreateCommunityDto): Promise<CommunityDetailDto> {
+  async create(
+    userId: string,
+    dto: CreateCommunityDto,
+    email?: string | null,
+    role?: string | string[] | null,
+  ): Promise<CommunityDetailDto> {
+    await this.accountLimitService.assertCanCreateCommunity(userId, email, role);
+
     return this.communityDao.transaction(async (trx) => {
       const communityDao = this.communityDao.transacting(trx);
       const memberDao = this.memberDao.transacting(trx);

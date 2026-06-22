@@ -3,6 +3,7 @@
 import { AccountSectionAccount } from '@/components/account/account-section-account';
 import { AccountSectionBilling } from '@/components/account/account-section-billing';
 import { AccountSectionProfile } from '@/components/account/account-section-profile';
+import { AccountSectionTradingAccounts } from '@/components/account/account-section-trading-accounts';
 import { AccountSettingsLayout } from '@/components/account/account-settings-layout';
 import { useAccountSection } from '@/lib/hooks/use-account-section';
 import { useSubscription } from '@/lib/hooks/use-subscription';
@@ -33,6 +34,7 @@ export default function AccountPage() {
   return (
     <AccountSettingsLayout activeSection={section} onSectionChange={setSection}>
       {section === 'profile' ? <AccountSectionProfile /> : null}
+      {section === 'trading-accounts' ? <AccountSectionTradingAccounts /> : null}
       {section === 'account' ? (
         <AccountSectionAccount onGoToProfile={() => setSection('profile')} />
       ) : null}
