@@ -12,6 +12,14 @@ export type Role = (typeof ROLES)[keyof typeof ROLES];
 
 export const ALL_ROLES = Object.values(ROLES);
 
+/** Admin display value when `user.role` is null, empty, or legacy lowercase `user`. */
+export function displayPlatformRole(role: string | null | undefined): Role {
+  const trimmed = role?.trim();
+  if (!trimmed) return ROLES.USER;
+  if (trimmed.toLowerCase() === ROLES.USER.toLowerCase()) return ROLES.USER;
+  return trimmed as Role;
+}
+
 export function hasRole(
   userRole: string | string[] | null | undefined,
   requiredRole: Role,

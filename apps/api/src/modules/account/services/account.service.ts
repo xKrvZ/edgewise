@@ -78,7 +78,6 @@ export class AccountService {
       trailingDrawdown: dto.trailingDrawdown ?? false,
       challengeStatus: dto.challengeStatus ?? null,
       challengeStartedAt: dto.challengeStartedAt ? new Date(dto.challengeStartedAt) : null,
-      breakevenRange: dto.breakevenRange ?? 0,
     });
     if (!row) {
       throw new NotFoundException('Failed to create account');

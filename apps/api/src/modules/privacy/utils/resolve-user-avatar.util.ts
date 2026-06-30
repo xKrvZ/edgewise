@@ -50,3 +50,51 @@ export function collectAvatarSources(
 
   return sources;
 }
+
+export interface UserHeaderSource {
+  headerStorageKey: string | null;
+}
+
+export async function resolveUserHeaderUrl(
+  storage: StorageService,
+  source: UserHeaderSource,
+): Promise<string | null> {
+  if (!source.headerStorageKey) {
+    return null;
+  }
+
+  return storage.presignDownload(source.headerStorageKey);
+}
+
+export async function resolveHeaderUrlsForUsers(
+  storage: StorageService,
+  sources: Map<string, UserHeaderSource>,
+): Promise<Map<string, string | null>> {
+  const entries = await Promise.all(
+    [...sources.entries()].map(async ([userId, source]) => {
+      const url = await resolveUserHeaderUrl(storage, source);
+      return [userId, url] as const;
+    }),
+  );
+
+  return new Map(entries);
+}
+
+export function collectHeaderSources(
+  rows: Array<{
+    userId: string;
+    headerStorageKey: string | null;
+  }>,
+): Map<string, UserHeaderSource> {
+  const sources = new Map<string, UserHeaderSource>();
+
+  for (const row of rows) {
+    if (!sources.has(row.userId)) {
+      sources.set(row.userId, {
+        headerStorageKey: row.headerStorageKey,
+      });
+    }
+  }
+
+  return sources;
+}

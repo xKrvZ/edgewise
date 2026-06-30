@@ -186,7 +186,13 @@ export function UserMenu({ variant = 'compact', collapsed = false, className }: 
       <DropdownMenuContent
         align={variant === 'sidebar' ? 'start' : 'end'}
         side={variant === 'sidebar' ? 'top' : 'bottom'}
-        className={cn(variant === 'sidebar' ? 'w-(--radix-dropdown-menu-trigger-width)' : 'w-56')}
+        className={cn(
+          variant === 'sidebar'
+            ? collapsed
+              ? 'w-56'
+              : 'w-(--radix-dropdown-menu-trigger-width)'
+            : 'w-56',
+        )}
       >
         <DropdownMenuLabel className="flex flex-col">
           <span className="text-sm font-medium">{displayName}</span>

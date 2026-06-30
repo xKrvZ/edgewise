@@ -72,6 +72,29 @@ export class StorageService implements OnModuleInit {
     return `${folder}/${userId}/${nanoid()}${ext}`;
   }
 
+  /** Community logo or header banner object key. */
+  buildCommunityKey(
+    communityId: string,
+    asset: 'logo' | 'header',
+    filename: string,
+  ): string {
+    const folder = asset === 'logo' ? 'community-logos' : 'community-headers';
+    const ext = extname(filename).toLowerCase().slice(0, 12);
+    return `${folder}/${communityId}/${nanoid()}${ext}`;
+  }
+
+  /** Community blog post hero header or inline content image object key. */
+  buildCommunityPostKey(
+    communityId: string,
+    asset: 'header' | 'content',
+    filename: string,
+  ): string {
+    const folder =
+      asset === 'header' ? 'community-post-headers' : 'community-post-content';
+    const ext = extname(filename).toLowerCase().slice(0, 12);
+    return `${folder}/${communityId}/${nanoid()}${ext}`;
+  }
+
   /** Short-lived PUT URL the browser uploads the file bytes to directly. */
   async presignUpload(key: string, contentType: string): Promise<string> {
     return getSignedUrl(

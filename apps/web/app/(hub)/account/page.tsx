@@ -8,13 +8,14 @@ import { AccountSettingsLayout } from '@/components/account/account-settings-lay
 import { useAccountSection } from '@/lib/hooks/use-account-section';
 import { useSubscription } from '@/lib/hooks/use-subscription';
 import { useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
 export default function AccountPage() {
   const { section, setSection, hydrated } = useAccountSection();
   const searchParams = useSearchParams();
   const { refetch } = useSubscription();
+  const [headerActions, setHeaderActions] = useState<ReactNode>(null);
 
   useEffect(() => {
     if (searchParams.get('checkout') === 'success') {
@@ -22,6 +23,12 @@ export default function AccountPage() {
       void refetch();
     }
   }, [refetch, searchParams]);
+
+  useEffect(() => {
+    if (section !== 'trading-accounts') {
+      setHeaderActions(null);
+    }
+  }, [section]);
 
   if (!hydrated) {
     return (
@@ -32,9 +39,15 @@ export default function AccountPage() {
   }
 
   return (
-    <AccountSettingsLayout activeSection={section} onSectionChange={setSection}>
+    <AccountSettingsLayout
+      activeSection={section}
+      onSectionChange={setSection}
+      headerActions={headerActions}
+    >
       {section === 'profile' ? <AccountSectionProfile /> : null}
-      {section === 'trading-accounts' ? <AccountSectionTradingAccounts /> : null}
+      {section === 'trading-accounts' ? (
+        <AccountSectionTradingAccounts onRegisterHeaderActions={setHeaderActions} />
+      ) : null}
       {section === 'account' ? (
         <AccountSectionAccount onGoToProfile={() => setSection('profile')} />
       ) : null}

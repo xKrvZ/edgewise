@@ -41,6 +41,10 @@ export class CommunityInvitationDto {
   status: string;
 
   @Expose()
+  @ApiPropertyOptional({ nullable: true, description: 'Presigned community logo URL' })
+  logoUrl?: string | null;
+
+  @Expose()
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt: Date;
 

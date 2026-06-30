@@ -53,11 +53,6 @@ export interface CoreStats {
   avgR: number | null;
 }
 
-export interface AggregateOptions {
-  /** Absolute P&L band treated as breakeven (default 0). */
-  breakevenRange?: number;
-}
-
 export interface GroupStat {
   key: string;
   label: string;
@@ -122,21 +117,14 @@ export function groupBy<T>(items: T[], keyFn: (t: T) => string): Map<string, T[]
   return map;
 }
 
-function classifyPnl(
-  pnl: number,
-  breakevenRange: number,
-): 'win' | 'loss' | 'breakeven' {
-  if (Math.abs(pnl) <= breakevenRange) {
+function classifyPnl(pnl: number): 'win' | 'loss' | 'breakeven' {
+  if (pnl === 0) {
     return 'breakeven';
   }
   return pnl > 0 ? 'win' : 'loss';
 }
 
-export function aggregate(
-  trades: StatInput[],
-  options: AggregateOptions = {},
-): CoreStats {
-  const breakevenRange = Math.max(0, options.breakevenRange ?? 0);
+export function aggregate(trades: StatInput[]): CoreStats {
   const totalTrades = trades.length;
   let netPnl = 0;
   let grossProfit = 0;
@@ -152,7 +140,7 @@ export function aggregate(
     if ('fees' in t && typeof t.fees === 'number') {
       totalFees += t.fees;
     }
-    const outcome = classifyPnl(t.pnl, breakevenRange);
+    const outcome = classifyPnl(t.pnl);
     if (outcome === 'win') {
       grossProfit += t.pnl;
       winningTrades += 1;
@@ -194,9 +182,8 @@ export function buildGroupStat(
   key: string,
   label: string,
   trades: StatInput[],
-  options?: AggregateOptions,
 ): GroupStat {
-  const a = aggregate(trades, options);
+  const a = aggregate(trades);
   return {
     key,
     label,

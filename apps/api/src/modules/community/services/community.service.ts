@@ -2,13 +2,18 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { nanoid } from 'nanoid';
 import { aggregate, money, ratio, toStat } from '@/modules/analytics/analytics.util';
 import {
   LEADERBOARD_DEFAULT_DAYS,
+  MAX_COMMUNITY_HEADER_BYTES,
+  MAX_COMMUNITY_LOGO_BYTES,
+  COMMUNITY_IMAGE_TYPES,
   type CommunityMemberRole,
+  type CommunityLeaderboardVisibility,
 } from '../constants/community.constants';
 import { CommunityDao } from '../daos/community.dao';
 import { CommunityInvitationDao } from '../daos/community-invitation.dao';
@@ -17,6 +22,7 @@ import { CommunityStatsDao } from '../daos/community-stats.dao';
 import {
   type CommunityDetailDto,
   type CommunityMemberDto,
+  type CommunityPendingInvitationDto,
   type CommunitySummaryDto,
   toCommunityDetailDto,
   toCommunitySummaryDto,
@@ -33,20 +39,41 @@ import {
 import type { CreateCommunityDto } from '../dtos/create-community.dto';
 import type { CreateInvitationDto } from '../dtos/create-invitation.dto';
 import type { UpdateCommunityDto } from '../dtos/update-community.dto';
+import {
+  type CommunityHeaderUploadRequestDto,
+  type CommunityLogoUploadRequestDto,
+  type CommunityUploadTargetDto,
+} from '../dtos/community-upload.dto';
+import type { Selectable } from 'kysely';
+import type { Community } from '@/database/types/db';
 import { PrivacyUserDao } from '@/modules/privacy/daos/privacy-user.dao';
 import { DELETED_USER_DISPLAY_NAME } from '@/modules/privacy/constants/privacy.constants';
 import {
   collectAvatarSources,
+  collectHeaderSources,
   resolveAvatarUrlsForUsers,
+  resolveHeaderUrlsForUsers,
 } from '@/modules/privacy/utils/resolve-user-avatar.util';
 import { sanitizeInvitationDto } from '@/modules/privacy/utils/sanitize-user.util';
 import { AccountLimitService } from '@/modules/billing/services/account-limit.service';
 import { StorageService } from '@/modules/storage/storage.service';
+import { PaginatedDto } from '@/database/dtos/paginated.dto';
+import { TradeService } from '@/modules/trade/services/trade.service';
+import { TradeDto } from '@/modules/trade/dtos/trade.dto';
+import { TradeQueryDto } from '@/modules/trade/dtos/trade-query.dto';
+import { CommunityTagService } from './community-tag.service';
+import {
+  isLikelyHtmlContent,
+  normalizePostContentForStorage,
+  resolvePostContentImageUrls,
+} from '../utils/community-post-content.util';
 
 const INVITE_TOKEN_LENGTH = 21;
 
 @Injectable()
 export class CommunityService {
+  private readonly logger = new Logger(CommunityService.name);
+
   constructor(
     private readonly communityDao: CommunityDao,
     private readonly memberDao: CommunityMemberDao,
@@ -55,11 +82,23 @@ export class CommunityService {
     private readonly privacyUserDao: PrivacyUserDao,
     private readonly storage: StorageService,
     private readonly accountLimitService: AccountLimitService,
+    private readonly communityTagService: CommunityTagService,
+    private readonly tradeService: TradeService,
   ) {}
 
   async list(userId: string): Promise<CommunitySummaryDto[]> {
-    const rows = await this.communityDao.findAllForMember(userId);
-    return rows.map(toCommunitySummaryDto);
+    const rows = await this.communityDao.findAllWithMembership(userId);
+    const pendingByCommunity = await this.resolvePendingInvitationsByCommunity(userId);
+    const summaries = await Promise.all(
+      rows.map(async (row) => {
+        const imageUrls = await this.resolveCommunityImageUrls(row);
+        const aboutContent = await this.resolveAboutContent(row.aboutContent);
+        const pendingInvitation =
+          row.memberRole === null ? (pendingByCommunity.get(row.id) ?? null) : null;
+        return toCommunitySummaryDto({ ...row, aboutContent }, imageUrls, pendingInvitation);
+      }),
+    );
+    return summaries;
   }
 
   async getById(id: string, userId: string): Promise<CommunityDetailDto> {
@@ -69,11 +108,24 @@ export class CommunityService {
     }
 
     const membership = await this.memberDao.findMembership(id, userId);
+    const memberCount = await this.memberDao.countByCommunity(id);
+    const imageUrls = await this.resolveCommunityImageUrls(community);
+    const aboutContent = await this.resolveAboutContent(community.aboutContent);
+    const pendingInvitation = membership
+      ? null
+      : await this.resolvePendingInvitationForCommunity(id, userId);
+
     if (!membership) {
-      throw new ForbiddenException('You are not a member of this community');
+      return toCommunityDetailDto(
+        { ...community, aboutContent },
+        memberCount,
+        null,
+        undefined,
+        imageUrls,
+        pendingInvitation,
+      );
     }
 
-    const memberCount = await this.memberDao.countByCommunity(id);
     const rows = await this.memberDao.findMembersWithProfiles(id);
     const deletedUserIds = await this.privacyUserDao.findDeletedUserIds(
       rows.map((member) => member.userId),
@@ -88,6 +140,15 @@ export class CommunityService {
         })),
       ),
     );
+    const headerUrls = await resolveHeaderUrlsForUsers(
+      this.storage,
+      collectHeaderSources(
+        rows.map((member) => ({
+          userId: member.userId,
+          headerStorageKey: member.headerStorageKey,
+        })),
+      ),
+    );
     const members: CommunityMemberDto[] = rows.map((m) => ({
       id: m.id,
       userId: m.userId,
@@ -97,11 +158,23 @@ export class CommunityService {
       avatarUrl: deletedUserIds.has(m.userId)
         ? null
         : (avatarUrls.get(m.userId) ?? null),
+      headerUrl: deletedUserIds.has(m.userId)
+        ? null
+        : (headerUrls.get(m.userId) ?? null),
       role: m.role,
       joinedAt: m.joinedAt,
     }));
 
-    return toCommunityDetailDto(community, memberCount, membership.role, members);
+    const membersWithTags = await this.communityTagService.enrichMembersWithTags(members);
+
+    return toCommunityDetailDto(
+      { ...community, aboutContent },
+      memberCount,
+      membership.role,
+      membersWithTags,
+      imageUrls,
+      pendingInvitation,
+    );
   }
 
   async create(
@@ -120,6 +193,8 @@ export class CommunityService {
         name: dto.name.trim(),
         description: dto.description?.trim() ?? null,
         createdBy: userId,
+        joinPolicy: dto.joinPolicy ?? 'invite_only',
+        leaderboardVisibility: dto.leaderboardVisibility ?? 'mentors',
       });
       if (!community) {
         throw new NotFoundException('Failed to create community');
@@ -131,18 +206,70 @@ export class CommunityService {
         role: 'owner',
       });
 
-      return toCommunityDetailDto(community, 1, 'owner');
+      return toCommunityDetailDto(community, 1, 'owner', undefined, {
+        logoUrl: null,
+        headerUrl: null,
+      });
     });
   }
 
   async update(id: string, userId: string, dto: UpdateCommunityDto): Promise<CommunityDetailDto> {
     await this.requireOwner(id, userId);
 
+    const existing = await this.communityDao.findById(id);
+    if (!existing) {
+      throw new NotFoundException(`Community ${id} not found`);
+    }
+
+    if (dto.logoStorageKey !== undefined) {
+      await this.applyCommunityStorageKeyUpdate(
+        id,
+        'logo',
+        existing.logoStorageKey,
+        dto.logoStorageKey,
+      );
+    }
+
+    if (dto.headerStorageKey !== undefined) {
+      await this.applyCommunityStorageKeyUpdate(
+        id,
+        'header',
+        existing.headerStorageKey,
+        dto.headerStorageKey,
+      );
+    }
+
     const community = await this.communityDao.update(id, {
       ...(dto.name !== undefined && { name: dto.name.trim() }),
       ...(dto.description !== undefined && {
         description: dto.description?.trim() ?? null,
       }),
+      ...(dto.joinPolicy !== undefined && { joinPolicy: dto.joinPolicy }),
+      ...(dto.leaderboardVisibility !== undefined && {
+        leaderboardVisibility: dto.leaderboardVisibility,
+      }),
+      ...(dto.websiteUrl !== undefined && {
+        websiteUrl: dto.websiteUrl?.trim() || null,
+      }),
+      ...(dto.discordUrl !== undefined && {
+        discordUrl: dto.discordUrl?.trim() || null,
+      }),
+      ...(dto.instagramUrl !== undefined && {
+        instagramUrl: dto.instagramUrl?.trim() || null,
+      }),
+      ...(dto.tiktokUrl !== undefined && {
+        tiktokUrl: dto.tiktokUrl?.trim() || null,
+      }),
+      ...(dto.youtubeUrl !== undefined && {
+        youtubeUrl: dto.youtubeUrl?.trim() || null,
+      }),
+      ...(dto.aboutContent !== undefined && {
+        aboutContent: dto.aboutContent?.trim()
+          ? normalizePostContentForStorage(dto.aboutContent.trim())
+          : null,
+      }),
+      ...(dto.logoStorageKey !== undefined && { logoStorageKey: dto.logoStorageKey }),
+      ...(dto.headerStorageKey !== undefined && { headerStorageKey: dto.headerStorageKey }),
     });
     if (!community) {
       throw new NotFoundException(`Community ${id} not found`);
@@ -151,8 +278,44 @@ export class CommunityService {
     return this.getById(id, userId);
   }
 
+  async requestLogoUpload(
+    communityId: string,
+    userId: string,
+    dto: CommunityLogoUploadRequestDto,
+  ): Promise<CommunityUploadTargetDto> {
+    await this.requireOwner(communityId, userId);
+    this.assertCommunityImage(dto.contentType, dto.sizeBytes, MAX_COMMUNITY_LOGO_BYTES);
+
+    const storageKey = this.storage.buildCommunityKey(communityId, 'logo', dto.filename);
+    return this.buildUploadTarget(storageKey, dto.contentType);
+  }
+
+  async requestHeaderUpload(
+    communityId: string,
+    userId: string,
+    dto: CommunityHeaderUploadRequestDto,
+  ): Promise<CommunityUploadTargetDto> {
+    await this.requireOwner(communityId, userId);
+    this.assertCommunityImage(dto.contentType, dto.sizeBytes, MAX_COMMUNITY_HEADER_BYTES);
+
+    const storageKey = this.storage.buildCommunityKey(communityId, 'header', dto.filename);
+    return this.buildUploadTarget(storageKey, dto.contentType);
+  }
+
   async remove(id: string, userId: string): Promise<void> {
     await this.requireOwner(id, userId);
+    const existing = await this.communityDao.findById(id);
+    if (!existing) {
+      throw new NotFoundException(`Community ${id} not found`);
+    }
+
+    if (existing.logoStorageKey) {
+      await this.deleteStorageObject(existing.logoStorageKey);
+    }
+    if (existing.headerStorageKey) {
+      await this.deleteStorageObject(existing.headerStorageKey);
+    }
+
     const deleted = await this.communityDao.delete(id);
     if (!deleted) {
       throw new NotFoundException(`Community ${id} not found`);
@@ -166,11 +329,20 @@ export class CommunityService {
   ): Promise<CommunityInvitationDto> {
     await this.requireMentorOrOwner(communityId, userId);
 
-    const email = dto.email.trim().toLowerCase();
-    const invitee = await this.invitationDao.findUserByEmail(email);
-    if (!invitee) {
-      throw new BadRequestException(`No user found with email ${dto.email}`);
+    if (!dto.email && !dto.userId) {
+      throw new BadRequestException('Either email or userId is required');
     }
+
+    const invitee = dto.userId
+      ? await this.invitationDao.findUserById(dto.userId)
+      : await this.invitationDao.findUserByEmail(dto.email!.trim());
+    if (!invitee) {
+      throw new BadRequestException(
+        dto.userId ? `No user found with id ${dto.userId}` : `No user found with email ${dto.email}`,
+      );
+    }
+
+    const email = invitee.email.trim().toLowerCase();
 
     if (invitee.id === userId) {
       throw new BadRequestException('You cannot invite yourself');
@@ -234,7 +406,21 @@ export class CommunityService {
       return [];
     }
     const rows = await this.invitationDao.findPendingForUser(userId, email);
-    return rows.map((row) => sanitizeInvitationDto(toInvitationDto(row), userId));
+    return Promise.all(
+      rows.map(async (row) => {
+        const community = await this.communityDao.findById(row.communityId);
+        const imageUrls = community
+          ? await this.resolveCommunityImageUrls(community)
+          : { logoUrl: null, headerUrl: null };
+        return sanitizeInvitationDto(
+          {
+            ...toInvitationDto(row),
+            logoUrl: imageUrls.logoUrl,
+          },
+          userId,
+        );
+      }),
+    );
   }
 
   async acceptInvitation(invitationId: string, userId: string): Promise<CommunityDetailDto> {
@@ -278,6 +464,52 @@ export class CommunityService {
     });
 
     return this.getById(invitation.communityId, userId);
+  }
+
+  async join(communityId: string, userId: string): Promise<CommunityDetailDto> {
+    const community = await this.communityDao.findById(communityId);
+    if (!community) {
+      throw new NotFoundException(`Community ${communityId} not found`);
+    }
+
+    if (community.joinPolicy !== 'public') {
+      throw new ForbiddenException('This community is invite-only');
+    }
+
+    const existingMember = await this.memberDao.findMembership(communityId, userId);
+    if (existingMember) {
+      throw new BadRequestException('You are already a member of this community');
+    }
+
+    const member = await this.memberDao.create({
+      communityId,
+      userId,
+      role: 'member',
+    });
+    if (!member) {
+      throw new NotFoundException('Failed to join community');
+    }
+
+    return this.getById(communityId, userId);
+  }
+
+  async leave(communityId: string, userId: string): Promise<void> {
+    const community = await this.communityDao.findById(communityId);
+    if (!community) {
+      throw new NotFoundException(`Community ${communityId} not found`);
+    }
+
+    const membership = await this.requireMembership(communityId, userId);
+    if (membership.role === 'owner') {
+      throw new ForbiddenException(
+        'Community owners cannot leave. Delete the community or transfer ownership first.',
+      );
+    }
+
+    const deleted = await this.memberDao.deleteByCommunityAndUser(communityId, userId);
+    if (!deleted) {
+      throw new NotFoundException('Membership not found');
+    }
   }
 
   async rejectInvitation(invitationId: string, userId: string): Promise<CommunityInvitationDto> {
@@ -325,7 +557,7 @@ export class CommunityService {
     userId: string,
     days = LEADERBOARD_DEFAULT_DAYS,
   ): Promise<CommunityLeaderboardDto> {
-    await this.requireMentorOrOwner(communityId, userId);
+    await this.requireLeaderboardAccess(communityId, userId);
 
     const members = await this.memberDao.findMembersWithProfiles(communityId);
     const deletedUserIds = await this.privacyUserDao.findDeletedUserIds(
@@ -383,6 +615,27 @@ export class CommunityService {
     return { periodDays, entries };
   }
 
+  async getMemberTrades(
+    communityId: string,
+    viewerId: string,
+    memberUserId: string,
+    query: TradeQueryDto,
+  ): Promise<PaginatedDto<TradeDto>> {
+    await this.requireMentorOrOwner(communityId, viewerId);
+
+    const memberMembership = await this.memberDao.findMembership(
+      communityId,
+      memberUserId,
+    );
+    if (!memberMembership) {
+      throw new NotFoundException(
+        `Member ${memberUserId} not found in this community`,
+      );
+    }
+
+    return this.tradeService.listForMember(memberUserId, query);
+  }
+
   async getStats(
     communityId: string,
     userId: string,
@@ -420,6 +673,30 @@ export class CommunityService {
     return membership;
   }
 
+  private async requireLeaderboardAccess(communityId: string, userId: string) {
+    const community = await this.communityDao.findById(communityId);
+    if (!community) {
+      throw new NotFoundException(`Community ${communityId} not found`);
+    }
+
+    const visibility = (community.leaderboardVisibility ??
+      'mentors') as CommunityLeaderboardVisibility;
+
+    if (visibility === 'public') {
+      return;
+    }
+
+    const membership = await this.requireMembership(communityId, userId);
+
+    if (visibility === 'members') {
+      return;
+    }
+
+    if (!this.isMentorOrOwner(membership.role)) {
+      throw new ForbiddenException('Only mentors and owners can view the leaderboard');
+    }
+  }
+
   private async requireOwner(communityId: string, userId: string) {
     const membership = await this.requireMembership(communityId, userId);
     if (membership.role !== 'owner') {
@@ -434,5 +711,117 @@ export class CommunityService {
       throw new ForbiddenException('Only mentors and owners can perform this action');
     }
     return membership;
+  }
+
+  private async resolvePendingInvitationsByCommunity(
+    userId: string,
+  ): Promise<Map<string, CommunityPendingInvitationDto>> {
+    const email = await this.invitationDao.findUserEmail(userId);
+    if (!email) {
+      return new Map();
+    }
+
+    const rows = await this.invitationDao.findPendingForUser(userId, email);
+    return new Map(
+      rows.map((row) => [row.communityId, { id: row.id, role: row.role } satisfies CommunityPendingInvitationDto]),
+    );
+  }
+
+  private async resolvePendingInvitationForCommunity(
+    communityId: string,
+    userId: string,
+  ): Promise<CommunityPendingInvitationDto | null> {
+    const email = await this.invitationDao.findUserEmail(userId);
+    if (!email) {
+      return null;
+    }
+
+    const pending = await this.invitationDao.findPendingByCommunityAndUser(
+      communityId,
+      userId,
+      email,
+    );
+    if (!pending) {
+      return null;
+    }
+
+    return { id: pending.id, role: pending.role };
+  }
+
+  private async resolveAboutContent(aboutContent: string | null): Promise<string | null> {
+    if (!aboutContent) {
+      return null;
+    }
+    if (!isLikelyHtmlContent(aboutContent)) {
+      return aboutContent;
+    }
+    return resolvePostContentImageUrls(this.storage, aboutContent);
+  }
+
+  private async resolveCommunityImageUrls(
+    row: Pick<Selectable<Community>, 'logoStorageKey' | 'headerStorageKey'>,
+  ): Promise<{ logoUrl: string | null; headerUrl: string | null }> {
+    const [logoUrl, headerUrl] = await Promise.all([
+      row.logoStorageKey ? this.storage.presignDownload(row.logoStorageKey) : null,
+      row.headerStorageKey ? this.storage.presignDownload(row.headerStorageKey) : null,
+    ]);
+    return { logoUrl, headerUrl };
+  }
+
+  private assertCommunityImage(
+    contentType: string,
+    sizeBytes: number,
+    maxBytes: number,
+  ): void {
+    if (!COMMUNITY_IMAGE_TYPES.includes(contentType as (typeof COMMUNITY_IMAGE_TYPES)[number])) {
+      throw new BadRequestException(`Unsupported image content type: ${contentType}`);
+    }
+    if (sizeBytes > maxBytes) {
+      const mb = Math.round(maxBytes / (1024 * 1024));
+      throw new BadRequestException(`Image exceeds the maximum size of ${mb} MB`);
+    }
+  }
+
+  private async buildUploadTarget(
+    storageKey: string,
+    contentType: string,
+  ): Promise<CommunityUploadTargetDto> {
+    const uploadUrl = await this.storage.presignUpload(storageKey, contentType);
+    return {
+      uploadUrl,
+      storageKey,
+      expiresIn: this.storage.uploadExpirySeconds,
+    };
+  }
+
+  private async applyCommunityStorageKeyUpdate(
+    communityId: string,
+    asset: 'logo' | 'header',
+    currentKey: string | null,
+    nextKey: string | null,
+  ): Promise<void> {
+    if (nextKey === null) {
+      if (currentKey) {
+        await this.deleteStorageObject(currentKey);
+      }
+      return;
+    }
+
+    const prefix = asset === 'logo' ? 'community-logos/' : 'community-headers/';
+    if (!nextKey.startsWith(`${prefix}${communityId}/`)) {
+      throw new BadRequestException('Invalid storage key for this community asset');
+    }
+
+    if (currentKey && currentKey !== nextKey) {
+      await this.deleteStorageObject(currentKey);
+    }
+  }
+
+  private async deleteStorageObject(key: string): Promise<void> {
+    try {
+      await this.storage.deleteObject(key);
+    } catch (error) {
+      this.logger.warn(`Failed to delete object ${key}`, error as Error);
+    }
   }
 }

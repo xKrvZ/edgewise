@@ -6,12 +6,13 @@ import { toNumber, toRequiredNumber } from '@/database/utils/numeric.util';
 import { AnalyticsCacheService } from '@/modules/analytics/cache/analytics-cache.service';
 import { CommunityMemberDao } from '@/modules/community/daos/community-member.dao';
 import { InstrumentService } from '@/modules/instrument/services/instrument.service';
+import { TradingSessionService } from '@/modules/trading-session/services/trading-session.service';
 import { TradeDao } from '../daos/trade.dao';
 import { TradeDto, toTradeDto } from '../dtos/trade.dto';
 import { CreateTradeDto } from '../dtos/create-trade.dto';
 import { UpdateTradeDto } from '../dtos/update-trade.dto';
 import { TradeQueryDto } from '../dtos/trade-query.dto';
-import type { TradeStatus } from '../constants/trade.constants';
+import type { TradeExitType, TradeStatus } from '../constants/trade.constants';
 
 interface DerivedResult {
   status: TradeStatus;
@@ -26,9 +27,21 @@ export class TradeService {
     private readonly analyticsCache: AnalyticsCacheService,
     private readonly communityMemberDao: CommunityMemberDao,
     private readonly instrumentService: InstrumentService,
+    private readonly tradingSessionService: TradingSessionService,
   ) {}
 
   async list(userId: string, query: TradeQueryDto): Promise<PaginatedDto<TradeDto>> {
+    return this.listForUser(userId, query);
+  }
+
+  async listForMember(memberUserId: string, query: TradeQueryDto): Promise<PaginatedDto<TradeDto>> {
+    return this.listForUser(memberUserId, query);
+  }
+
+  private async listForUser(
+    userId: string,
+    query: TradeQueryDto,
+  ): Promise<PaginatedDto<TradeDto>> {
     const limit = query.limit ?? 25;
     const filters = {
       symbol: query.symbol,
@@ -86,9 +99,22 @@ export class TradeService {
     const tagIds = await this.resolveTagIds(userId, dto.tagIds);
     const mistakeIds = await this.resolveMistakeIds(userId, dto.mistakeIds);
 
-    const exitPrice = dto.exitPrice ?? null;
     const stopLoss = dto.stopLoss ?? null;
     const fees = dto.fees ?? 0;
+    const exitPrice = this.resolveExitPrice({
+      exitType: dto.exitType,
+      exitPrice: dto.exitPrice,
+      stopLoss,
+      takeProfit: dto.takeProfit ?? null,
+    });
+    const entryTime = new Date(dto.entryTime);
+    const sessionId = await this.resolveSessionId(
+      userId,
+      entryTime,
+      dto.timezone,
+      dto.sessionId,
+      dto.sessionId === undefined,
+    );
 
     const derived = this.computeDerived({
       direction: dto.direction,
@@ -100,6 +126,7 @@ export class TradeService {
       explicitPnl: dto.pnl,
       explicitRMultiple: dto.rMultiple,
     });
+    const exitTime = this.resolveExitTime(exitPrice, dto.exitTime);
 
     const insert: Insertable<Trade> = {
       userId,
@@ -115,11 +142,11 @@ export class TradeService {
       fees,
       pnl: derived.pnl,
       rMultiple: derived.rMultiple,
-      entryTime: new Date(dto.entryTime),
-      exitTime: dto.exitTime ? new Date(dto.exitTime) : null,
+      entryTime,
+      exitTime,
       setupId: dto.setupId ?? null,
       playbookId: dto.playbookId ?? null,
-      sessionId: dto.sessionId ?? null,
+      sessionId,
       emotion: dto.emotion ?? null,
       executionRating: dto.executionRating ?? null,
       notes: dto.notes ?? null,
@@ -156,12 +183,32 @@ export class TradeService {
     const direction = dto.direction ?? existing.direction;
     const entryPrice =
       dto.entryPrice ?? toRequiredNumber(existing.entryPrice);
-    const exitPrice =
-      dto.exitPrice !== undefined ? dto.exitPrice : toNumber(existing.exitPrice);
     const quantity = dto.quantity ?? toRequiredNumber(existing.quantity);
     const fees = dto.fees ?? toRequiredNumber(existing.fees);
     const stopLoss =
       dto.stopLoss !== undefined ? dto.stopLoss : toNumber(existing.stopLoss);
+    const takeProfit =
+      dto.takeProfit !== undefined
+        ? dto.takeProfit
+        : toNumber(existing.takeProfit);
+    const exitPrice = this.resolveExitPrice({
+      exitType: dto.exitType,
+      exitPrice:
+        dto.exitPrice !== undefined ? dto.exitPrice : toNumber(existing.exitPrice),
+      stopLoss,
+      takeProfit,
+    });
+    const entryTime =
+      dto.entryTime !== undefined
+        ? new Date(dto.entryTime)
+        : existing.entryTime;
+    const sessionId = await this.resolveSessionId(
+      userId,
+      entryTime,
+      dto.timezone,
+      dto.sessionId !== undefined ? dto.sessionId : existing.sessionId,
+      dto.entryTime !== undefined || dto.timezone !== undefined,
+    );
 
     const symbol =
       dto.symbol !== undefined ? await this.resolveSymbol(dto.symbol) : undefined;
@@ -176,6 +223,11 @@ export class TradeService {
       explicitPnl: dto.pnl,
       explicitRMultiple: dto.rMultiple,
     });
+    const exitTime = this.resolveExitTime(
+      exitPrice,
+      dto.exitTime,
+      existing.exitTime,
+    );
 
     const data: Updateable<Trade> = {
       ...(dto.accountId !== undefined ? { accountId: dto.accountId } : {}),
@@ -190,7 +242,7 @@ export class TradeService {
       ...(dto.fees !== undefined ? { fees: dto.fees } : {}),
       ...(dto.setupId !== undefined ? { setupId: dto.setupId } : {}),
       ...(dto.playbookId !== undefined ? { playbookId: dto.playbookId } : {}),
-      ...(dto.sessionId !== undefined ? { sessionId: dto.sessionId } : {}),
+      sessionId,
       ...(dto.emotion !== undefined ? { emotion: dto.emotion } : {}),
       ...(dto.executionRating !== undefined
         ? { executionRating: dto.executionRating }
@@ -199,9 +251,7 @@ export class TradeService {
       ...(dto.entryTime !== undefined
         ? { entryTime: new Date(dto.entryTime) }
         : {}),
-      ...(dto.exitTime !== undefined
-        ? { exitTime: dto.exitTime ? new Date(dto.exitTime) : null }
-        : {}),
+      exitTime,
       pnl: derived.pnl,
       rMultiple: derived.rMultiple,
       status: derived.status,
@@ -230,6 +280,82 @@ export class TradeService {
   }
 
   // ==================== Helpers ====================
+
+  private resolveExitTime(
+    exitPrice: number | null,
+    exitTime: string | null | undefined,
+    existingExitTime?: Date | null,
+  ): Date | null {
+    if (exitPrice === null) {
+      return null;
+    }
+
+    const resolved =
+      exitTime !== undefined
+        ? exitTime
+          ? new Date(exitTime)
+          : null
+        : (existingExitTime ?? null);
+
+    if (!resolved || Number.isNaN(resolved.getTime())) {
+      throw new BadRequestException(
+        'exitTime is required for closed trades',
+      );
+    }
+
+    return resolved;
+  }
+
+  private resolveExitPrice(input: {
+    exitType?: TradeExitType;
+    exitPrice?: number | null;
+    stopLoss: number | null;
+    takeProfit: number | null;
+  }): number | null {
+    if (input.exitType === 'stop_loss') {
+      if (input.stopLoss === null || input.stopLoss === undefined) {
+        throw new BadRequestException(
+          'stopLoss is required when exitType is stop_loss',
+        );
+      }
+      return input.stopLoss;
+    }
+    if (input.exitType === 'take_profit') {
+      if (input.takeProfit === null || input.takeProfit === undefined) {
+        throw new BadRequestException(
+          'takeProfit is required when exitType is take_profit',
+        );
+      }
+      return input.takeProfit;
+    }
+    if (input.exitType === 'custom') {
+      if (input.exitPrice === null || input.exitPrice === undefined) {
+        throw new BadRequestException(
+          'exitPrice is required when exitType is custom',
+        );
+      }
+      return input.exitPrice;
+    }
+    return input.exitPrice ?? null;
+  }
+
+  private async resolveSessionId(
+    userId: string,
+    entryTime: Date,
+    timezone: string | undefined,
+    explicitSessionId: string | null | undefined,
+    shouldReResolve: boolean,
+  ): Promise<string | null> {
+    if (explicitSessionId && !shouldReResolve) {
+      return explicitSessionId;
+    }
+    const resolved = await this.tradingSessionService.resolveForTimestamp(
+      userId,
+      entryTime,
+      timezone,
+    );
+    return resolved ?? explicitSessionId ?? null;
+  }
 
   /**
    * Derives status, P&L and R-multiple from the trade's economics. Explicit

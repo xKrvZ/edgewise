@@ -1,5 +1,9 @@
 'use client';
 
+import { ListMetricsBar } from '@/components/shared/list-metrics-bar';
+import { UserAvatar } from '@/components/shared/user-avatar';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardTableContent } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -8,15 +12,62 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { UserAvatar } from '@/components/shared/user-avatar';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardTableContent } from '@/components/ui/card';
 import { formatCurrency, formatPercent, formatProfitFactor, pnlColor } from '@/lib/format';
-import type { CommunityLeaderboard } from '@/lib/types';
+import type { CommunityLeaderboard, CommunityLeaderboardEntry } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface CommunityLeaderboardTableProps {
   leaderboard: CommunityLeaderboard;
+}
+
+function LeaderboardEntryMetrics({ entry }: { entry: CommunityLeaderboardEntry }) {
+  return (
+    <ListMetricsBar
+      ariaLabel={`${entry.displayName} leaderboard stats`}
+      className="mt-3"
+      metrics={[
+        {
+          label: 'Net P&L',
+          value: formatCurrency(entry.netPnl),
+          valueClassName: pnlColor(entry.netPnl),
+        },
+        { label: 'Win rate', value: formatPercent(entry.winRate) },
+        { label: 'Trades', value: String(entry.tradeCount) },
+        { label: 'Profit factor', value: formatProfitFactor(entry.profitFactor) },
+      ]}
+    />
+  );
+}
+
+function LeaderboardEntryCard({ entry }: { entry: CommunityLeaderboardEntry }) {
+  return (
+    <div className="rounded-xl border border-border/60 bg-card p-4">
+      <div className="flex items-center gap-3">
+        <span
+          className={cn(
+            'w-8 shrink-0 text-center text-lg font-semibold tabular-nums',
+            entry.rank <= 3 && 'text-primary',
+          )}
+        >
+          {entry.rank}
+        </span>
+        <UserAvatar
+          name={entry.displayName}
+          avatarUrl={entry.avatarUrl}
+          className="h-10 w-10 shrink-0"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="truncate font-medium">{entry.displayName}</span>
+            <Badge variant="secondary" className="shrink-0 capitalize">
+              {entry.role}
+            </Badge>
+          </div>
+        </div>
+      </div>
+      <LeaderboardEntryMetrics entry={entry} />
+    </div>
+  );
 }
 
 export function CommunityLeaderboardTable({ leaderboard }: CommunityLeaderboardTableProps) {
@@ -31,58 +82,66 @@ export function CommunityLeaderboardTable({ leaderboard }: CommunityLeaderboardT
   }
 
   return (
-    <Card className="overflow-hidden py-0">
-      <CardTableContent>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="w-12">#</TableHead>
-              <TableHead>Trader</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead className="text-right">Net P&L</TableHead>
-              <TableHead className="text-right">Win rate</TableHead>
-              <TableHead className="text-right">Trades</TableHead>
-              <TableHead className="text-right">Profit factor</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {leaderboard.entries.map((entry) => (
-              <TableRow key={entry.userId}>
-                <TableCell
-                  className={cn('font-semibold tabular-nums', entry.rank <= 3 && 'text-primary')}
-                >
-                  {entry.rank}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2.5">
-                    <UserAvatar
-                      name={entry.displayName}
-                      avatarUrl={entry.avatarUrl}
-                      className="h-8 w-8 shrink-0"
-                    />
-                    <span className="font-medium">{entry.displayName}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="secondary" className="capitalize">
-                    {entry.role}
-                  </Badge>
-                </TableCell>
-                <TableCell className={cn('text-right tabular-nums', pnlColor(entry.netPnl))}>
-                  {formatCurrency(entry.netPnl)}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatPercent(entry.winRate)}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">{entry.tradeCount}</TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatProfitFactor(entry.profitFactor)}
-                </TableCell>
+    <>
+      <div className="space-y-3 md:hidden">
+        {leaderboard.entries.map((entry) => (
+          <LeaderboardEntryCard key={entry.userId} entry={entry} />
+        ))}
+      </div>
+
+      <Card className="hidden overflow-hidden py-0 md:block">
+        <CardTableContent>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-12">#</TableHead>
+                <TableHead>Trader</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead className="text-right">Net P&L</TableHead>
+                <TableHead className="text-right">Win rate</TableHead>
+                <TableHead className="text-right">Trades</TableHead>
+                <TableHead className="text-right">Profit factor</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardTableContent>
-    </Card>
+            </TableHeader>
+            <TableBody>
+              {leaderboard.entries.map((entry) => (
+                <TableRow key={entry.userId}>
+                  <TableCell
+                    className={cn('font-semibold tabular-nums', entry.rank <= 3 && 'text-primary')}
+                  >
+                    {entry.rank}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2.5">
+                      <UserAvatar
+                        name={entry.displayName}
+                        avatarUrl={entry.avatarUrl}
+                        className="h-8 w-8 shrink-0"
+                      />
+                      <span className="font-medium">{entry.displayName}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="capitalize">
+                      {entry.role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className={cn('text-right tabular-nums', pnlColor(entry.netPnl))}>
+                    {formatCurrency(entry.netPnl)}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {formatPercent(entry.winRate)}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{entry.tradeCount}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {formatProfitFactor(entry.profitFactor)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardTableContent>
+      </Card>
+    </>
   );
 }

@@ -6,7 +6,10 @@ const LOGO_SRC = {
   dark: '/logo_dark.png',
 } as const;
 
-const LOGOMARK_SRC = '/logomark.png';
+const LOGOMARK_SRC = {
+  light: '/logomark_light.png',
+  dark: '/logomark_dark.png',
+} as const;
 
 const LOGO_WIDTH = 1536;
 const LOGO_HEIGHT = 1024;
@@ -16,6 +19,8 @@ export interface LogoProps {
   className?: string;
   /** Logo for light backgrounds (marketing, auth form panel, share pages). */
   variant?: 'light' | 'dark';
+  /** Logomark variant when `mark` is true. Defaults to `variant`. */
+  markVariant?: 'light' | 'dark';
   /** Icon-only logomark for collapsed sidebars and compact layouts. */
   mark?: boolean;
   /**
@@ -28,13 +33,14 @@ export interface LogoProps {
 export function Logo({
   className,
   variant = 'light',
+  markVariant,
   mark = false,
   showText: _showText = false,
 }: LogoProps) {
   if (mark) {
     return (
       <Image
-        src={LOGOMARK_SRC}
+        src={LOGOMARK_SRC[markVariant ?? variant]}
         alt="Edgewise"
         width={LOGOMARK_SIZE}
         height={LOGOMARK_SIZE}

@@ -20,6 +20,7 @@ interface MultiSelectProps {
   placeholder?: string;
   emptyText?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 export function MultiSelect({
@@ -29,6 +30,7 @@ export function MultiSelect({
   placeholder = 'Select…',
   emptyText = 'No options.',
   className,
+  disabled = false,
 }: MultiSelectProps) {
   function toggle(value: string) {
     onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]);
@@ -42,8 +44,10 @@ export function MultiSelect({
         <Button
           type="button"
           variant="outline"
+          disabled={disabled}
           // biome-ignore lint/a11y/useSemanticElements: composite trigger.
           role="combobox"
+          aria-disabled={disabled}
           className={cn(
             'h-auto min-h-9 w-full justify-between px-3 font-normal hover:bg-background',
             className,

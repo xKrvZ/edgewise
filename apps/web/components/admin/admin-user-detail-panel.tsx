@@ -21,7 +21,7 @@ import { formatDate } from '@/lib/format';
 import { userDisplayName } from '@/lib/user-display';
 import type { AdminUserDetail } from '@/lib/types/admin';
 import type { InvoiceRow } from '@/lib/types/billing';
-import { ALL_ROLES } from '@/lib/roles';
+import { ALL_ROLES, displayPlatformRole } from '@/lib/roles';
 import { Ban, CheckCircle2, Copy, Shield, UserCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -47,7 +47,7 @@ export function AdminUserDetailPanel({ userId }: AdminUserDetailPanelProps) {
     try {
       const detail = await api.admin.users.get(userId);
       setUser(detail);
-      setSelectedRole(detail.role ?? 'User');
+      setSelectedRole(displayPlatformRole(detail.role));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to load user');
       setUser(null);
@@ -87,7 +87,7 @@ export function AdminUserDetailPanel({ userId }: AdminUserDetailPanelProps) {
   }
 
   async function saveRole() {
-    if (!user || selectedRole === (user.role ?? 'User')) return;
+    if (!user || selectedRole === displayPlatformRole(user.role)) return;
     setRoleSaving(true);
     try {
       const updated = await api.admin.users.updateRole(user.id, selectedRole);
@@ -125,6 +125,8 @@ export function AdminUserDetailPanel({ userId }: AdminUserDetailPanelProps) {
       </div>
     );
   }
+
+  const platformRole = displayPlatformRole(user.role);
 
   return (
     <div className="space-y-8">
@@ -174,11 +176,7 @@ export function AdminUserDetailPanel({ userId }: AdminUserDetailPanelProps) {
         <AccountSettingsRow
           icon={Shield}
           label="Platform role"
-          badge={
-            user.role
-              ? { label: user.role, variant: 'secondary' }
-              : { label: 'User', variant: 'secondary' }
-          }
+          badge={{ label: platformRole, variant: 'secondary' }}
           description="Controls admin access and elevated permissions."
           actions={
             <div className="flex flex-wrap items-center gap-2">
@@ -197,7 +195,7 @@ export function AdminUserDetailPanel({ userId }: AdminUserDetailPanelProps) {
               <Button
                 type="button"
                 size="sm"
-                disabled={roleSaving || selectedRole === (user.role ?? 'User')}
+                disabled={roleSaving || selectedRole === platformRole}
                 onClick={() => void saveRole()}
               >
                 {roleSaving ? 'Saving…' : 'Save'}

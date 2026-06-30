@@ -25,6 +25,7 @@ export function AccountSectionProfile() {
   } = useQuery(() => api.profile.get(), []);
 
   const { data: playbooks } = useQuery(() => api.playbooks.list(), []);
+  const { data: accounts } = useQuery(() => api.accounts.list(), []);
 
   if (profileError) {
     return (
@@ -44,6 +45,7 @@ export function AccountSectionProfile() {
     <ProfileSettingsForm
       profile={profile}
       playbooks={playbooks ?? []}
+      accounts={accounts ?? []}
       onSaved={refetchProfile}
     />
   );

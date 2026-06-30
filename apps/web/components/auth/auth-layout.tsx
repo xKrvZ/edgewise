@@ -7,7 +7,7 @@ interface AuthLayoutProps {
 
 export function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div className="flex min-h-dvh flex-col bg-white antialiased lg:h-dvh lg:flex-row lg:overflow-hidden">
+    <div className="flex min-h-dvh flex-col bg-background text-foreground antialiased lg:h-dvh lg:flex-row lg:overflow-hidden">
       <div className="shrink-0 lg:hidden">
         <AuthBrandPanel compact />
       </div>

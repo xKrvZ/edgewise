@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import type { IncomingHttpHeaders } from 'node:http';
 import { AuthService } from '@thallesp/nestjs-better-auth';
-import { ALL_ROLES } from '@/auth/constants/roles.constants';
+import { ALL_ROLES, displayPlatformRole } from '@/auth/constants/roles.constants';
 import { createPolarClient } from '@/auth/polar.plugin';
 import billingConfig from '@/config/billing.config';
 import type { InvoicesPageDto } from '@/modules/billing/dtos/invoice.dto';
@@ -259,7 +259,7 @@ export class AdminUsersService {
       email: user.email,
       name: user.name || null,
       displayName: user.displayName,
-      role: user.role,
+      role: displayPlatformRole(user.role),
       subscriptionStatus: this.resolveSubscriptionLabel(user),
       createdAt: user.createdAt.toISOString(),
       emailVerified: user.emailVerified,

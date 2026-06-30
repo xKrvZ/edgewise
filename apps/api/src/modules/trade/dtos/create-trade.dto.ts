@@ -15,9 +15,11 @@ import {
 import {
   MARKET_TYPES,
   TRADE_DIRECTIONS,
+  TRADE_EXIT_TYPES,
   TRADE_STATUSES,
   type MarketType,
   type TradeDirection,
+  type TradeExitType,
   type TradeStatus,
 } from '../constants/trade.constants';
 
@@ -84,10 +86,29 @@ export class CreateTradeDto {
   @IsDateString()
   entryTime: string;
 
+  @ApiPropertyOptional({
+    example: 'America/New_York',
+    description:
+      'IANA timezone used when logging the trade (for session assignment)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  timezone?: string;
+
   @ApiPropertyOptional({ type: String, format: 'date-time' })
   @IsOptional()
   @IsDateString()
   exitTime?: string;
+
+  @ApiPropertyOptional({
+    enum: TRADE_EXIT_TYPES,
+    description:
+      'How the trade was closed: stop_loss, take_profit, or custom exit price',
+  })
+  @IsOptional()
+  @IsIn(TRADE_EXIT_TYPES)
+  exitType?: TradeExitType;
 
   @ApiPropertyOptional({ description: 'Playbook id used as the trade setup' })
   @IsOptional()

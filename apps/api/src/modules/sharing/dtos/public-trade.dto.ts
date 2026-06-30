@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import {
   MARKET_TYPES,
   TRADE_DIRECTIONS,
@@ -13,6 +13,7 @@ import {
   type TradeVisibility,
 } from '../constants/sharing.constants';
 import { PublicTradeMediaDto } from './public-trade-media.dto';
+import { PublicTradeTraderDto } from './public-trade-trader.dto';
 
 export class PublicTradeDto {
   @Expose() @ApiProperty({ example: 'AAPL' }) symbol: string;
@@ -66,4 +67,9 @@ export class PublicTradeDto {
   @Expose()
   @ApiProperty({ type: PublicTradeMediaDto, isArray: true })
   media: PublicTradeMediaDto[];
+
+  @Expose()
+  @ApiProperty({ type: PublicTradeTraderDto })
+  @Type(() => PublicTradeTraderDto)
+  trader: PublicTradeTraderDto;
 }

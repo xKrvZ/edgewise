@@ -57,6 +57,26 @@ export class CommunityInvitationDao extends KyselyDao<CommunityInvitationDao> {
     return rows;
   }
 
+  async findPendingByCommunityAndUser(
+    communityId: string,
+    userId: string,
+    email: string,
+  ): Promise<Selectable<CommunityInvitation> | null> {
+    const row = await this.kysely
+      .selectFrom(CommunityInvitationDao.TABLE)
+      .selectAll()
+      .where('communityId', '=', communityId)
+      .where('status', '=', 'pending')
+      .where((eb) =>
+        eb.or([
+          eb('inviteeUserId', '=', userId),
+          eb('inviteeEmail', '=', email),
+        ]),
+      )
+      .executeTakeFirst();
+    return row ?? null;
+  }
+
   async findPendingForUser(userId: string, email: string): Promise<InvitationWithCommunity[]> {
     const rows = await this.kysely
       .selectFrom(CommunityInvitationDao.TABLE)
@@ -135,6 +155,15 @@ export class CommunityInvitationDao extends KyselyDao<CommunityInvitationDao> {
       .set(data)
       .where('id', '=', id)
       .returningAll()
+      .executeTakeFirst();
+    return row ?? null;
+  }
+
+  async findUserById(userId: string): Promise<{ id: string; email: string; name: string } | null> {
+    const row = await this.kysely
+      .selectFrom('user')
+      .select(['id', 'email', 'name'])
+      .where('id', '=', userId)
       .executeTakeFirst();
     return row ?? null;
   }

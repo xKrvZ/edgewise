@@ -14,6 +14,7 @@ export interface MemberWithProfile {
   userName: string | null;
   userImage: string | null;
   avatarStorageKey: string | null;
+  headerStorageKey: string | null;
 }
 
 @Injectable()
@@ -58,6 +59,7 @@ export class CommunityMemberDao extends KyselyDao<CommunityMemberDao> {
         'user.email as userEmail',
         'user.image as userImage',
         'trader_profile.avatarStorageKey as avatarStorageKey',
+        'trader_profile.headerStorageKey as headerStorageKey',
       ])
       .where('community_member.communityId', '=', communityId)
       .orderBy('community_member.joinedAt', 'asc')
@@ -77,6 +79,7 @@ export class CommunityMemberDao extends KyselyDao<CommunityMemberDao> {
       userName: row.userName,
       userImage: row.userImage,
       avatarStorageKey: row.avatarStorageKey,
+      headerStorageKey: row.headerStorageKey,
     }));
   }
 
@@ -144,5 +147,17 @@ export class CommunityMemberDao extends KyselyDao<CommunityMemberDao> {
       .returningAll()
       .executeTakeFirst();
     return row ?? null;
+  }
+
+  async deleteByCommunityAndUser(
+    communityId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const result = await this.kysely
+      .deleteFrom(CommunityMemberDao.TABLE)
+      .where('communityId', '=', communityId)
+      .where('userId', '=', userId)
+      .executeTakeFirst();
+    return Number(result.numDeletedRows) > 0;
   }
 }

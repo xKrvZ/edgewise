@@ -63,13 +63,31 @@ import type {
   UploadTarget,
   CommunitySummary,
   CommunityDetail,
+  CommunityMember,
   CreateCommunityInput,
   UpdateCommunityInput,
   CommunityInvitation,
   CreateInvitationInput,
   CommunityLeaderboard,
-  CommunityStats,
   CommunityQuery,
+  CommunityTag,
+  CreateCommunityTagInput,
+  UpdateCommunityTagInput,
+  CommunityMembersQuery,
+  CommunityPostsQuery,
+  SetMemberTagsInput,
+  CommunityPostSummary,
+  CommunityPostDetail,
+  CommunityPostComment,
+  CommunityPostCommentReactionResult,
+  CommunityPostContentUploadTarget,
+  CommunityPlaybookTemplate,
+  CreateCommunityPlaybookTemplateInput,
+  UpdateCommunityPlaybookTemplateInput,
+  CreateCommunityPostInput,
+  CreateCommunityPostCommentInput,
+  SetCommunityPostCommentReactionInput,
+  UpdateCommunityPostInput,
   Comment,
   CommentAccess,
   CommentQuery,
@@ -100,7 +118,15 @@ function buildQuery(params?: QueryParams): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== null && value !== '') {
-      search.append(key, String(value));
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (item !== undefined && item !== null && item !== '') {
+            search.append(key, String(item));
+          }
+        }
+      } else {
+        search.append(key, String(value));
+      }
     }
   }
   const qs = search.toString();
@@ -517,6 +543,73 @@ export const api = {
       request<CommunityDetail>('/communities', { method: 'POST', body: input }),
     update: (id: string, input: UpdateCommunityInput) =>
       request<CommunityDetail>(`/communities/${id}`, { method: 'PATCH', body: input }),
+    join: (id: string) =>
+      request<CommunityDetail>(`/communities/${id}/join`, { method: 'POST' }),
+    leave: (id: string) => request<void>(`/communities/${id}/leave`, { method: 'POST' }),
+    uploadLogo: async (id: string, file: File): Promise<CommunityDetail> => {
+      const target = await request<ProfileUploadTarget>(
+        `/communities/${id}/logo/upload-url`,
+        {
+          method: 'POST',
+          body: {
+            filename: file.name,
+            contentType: file.type || 'application/octet-stream',
+            sizeBytes: file.size,
+          },
+        },
+      );
+
+      const put = await fetch(target.uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      });
+      if (!put.ok) {
+        throw new Error(`Logo upload failed (${put.status})`);
+      }
+
+      return request<CommunityDetail>(`/communities/${id}`, {
+        method: 'PATCH',
+        body: { logoStorageKey: target.storageKey },
+      });
+    },
+    uploadHeader: async (id: string, file: File): Promise<CommunityDetail> => {
+      const target = await request<ProfileUploadTarget>(
+        `/communities/${id}/header/upload-url`,
+        {
+          method: 'POST',
+          body: {
+            filename: file.name,
+            contentType: file.type || 'application/octet-stream',
+            sizeBytes: file.size,
+          },
+        },
+      );
+
+      const put = await fetch(target.uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      });
+      if (!put.ok) {
+        throw new Error(`Header upload failed (${put.status})`);
+      }
+
+      return request<CommunityDetail>(`/communities/${id}`, {
+        method: 'PATCH',
+        body: { headerStorageKey: target.storageKey },
+      });
+    },
+    removeLogo: (id: string) =>
+      request<CommunityDetail>(`/communities/${id}`, {
+        method: 'PATCH',
+        body: { logoStorageKey: null },
+      }),
+    removeHeader: (id: string) =>
+      request<CommunityDetail>(`/communities/${id}`, {
+        method: 'PATCH',
+        body: { headerStorageKey: null },
+      }),
     remove: (id: string) => request<void>(`/communities/${id}`, { method: 'DELETE' }),
     listInvitations: (id: string) =>
       request<CommunityInvitation[]>(`/communities/${id}/invitations`),
@@ -527,8 +620,129 @@ export const api = {
       }),
     leaderboard: (id: string, query?: CommunityQuery) =>
       request<CommunityLeaderboard>(`/communities/${id}/leaderboard`, { query }),
-    stats: (id: string, query?: CommunityQuery) =>
-      request<CommunityStats>(`/communities/${id}/stats`, { query }),
+    listMembers: (id: string, query?: CommunityMembersQuery) =>
+      request<CommunityMember[]>(`/communities/${id}/members`, { query }),
+    listTags: (id: string) => request<CommunityTag[]>(`/communities/${id}/tags`),
+    createTag: (id: string, input: CreateCommunityTagInput) =>
+      request<CommunityTag>(`/communities/${id}/tags`, { method: 'POST', body: input }),
+    updateTag: (id: string, tagId: string, input: UpdateCommunityTagInput) =>
+      request<CommunityTag>(`/communities/${id}/tags/${tagId}`, {
+        method: 'PATCH',
+        body: input,
+      }),
+    removeTag: (id: string, tagId: string) =>
+      request<void>(`/communities/${id}/tags/${tagId}`, { method: 'DELETE' }),
+    setMemberTags: (id: string, userId: string, input: SetMemberTagsInput) =>
+      request<CommunityMember>(`/communities/${id}/members/${userId}/tags`, {
+        method: 'PATCH',
+        body: input,
+      }),
+    memberTrades: async (
+      id: string,
+      userId: string,
+      filters?: TradeFilters,
+    ) => {
+      const raw = await request<RawPage<Trade> | Trade[]>(
+        `/communities/${id}/members/${userId}/trades`,
+        { query: filters },
+      );
+      return normalizePaginated<Trade>(raw);
+    },
+    listPosts: (id: string, query?: CommunityPostsQuery) =>
+      request<CommunityPostSummary[]>(`/communities/${id}/posts`, { query }),
+    getPost: (id: string, postId: string) =>
+      request<CommunityPostDetail>(`/communities/${id}/posts/${postId}`),
+    createPost: (id: string, input: CreateCommunityPostInput) =>
+      request<CommunityPostDetail>(`/communities/${id}/posts`, {
+        method: 'POST',
+        body: input,
+      }),
+    updatePost: (id: string, postId: string, input: UpdateCommunityPostInput) =>
+      request<CommunityPostDetail>(`/communities/${id}/posts/${postId}`, {
+        method: 'PATCH',
+        body: input,
+      }),
+    removePost: (id: string, postId: string) =>
+      request<void>(`/communities/${id}/posts/${postId}`, { method: 'DELETE' }),
+    requestPostHeaderUpload: async (id: string, file: File) => {
+      return request<ProfileUploadTarget>(`/communities/${id}/posts/header/upload-url`, {
+        method: 'POST',
+        body: {
+          filename: file.name,
+          contentType: file.type || 'application/octet-stream',
+          sizeBytes: file.size,
+        },
+      });
+    },
+    requestPostContentImageUpload: async (id: string, file: File) => {
+      return request<CommunityPostContentUploadTarget>(
+        `/communities/${id}/posts/content/upload-url`,
+        {
+          method: 'POST',
+          body: {
+            filename: file.name,
+            contentType: file.type || 'application/octet-stream',
+            sizeBytes: file.size,
+          },
+        },
+      );
+    },
+    listPostComments: (id: string, postId: string) =>
+      request<CommunityPostComment[]>(`/communities/${id}/posts/${postId}/comments`),
+    createPostComment: (id: string, postId: string, input: CreateCommunityPostCommentInput) =>
+      request<CommunityPostComment>(`/communities/${id}/posts/${postId}/comments`, {
+        method: 'POST',
+        body: input,
+      }),
+    removePostComment: (id: string, postId: string, commentId: string) =>
+      request<void>(`/communities/${id}/posts/${postId}/comments/${commentId}`, {
+        method: 'DELETE',
+      }),
+    setPostCommentReaction: (
+      id: string,
+      postId: string,
+      commentId: string,
+      input: SetCommunityPostCommentReactionInput,
+    ) =>
+      request<CommunityPostCommentReactionResult>(
+        `/communities/${id}/posts/${postId}/comments/${commentId}/reaction`,
+        {
+          method: 'PATCH',
+          body: input,
+        },
+      ),
+    listPlaybookTemplates: (id: string) =>
+      request<CommunityPlaybookTemplate[]>(`/communities/${id}/playbook-templates`),
+    getPlaybookTemplate: (id: string, templateId: string) =>
+      request<CommunityPlaybookTemplate>(
+        `/communities/${id}/playbook-templates/${templateId}`,
+      ),
+    createPlaybookTemplate: (id: string, input: CreateCommunityPlaybookTemplateInput) =>
+      request<CommunityPlaybookTemplate>(`/communities/${id}/playbook-templates`, {
+        method: 'POST',
+        body: input,
+      }),
+    updatePlaybookTemplate: (
+      id: string,
+      templateId: string,
+      input: UpdateCommunityPlaybookTemplateInput,
+    ) =>
+      request<CommunityPlaybookTemplate>(
+        `/communities/${id}/playbook-templates/${templateId}`,
+        {
+          method: 'PATCH',
+          body: input,
+        },
+      ),
+    removePlaybookTemplate: (id: string, templateId: string) =>
+      request<void>(`/communities/${id}/playbook-templates/${templateId}`, {
+        method: 'DELETE',
+      }),
+    clonePlaybookTemplate: (id: string, templateId: string, body?: { name?: string }) =>
+      request<Playbook>(`/communities/${id}/playbook-templates/${templateId}/clone`, {
+        method: 'POST',
+        body: body ?? {},
+      }),
   },
 
   invitations: {

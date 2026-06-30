@@ -72,7 +72,7 @@ export function AdminSidebar() {
               className={cn('min-w-0', collapsed ? 'flex justify-center px-1' : 'px-2')}
               aria-label="Admin dashboard"
             >
-              <Logo variant="dark" mark={collapsed} className="min-w-0" />
+              <Logo variant="dark" markVariant="light" mark={collapsed} className="min-w-0" />
             </Link>
           </div>
 

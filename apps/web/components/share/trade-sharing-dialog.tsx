@@ -65,7 +65,11 @@ export function TradeSharingDialog({
       setShareToken(result.shareToken);
       onUpdated();
       toast.success(
-        next === 'private' ? 'Trade is now private' : 'Share link updated — copy it below',
+        next === 'private'
+          ? 'Trade is now private'
+          : next === 'unlisted'
+            ? 'Share link updated — anyone with the link can view'
+            : 'Share link updated — trade will appear on your public profile',
       );
     } catch {
       toast.error('Failed to update sharing settings');
@@ -91,8 +95,8 @@ export function TradeSharingDialog({
           <DialogTitle>Share trade</DialogTitle>
           <DialogDescription>
             Control who can view this trade. Unlisted links work for anyone with the URL; public
-            trades may be indexed. Only media marked &quot;public on share link&quot; is included
-            in the shared view.
+            trades may be indexed and appear on your public profile. Only media marked &quot;public
+            on share link&quot; is included in the shared view.
           </DialogDescription>
         </DialogHeader>
 

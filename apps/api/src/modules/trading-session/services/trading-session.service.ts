@@ -6,6 +6,7 @@ import {
 } from '../dtos/trading-session.dto';
 import { CreateTradingSessionDto } from '../dtos/create-trading-session.dto';
 import { UpdateTradingSessionDto } from '../dtos/update-trading-session.dto';
+import { resolveTradingSessionId } from '../utils/trading-session-resolver.util';
 
 @Injectable()
 export class TradingSessionService {
@@ -60,5 +61,18 @@ export class TradingSessionService {
     if (!deleted) {
       throw new NotFoundException(`Trading session ${id} not found`);
     }
+  }
+
+  /**
+   * Finds the user's trading session whose time window contains `timestamp`.
+   * Each session is evaluated in its own timezone (falls back to `userTimezone`).
+   */
+  async resolveForTimestamp(
+    userId: string,
+    timestamp: Date,
+    userTimezone?: string,
+  ): Promise<string | null> {
+    const sessions = await this.tradingSessionDao.findAllByUser(userId);
+    return resolveTradingSessionId(sessions, timestamp, userTimezone);
   }
 }

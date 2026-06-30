@@ -76,14 +76,6 @@ export class AccountDto {
   daysTraded: number;
 
   @Expose()
-  @ApiProperty({
-    example: 5,
-    description:
-      'Absolute P&L band (in account currency) treated as breakeven for win/loss classification',
-  })
-  breakevenRange: number;
-
-  @Expose()
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt: Date;
 
@@ -111,7 +103,6 @@ export function toAccountDto(row: Selectable<TradingAccount>): AccountDto {
     challengeStatus: row.challengeStatus as ChallengeStatus | null,
     challengeStartedAt: row.challengeStartedAt,
     daysTraded: row.daysTraded,
-    breakevenRange: toRequiredNumber(row.breakevenRange),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

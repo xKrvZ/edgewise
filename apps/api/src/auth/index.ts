@@ -125,7 +125,7 @@ The Edgewise Team`,
         admin({
             ac,
             roles,
-            defaultRole: 'user',
+            defaultRole: ROLES.USER,
             adminRoles: [ROLES.ADMINISTRATOR],
         }),
         jwt(),

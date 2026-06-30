@@ -1,4 +1,5 @@
 import { AppContent } from '@/components/app/app-content';
+import { AppShell } from '@/components/app/app-shell';
 import { Sidebar } from '@/components/app/sidebar';
 import { AuthGuard } from '@/components/auth/auth-guard';
 import { SubscriptionGuard } from '@/components/auth/subscription-guard';
@@ -18,10 +19,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       >
         <AuthGuard>
           <SubscriptionGuard>
-            <div className="flex h-screen overflow-hidden bg-background">
-              <Sidebar />
-              <AppContent>{children}</AppContent>
-            </div>
+            <AppShell>
+              <div className="flex h-dvh overflow-hidden bg-background">
+                <Sidebar />
+                <AppContent>{children}</AppContent>
+              </div>
+            </AppShell>
           </SubscriptionGuard>
         </AuthGuard>
       </Suspense>

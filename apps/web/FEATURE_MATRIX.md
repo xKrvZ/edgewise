@@ -22,7 +22,6 @@ Last updated: 2026-06-06.
 | Account currency (multi-currency) | ✅ | 10 currencies in account form |
 | Starting / current balance | ✅ | Per account |
 | Prop firm risk limits on account | ✅ | Profit target, daily/max loss, trailing DD |
-| Breakeven range setting | ✅ | Account-level `breakevenRange`; used in analytics win/loss |
 | Manual trade entry | ✅ | Multi-step wizard |
 | CSV import | ✅ | Trades page; column mapping incl. fees |
 | Broker auto-sync imports | 🚫 | Needs broker API partnerships |
@@ -157,7 +156,6 @@ Last updated: 2026-06-06.
 
 ## Implemented this session
 
-- Account **breakeven range** (DB, API, account form, analytics classification)
 - Analytics **total fees** in overview
 - **Wins vs losses** analytics tab
 - **Compare periods** analytics tab
@@ -180,9 +178,8 @@ Last updated: 2026-06-06.
 5. **Running P&L overlay** — live unrealized P&L line during replay
 6. **PDF/export** — downloadable monthly performance report
 7. **Trade import API** — webhook for future broker sync
-8. **Multi-account breakeven** — per-trade account breakeven when unfiltered
-9. **Notebook full-text search** — search entries by content/tag
-10. **TradingView indicators in replay** — EMA/VWAP presets for review
+8. **Notebook full-text search** — search entries by content/tag
+9. **TradingView indicators in replay** — EMA/VWAP presets for review
 
 ---
 
@@ -198,7 +195,6 @@ bun run knex migrate:latest
 Migration file: `apps/api/src/database/migrations/20260609000000_feature_gaps.ts`
 
 Adds:
-- `trading_account.breakevenRange` (numeric, default 0)
 - `tag.category` (text, default `'custom'`)
 - `trade.mae`, `trade.mfe` (nullable numeric)
 

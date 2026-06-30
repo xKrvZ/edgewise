@@ -41,6 +41,35 @@ export class CommunityDao extends KyselyDao<CommunityDao> {
     }));
   }
 
+  async findAllWithMembership(userId: string): Promise<
+    (Selectable<Community> & { memberRole: string | null; memberCount: number })[]
+  > {
+    const rows = await this.kysely
+      .selectFrom(CommunityDao.TABLE)
+      .leftJoin('community_member', (join) =>
+        join
+          .onRef('community_member.communityId', '=', 'community.id')
+          .on('community_member.userId', '=', userId),
+      )
+      .selectAll('community')
+      .select(['community_member.role as memberRole'])
+      .select((eb) =>
+        eb
+          .selectFrom('community_member as cm')
+          .select((eb2) => eb2.fn.count<number>('cm.id').as('count'))
+          .whereRef('cm.communityId', '=', 'community.id')
+          .as('memberCount'),
+      )
+      .orderBy('community.updatedAt', 'desc')
+      .execute();
+
+    return rows.map((row) => ({
+      ...row,
+      memberRole: row.memberRole ?? null,
+      memberCount: Number(row.memberCount ?? 0),
+    }));
+  }
+
   async create(
     data: Insertable<Community>,
   ): Promise<Selectable<Community> | null> {

@@ -25,9 +25,9 @@ export function AuthCard({
       {icon ? <div className={cn('mb-5', centered && 'flex justify-center')}>{icon}</div> : null}
 
       <div className={cn('mb-6', centered && 'text-center')}>
-        <h1 className="text-[1.75rem] font-bold tracking-tight text-slate-950 sm:text-3xl">{title}</h1>
+        <h1 className="text-[1.75rem] font-bold tracking-tight text-foreground sm:text-3xl">{title}</h1>
         {description ? (
-          <p className="mt-2 text-sm leading-relaxed text-slate-500 sm:text-[15px]">{description}</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-[15px]">{description}</p>
         ) : null}
       </div>
 

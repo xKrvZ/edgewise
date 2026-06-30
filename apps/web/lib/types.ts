@@ -94,7 +94,6 @@ export interface Account {
   challengeStatus: ChallengeStatus | null;
   challengeStartedAt: string | null;
   daysTraded: number;
-  breakevenRange: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -114,7 +113,6 @@ export interface CreateAccountInput {
   trailingDrawdown?: boolean;
   challengeStatus?: ChallengeStatus | null;
   challengeStartedAt?: string | null;
-  breakevenRange?: number;
 }
 export type UpdateAccountInput = Partial<CreateAccountInput>;
 
@@ -174,6 +172,9 @@ export interface TraderProfile {
   favoriteSymbols: string[];
   sharePlaybooks: boolean;
   sharedPlaybookIds: string[];
+  shareTrades: boolean;
+  sharedTradeIds: string[];
+  publicTradingAccountIds: string[];
   statsVisibility: StatsVisibility;
   statsShareToken: string | null;
 }
@@ -186,6 +187,9 @@ export interface UpdateTraderProfileInput {
   favoriteSymbols?: string[];
   sharePlaybooks?: boolean;
   sharedPlaybookIds?: string[];
+  shareTrades?: boolean;
+  sharedTradeIds?: string[];
+  publicTradingAccountIds?: string[];
   statsVisibility?: StatsVisibility;
 }
 
@@ -200,6 +204,20 @@ export interface PublicPlaybook {
   description: string | null;
 }
 
+export interface PublicShowcasedTrade {
+  tradeId: string;
+  shareToken: string;
+  symbol: string;
+  direction: TradeDirection;
+  marketType: MarketType;
+  pnl: number | null;
+  rMultiple: number | null;
+  status: TradeStatus;
+  entryTime: string;
+  exitTime: string | null;
+  thumbnailUrl: string | null;
+}
+
 export interface PublicProfile {
   displayName: string | null;
   bio: string | null;
@@ -207,8 +225,15 @@ export interface PublicProfile {
   headerUrl: string | null;
   favoriteSymbols: string[];
   playbooks: PublicPlaybook[];
+  showcasedTrades: Page<PublicShowcasedTrade>;
   overview: AnalyticsOverview | null;
   equityCurve: EquityPoint[] | null;
+}
+
+export interface PublicProfileQuery {
+  page?: number;
+  limit?: number;
+  tab?: string;
 }
 
 export interface PublicTradeMedia {
@@ -217,6 +242,15 @@ export interface PublicTradeMedia {
   url: string;
   caption: string | null;
   contentType: string | null;
+}
+
+export interface PublicTradeTrader {
+  displayName: string;
+  handle: string | null;
+  avatarUrl: string | null;
+  headerUrl: string | null;
+  profilePublic: boolean;
+  profileShareToken: string | null;
 }
 
 export interface PublicTrade {
@@ -242,6 +276,7 @@ export interface PublicTrade {
   tagNames: string[];
   visibility: TradeVisibility;
   media: PublicTradeMedia[];
+  trader: PublicTradeTrader;
 }
 
 export interface PublicStats {
@@ -257,13 +292,15 @@ export interface CreateTradeInput {
   marketType: MarketType;
   direction: TradeDirection;
   entryPrice: number;
-  exitPrice?: number;
+  exitPrice?: number | null;
   quantity: number;
   stopLoss?: number;
   takeProfit?: number;
   fees?: number;
   entryTime: string;
-  exitTime?: string;
+  exitTime?: string | null;
+  timezone?: string;
+  exitType?: 'stop_loss' | 'take_profit' | 'custom';
   setupId?: string;
   playbookId?: string;
   sessionId?: string;
@@ -365,6 +402,7 @@ export interface CreatePlaybookInput {
   exitCriteria?: string;
   riskRules?: string;
   invalidationRules?: string;
+  checklist?: CreateChecklistItemInput[];
 }
 export type UpdatePlaybookInput = Partial<CreatePlaybookInput>;
 export interface CreateChecklistItemInput {
@@ -699,6 +737,8 @@ export interface TradeAiReview {
 
 // ==================== Community ====================
 export type CommunityMemberRole = 'owner' | 'mentor' | 'member';
+export type CommunityJoinPolicy = 'public' | 'invite_only';
+export type CommunityLeaderboardVisibility = 'public' | 'members' | 'mentors';
 export type InvitationRole = 'mentor' | 'member';
 export type InvitationStatus = 'pending' | 'accepted' | 'rejected' | 'expired';
 
@@ -708,9 +748,25 @@ export interface CommunitySummary {
   description: string | null;
   createdBy: string;
   memberCount: number;
-  myRole: CommunityMemberRole;
+  myRole: CommunityMemberRole | null;
+  joinPolicy: CommunityJoinPolicy;
+  leaderboardVisibility: CommunityLeaderboardVisibility;
+  logoUrl?: string | null;
+  headerUrl?: string | null;
+  websiteUrl?: string | null;
+  discordUrl?: string | null;
+  instagramUrl?: string | null;
+  tiktokUrl?: string | null;
+  youtubeUrl?: string | null;
+  aboutContent?: string | null;
+  pendingInvitation?: CommunityPendingInvitation | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CommunityPendingInvitation {
+  id: string;
+  role: InvitationRole;
 }
 
 export interface CommunityMember {
@@ -718,8 +774,35 @@ export interface CommunityMember {
   userId: string;
   displayName: string;
   avatarUrl: string | null;
+  headerUrl: string | null;
   role: CommunityMemberRole;
   joinedAt: string;
+  tags?: CommunityTag[];
+}
+
+export interface CommunityTag {
+  id: string;
+  communityId: string;
+  name: string;
+  color: string | null;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface CreateCommunityTagInput {
+  name: string;
+  color?: string;
+}
+
+export type UpdateCommunityTagInput = Partial<CreateCommunityTagInput>;
+
+export interface CommunityMembersQuery {
+  tag?: string[];
+  search?: string;
+}
+
+export interface SetMemberTagsInput {
+  tagIds: string[];
 }
 
 export interface CommunityDetail extends CommunitySummary {
@@ -729,11 +812,23 @@ export interface CommunityDetail extends CommunitySummary {
 export interface CreateCommunityInput {
   name: string;
   description?: string;
+  joinPolicy?: CommunityJoinPolicy;
+  leaderboardVisibility?: CommunityLeaderboardVisibility;
 }
 
 export interface UpdateCommunityInput {
   name?: string;
-  description?: string;
+  description?: string | null;
+  joinPolicy?: CommunityJoinPolicy;
+  leaderboardVisibility?: CommunityLeaderboardVisibility;
+  websiteUrl?: string | null;
+  discordUrl?: string | null;
+  instagramUrl?: string | null;
+  tiktokUrl?: string | null;
+  youtubeUrl?: string | null;
+  aboutContent?: string | null;
+  logoStorageKey?: string | null;
+  headerStorageKey?: string | null;
 }
 
 export interface CommunityInvitation {
@@ -746,12 +841,14 @@ export interface CommunityInvitation {
   inviteeUserId: string | null;
   role: InvitationRole;
   status: InvitationStatus;
+  logoUrl?: string | null;
   createdAt: string;
   respondedAt: string | null;
 }
 
 export interface CreateInvitationInput {
-  email: string;
+  email?: string;
+  userId?: string;
   role: InvitationRole;
 }
 
@@ -772,16 +869,149 @@ export interface CommunityLeaderboard {
   entries: CommunityLeaderboardEntry[];
 }
 
-export interface CommunityStats {
-  memberCount: number;
-  activeTraders: number;
-  aggregateNetPnl: number;
-  periodDays: number;
-}
-
 export interface CommunityQuery {
   days?: number;
 }
+
+export interface CommunityPostsQuery {
+  limit?: number;
+  exclude?: string;
+}
+
+export interface CommunityPostSummary {
+  id: string;
+  communityId: string;
+  authorUserId: string;
+  authorDisplayName: string;
+  authorAvatarUrl: string | null;
+  title: string;
+  excerpt: string;
+  visibility: CommunityPostVisibility;
+  commentsEnabled: boolean;
+  publishedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  headerUrl?: string | null;
+  isDeleted: boolean;
+  deletedAt?: string | null;
+}
+
+export type CommunityPostVisibility = 'public' | 'private';
+
+export interface CommunityPostDetail extends CommunityPostSummary {
+  content: string;
+  headerUrl?: string | null;
+}
+
+export interface PublicCommunityPostDetail extends CommunityPostDetail {
+  communityName: string;
+}
+
+export interface CreateCommunityPostInput {
+  title: string;
+  content: string;
+  headerStorageKey?: string | null;
+  visibility?: CommunityPostVisibility;
+  commentsEnabled?: boolean;
+}
+
+export type UpdateCommunityPostInput = Partial<CreateCommunityPostInput>;
+
+export interface CommunityPostComment {
+  id: string;
+  postId: string;
+  parentCommentId: string | null;
+  authorUserId: string;
+  authorDisplayName: string;
+  authorAvatarUrl: string | null;
+  body: string;
+  likeCount: number;
+  dislikeCount: number;
+  userReaction: CommunityPostCommentReactionType | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CommunityPostCommentReactionType = 'like' | 'dislike';
+
+export interface CommunityPostCommentReactionResult {
+  likeCount: number;
+  dislikeCount: number;
+  userReaction: CommunityPostCommentReactionType | null;
+}
+
+export interface CreateCommunityPostCommentInput {
+  body: string;
+  parentCommentId?: string;
+}
+
+export interface SetCommunityPostCommentReactionInput {
+  type: CommunityPostCommentReactionType | null;
+}
+
+export interface CommunityPostContentUploadTarget {
+  uploadUrl: string;
+  storageKey: string;
+  downloadUrl: string;
+  expiresIn: number;
+}
+
+// ==================== Community playbook templates ====================
+export type CommunityPlaybookTemplateVisibility = 'public' | 'members_only';
+
+export interface CommunityPlaybookTemplateChecklistItem {
+  id: string;
+  templateId: string;
+  text: string;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface CommunityPlaybookTemplate {
+  id: string;
+  communityId: string;
+  createdByUserId: string;
+  name: string;
+  description: string | null;
+  marketConditions: string | null;
+  entryCriteria: string | null;
+  exitCriteria: string | null;
+  riskRules: string | null;
+  invalidationRules: string | null;
+  visibility: CommunityPlaybookTemplateVisibility;
+  createdAt: string;
+  updatedAt: string;
+  checklist: CommunityPlaybookTemplateChecklistItem[];
+  alreadyCloned: boolean;
+}
+
+export interface CommunityPlaybookTemplateChecklistItemInput {
+  text: string;
+  sortOrder?: number;
+}
+
+export interface CreateCommunityPlaybookTemplateInput {
+  name: string;
+  description?: string;
+  marketConditions?: string;
+  entryCriteria?: string;
+  exitCriteria?: string;
+  riskRules?: string;
+  invalidationRules?: string;
+  visibility?: CommunityPlaybookTemplateVisibility;
+  checklist?: CommunityPlaybookTemplateChecklistItemInput[];
+}
+
+export type UpdateCommunityPlaybookTemplateInput = Partial<
+  CreateCommunityPlaybookTemplateInput & {
+    description: string | null;
+    marketConditions: string | null;
+    entryCriteria: string | null;
+    exitCriteria: string | null;
+    riskRules: string | null;
+    invalidationRules: string | null;
+  }
+>;
 
 // ==================== Comments ====================
 export type CommentTargetType = 'trade' | 'playbook';

@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/table';
 import { ApiError, api } from '@/lib/api-client';
 import { formatDate } from '@/lib/format';
+import { displayPlatformRole } from '@/lib/roles';
 import { userDisplayName } from '@/lib/user-display';
 import type { AdminUserRow } from '@/lib/types/admin';
 import { ChevronLeft, ChevronRight, Search, Users } from 'lucide-react';
@@ -164,7 +165,7 @@ export default function AdminUsersPage() {
                       </TableCell>
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{user.role ?? 'User'}</Badge>
+                        <Badge variant="secondary">{displayPlatformRole(user.role)}</Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {user.subscriptionStatus ?? '—'}

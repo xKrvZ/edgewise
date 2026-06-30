@@ -20,7 +20,7 @@ import { marketingCardClass } from '@/components/marketing/marketing-section';
 import { api } from '@/lib/api-client';
 import { useSession } from '@/lib/auth-client';
 import { profileShareUrl } from '@/lib/share';
-import type { Playbook, StatsVisibility, TraderProfile } from '@/lib/types';
+import type { Account, Playbook, StatsVisibility, TraderProfile } from '@/lib/types';
 import { STATS_VISIBILITIES } from '@/lib/types';
 import { userDisplayName, userInitials } from '@/lib/user-display';
 import { cn } from '@/lib/utils';
@@ -47,6 +47,7 @@ const MAX_SYMBOLS = 10;
 interface ProfileSettingsFormProps {
   profile: TraderProfile;
   playbooks: Playbook[];
+  accounts: Account[];
   onSaved: () => void;
 }
 
@@ -90,7 +91,7 @@ function ProfileFieldRow({
   );
 }
 
-export function ProfileSettingsForm({ profile, playbooks, onSaved }: ProfileSettingsFormProps) {
+export function ProfileSettingsForm({ profile, playbooks, accounts, onSaved }: ProfileSettingsFormProps) {
   const { data: session, isPending: sessionPending } = useSession();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const headerInputRef = useRef<HTMLInputElement>(null);
@@ -102,6 +103,8 @@ export function ProfileSettingsForm({ profile, playbooks, onSaved }: ProfileSett
   const [symbolInput, setSymbolInput] = useState('');
   const [sharePlaybooks, setSharePlaybooks] = useState(false);
   const [sharedPlaybookIds, setSharedPlaybookIds] = useState<string[]>([]);
+  const [shareTrades, setShareTrades] = useState(false);
+  const [publicTradingAccountIds, setPublicTradingAccountIds] = useState<string[]>([]);
   const [statsVisibility, setStatsVisibility] = useState<StatsVisibility>('private');
   const [statsShareToken, setStatsShareToken] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -130,6 +133,8 @@ export function ProfileSettingsForm({ profile, playbooks, onSaved }: ProfileSett
     setFavoriteSymbols(profile.favoriteSymbols ?? []);
     setSharePlaybooks(profile.sharePlaybooks);
     setSharedPlaybookIds(profile.sharedPlaybookIds ?? []);
+    setShareTrades(profile.shareTrades);
+    setPublicTradingAccountIds(profile.publicTradingAccountIds ?? []);
     setStatsVisibility(profile.statsVisibility);
     setStatsShareToken(profile.statsShareToken);
     setAvatarUrl(profile.avatarUrl);
@@ -160,6 +165,12 @@ export function ProfileSettingsForm({ profile, playbooks, onSaved }: ProfileSett
   function togglePlaybook(id: string, checked: boolean) {
     setSharedPlaybookIds((prev) =>
       checked ? [...prev, id] : prev.filter((pid) => pid !== id),
+    );
+  }
+
+  function toggleTradingAccount(id: string, checked: boolean) {
+    setPublicTradingAccountIds((prev) =>
+      checked ? [...prev, id] : prev.filter((aid) => aid !== id),
     );
   }
 
@@ -216,6 +227,9 @@ export function ProfileSettingsForm({ profile, playbooks, onSaved }: ProfileSett
         favoriteSymbols,
         sharePlaybooks,
         sharedPlaybookIds: sharePlaybooks ? sharedPlaybookIds : [],
+        shareTrades,
+        sharedTradeIds: [],
+        publicTradingAccountIds,
         statsVisibility,
       });
       setStatsShareToken(updated.statsShareToken);
@@ -460,6 +474,40 @@ export function ProfileSettingsForm({ profile, playbooks, onSaved }: ProfileSett
             />
           </div>
 
+          <div className="space-y-3 py-4 sm:py-5">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Public journals</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Choose which journals contribute stats and shared trades on your public profile.
+                Leave all unchecked to hide journal data from visitors.
+              </p>
+            </div>
+            {accounts.length === 0 ? (
+              <p className="text-sm text-slate-500">No journals yet.</p>
+            ) : (
+              accounts.map((account) => (
+                <label
+                  key={account.id}
+                  className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-100 p-3 transition-colors hover:border-primary/25 hover:bg-slate-50"
+                >
+                  <Checkbox
+                    checked={publicTradingAccountIds.includes(account.id)}
+                    onCheckedChange={(checked) =>
+                      toggleTradingAccount(account.id, checked === true)
+                    }
+                    className="mt-0.5"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-slate-900">{account.name}</span>
+                    {account.broker ? (
+                      <span className="block text-xs text-slate-500">{account.broker}</span>
+                    ) : null}
+                  </span>
+                </label>
+              ))
+            )}
+          </div>
+
           <div className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:py-5">
             <div className="space-y-1">
               <p className="text-sm font-semibold text-slate-900">Show playbooks on profile</p>
@@ -498,6 +546,17 @@ export function ProfileSettingsForm({ profile, playbooks, onSaved }: ProfileSett
               )}
             </div>
           ) : null}
+
+          <div className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:py-5">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-slate-900">Show public trades on profile</p>
+              <p className="text-xs text-slate-500">
+                When enabled, your public shared trades from the journals you selected above appear
+                on your profile. When disabled, visitors will not see a trades section.
+              </p>
+            </div>
+            <Switch checked={shareTrades} onCheckedChange={setShareTrades} />
+          </div>
         </div>
       </AccountSettingsSection>
 
@@ -523,8 +582,9 @@ export function ProfileSettingsForm({ profile, playbooks, onSaved }: ProfileSett
               </SelectContent>
             </Select>
             <p className="text-xs text-slate-500">
-              When public, aggregate stats appear on your profile link. Individual trades are never
-              exposed.
+              When public, aggregate stats appear on your profile link for the journals you select
+              above. Enable &ldquo;Show public trades on profile&rdquo; to include individual
+              trades as well.
             </p>
           </div>
 

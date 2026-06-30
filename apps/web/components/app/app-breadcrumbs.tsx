@@ -1,5 +1,6 @@
 'use client';
 
+import { useBreadcrumbDynamicLabels } from '@/components/app/breadcrumb-context';
 import { getBreadcrumbs } from '@/lib/breadcrumb-config';
 import { cn } from '@/lib/utils';
 import { ChevronRight } from 'lucide-react';
@@ -13,7 +14,8 @@ interface AppBreadcrumbsProps {
 
 export function AppBreadcrumbs({ className }: AppBreadcrumbsProps) {
   const pathname = usePathname();
-  const crumbs = getBreadcrumbs(pathname);
+  const dynamicLabels = useBreadcrumbDynamicLabels();
+  const crumbs = getBreadcrumbs(pathname, dynamicLabels);
 
   return (
     <nav aria-label="Breadcrumb" className={cn('min-w-0', className)}>

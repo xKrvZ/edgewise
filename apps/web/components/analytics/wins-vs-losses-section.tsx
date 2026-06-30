@@ -43,7 +43,7 @@ export function WinsVsLossesSection({ overview, isLoading }: WinsVsLossesSection
             label="Breakeven"
             isLoading={isLoading}
             value={o ? String(o.breakevenTrades) : '—'}
-            hint="Uses account breakeven range when filtered"
+            hint="Trades with zero net P&L"
           />
           <StatCard
             label="Total fees"

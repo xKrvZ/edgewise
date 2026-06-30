@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import {
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -59,5 +60,25 @@ export class TraderProfileController {
     @Session() session: UserSession,
   ): Promise<ProfileUploadTargetDto> {
     return this.traderProfileService.requestHeaderUpload(session.user.id, dto);
+  }
+
+  @Post('hidden-trades/:tradeId')
+  @ApiOperation({ summary: 'Hide a trade from the public profile showcase' })
+  @ApiNoContentResponse({ description: 'Trade hidden from profile' })
+  hideTradeFromProfile(
+    @Param('tradeId') tradeId: string,
+    @Session() session: UserSession,
+  ): Promise<void> {
+    return this.traderProfileService.hideTradeFromProfile(session.user.id, tradeId);
+  }
+
+  @Delete('hidden-trades/:tradeId')
+  @ApiOperation({ summary: 'Restore a trade to the public profile showcase' })
+  @ApiNoContentResponse({ description: 'Trade restored to profile' })
+  unhideTradeFromProfile(
+    @Param('tradeId') tradeId: string,
+    @Session() session: UserSession,
+  ): Promise<void> {
+    return this.traderProfileService.unhideTradeFromProfile(session.user.id, tradeId);
   }
 }

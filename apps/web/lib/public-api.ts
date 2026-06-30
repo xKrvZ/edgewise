@@ -1,5 +1,14 @@
 import { API_URL } from '@/lib/api';
-import type { PublicProfile, PublicStats, PublicTrade } from '@/lib/types';
+import type {
+  CommunityPostComment,
+  CommunityPostSummary,
+  PublicCommunityPostDetail,
+  PublicProfile,
+  PublicProfileQuery,
+  PublicStats,
+  PublicTrade,
+  CommunityPostsQuery,
+} from '@/lib/types';
 
 export class PublicApiError extends Error {
   status: number;
@@ -11,8 +20,11 @@ export class PublicApiError extends Error {
   }
 }
 
-async function publicRequest<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+async function publicRequest<T>(
+  path: string,
+  query?: CommunityPostsQuery | PublicProfileQuery,
+): Promise<T> {
+  const res = await fetch(`${API_URL}${path}${buildPublicQuery(query)}`, {
     credentials: 'omit',
     cache: 'no-store',
   });
@@ -32,6 +44,28 @@ async function publicRequest<T>(path: string): Promise<T> {
   return payload as T;
 }
 
+function buildPublicQuery(params?: CommunityPostsQuery | PublicProfileQuery): string {
+  if (!params) return '';
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') {
+      search.append(key, String(value));
+    }
+  }
+  const qs = search.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export function fetchPublicCommunityPosts(
+  communityId: string,
+  query?: CommunityPostsQuery,
+): Promise<CommunityPostSummary[]> {
+  return publicRequest<CommunityPostSummary[]>(
+    `/public/communities/${communityId}/posts`,
+    query,
+  );
+}
+
 export function fetchPublicTrade(token: string): Promise<PublicTrade> {
   return publicRequest<PublicTrade>(`/public/trades/${token}`);
 }
@@ -40,6 +74,25 @@ export function fetchPublicStats(token: string): Promise<PublicStats> {
   return publicRequest<PublicStats>(`/public/stats/${token}`);
 }
 
-export function fetchPublicProfile(token: string): Promise<PublicProfile> {
-  return publicRequest<PublicProfile>(`/public/profile/${token}`);
+export function fetchPublicProfile(
+  token: string,
+  query?: PublicProfileQuery,
+): Promise<PublicProfile> {
+  return publicRequest<PublicProfile>(`/public/profile/${token}`, query);
+}
+
+export function fetchPublicCommunityPost(
+  communityId: string,
+  postId: string,
+): Promise<PublicCommunityPostDetail> {
+  return publicRequest<PublicCommunityPostDetail>(
+    `/public/communities/${communityId}/posts/${postId}`,
+  );
+}
+
+export function fetchPublicCommunityPostComments(
+  communityId: string,
+  postId: string,
+): Promise<CommunityPostComment[]> {
+  return publicRequest(`/public/communities/${communityId}/posts/${postId}/comments`);
 }

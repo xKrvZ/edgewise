@@ -28,6 +28,7 @@ import { formatCurrency, formatDateTime, formatR } from '@/lib/format';
 import { useReferenceData } from '@/lib/hooks/use-reference-data';
 import { useWizard } from '@/lib/hooks/use-wizard';
 import { type CreateTradeInput, MARKET_TYPES, TRADE_DIRECTIONS, type Trade } from '@/lib/types';
+import { getUserTimezone, resolveTradingSessionId } from '@/lib/trading-session-resolver';
 import { cn } from '@/lib/utils';
 import { ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -47,6 +48,21 @@ const EMOTIONS = [
 ];
 
 const NONE = '__none__';
+
+type ExitType = 'stop_loss' | 'take_profit' | 'custom';
+
+const EXIT_TYPE_LABELS: Record<ExitType, string> = {
+  stop_loss: 'Hit stop loss',
+  take_profit: 'Hit take profit',
+  custom: 'Custom exit price',
+};
+
+function inferExitType(trade: Trade | undefined): ExitType | '' {
+  if (!trade?.exitPrice) return '';
+  if (trade.stopLoss != null && trade.exitPrice === trade.stopLoss) return 'stop_loss';
+  if (trade.takeProfit != null && trade.exitPrice === trade.takeProfit) return 'take_profit';
+  return 'custom';
+}
 
 const STEPS = [
   { id: 'basics', label: 'Basics' },
@@ -77,6 +93,18 @@ function num(v: string): number | undefined {
   return Number.isNaN(n) ? undefined : n;
 }
 
+function effectiveExitPrice(
+  exitType: ExitType | '',
+  exitPrice: string,
+  stopLoss: string,
+  takeProfit: string,
+): number | undefined {
+  if (exitType === 'stop_loss') return num(stopLoss);
+  if (exitType === 'take_profit') return num(takeProfit);
+  if (exitType === 'custom') return num(exitPrice);
+  return num(exitPrice);
+}
+
 interface TradeFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -92,6 +120,7 @@ interface FormState {
   direction: string;
   entryPrice: string;
   exitPrice: string;
+  exitType: ExitType | '';
   quantity: string;
   stopLoss: string;
   takeProfit: string;
@@ -99,7 +128,6 @@ interface FormState {
   entryTime: string;
   exitTime: string;
   playbookId: string;
-  sessionId: string;
   emotion: string;
   executionRating: string;
   notes: string;
@@ -117,6 +145,8 @@ function buildInitialState(
     direction: trade?.direction ?? 'long',
     entryPrice: trade?.entryPrice?.toString() ?? '',
     exitPrice: trade?.exitPrice?.toString() ?? '',
+    exitType:
+      trade?.status === 'open' ? '' : inferExitType(trade) || 'custom',
     quantity: trade?.quantity?.toString() ?? '',
     stopLoss: trade?.stopLoss?.toString() ?? '',
     takeProfit: trade?.takeProfit?.toString() ?? '',
@@ -124,7 +154,6 @@ function buildInitialState(
     entryTime: toLocalInput(trade?.entryTime) || toLocalInput(new Date().toISOString()),
     exitTime: toLocalInput(trade?.exitTime),
     playbookId: trade?.playbookId ?? '',
-    sessionId: trade?.sessionId ?? '',
     emotion: trade?.emotion ?? '',
     executionRating: trade?.executionRating?.toString() ?? '',
     notes: trade?.notes ?? '',
@@ -144,6 +173,7 @@ export function TradeFormDialog({
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [mistakeIds, setMistakeIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const timezone = useMemo(() => getUserTimezone(), []);
 
   useEffect(() => {
     if (open) {
@@ -152,6 +182,16 @@ export function TradeFormDialog({
       setMistakeIds(trade?.mistakeIds ?? (trade?.mistakes ?? []).map((m) => m.id));
     }
   }, [open, trade, defaultAccountId]);
+
+  useEffect(() => {
+    if (form.exitType === 'stop_loss' && form.stopLoss) {
+      setForm((f) => (f.exitPrice === f.stopLoss ? f : { ...f, exitPrice: f.stopLoss }));
+    } else if (form.exitType === 'take_profit' && form.takeProfit) {
+      setForm((f) =>
+        f.exitPrice === f.takeProfit ? f : { ...f, exitPrice: f.takeProfit },
+      );
+    }
+  }, [form.exitType, form.stopLoss, form.takeProfit]);
 
   const tagOptions = useMemo(
     () =>
@@ -184,13 +224,23 @@ export function TradeFormDialog({
 
   const accountName = accounts.find((a) => a.id === form.accountId)?.name;
   const playbookName = playbooks.find((p) => p.id === form.playbookId)?.name;
-  const sessionName = sessions.find((s) => s.id === form.sessionId)?.name;
+  const derivedSessionId = useMemo(() => {
+    const entryIso = toIso(form.entryTime);
+    if (!entryIso) return null;
+    return resolveTradingSessionId(sessions, new Date(entryIso), timezone);
+  }, [form.entryTime, sessions, timezone]);
+  const derivedSessionName =
+    sessions.find((s) => s.id === derivedSessionId)?.name ??
+    (trade?.sessionId ? sessions.find((s) => s.id === trade.sessionId)?.name : null);
   const selectedTags = tagOptions.filter((t) => tagIds.includes(t.value));
   const selectedMistakes = mistakeOptions.filter((m) => mistakeIds.includes(m.value));
 
   const estimate = useMemo(() => {
     const entry = num(form.entryPrice);
-    const exit = num(form.exitPrice);
+    const exit =
+      form.status === 'closed'
+        ? effectiveExitPrice(form.exitType, form.exitPrice, form.stopLoss, form.takeProfit)
+        : undefined;
     const qty = num(form.quantity);
     const fees = num(form.fees) ?? 0;
     const stop = num(form.stopLoss);
@@ -222,11 +272,13 @@ export function TradeFormDialog({
   }, [
     form.entryPrice,
     form.exitPrice,
+    form.exitType,
     form.quantity,
     form.fees,
     form.stopLoss,
     form.takeProfit,
     form.direction,
+    form.status,
   ]);
 
   async function handleSubmit() {
@@ -244,6 +296,43 @@ export function TradeFormDialog({
       return;
     }
 
+    if (form.status === 'closed') {
+      if (!form.exitType) {
+        toast.error('Select how the trade was closed');
+        wizard.goTo(1);
+        return;
+      }
+      if (form.exitType === 'stop_loss' && num(form.stopLoss) === undefined) {
+        toast.error('Stop loss is required when exiting at stop loss');
+        wizard.goTo(1);
+        return;
+      }
+      if (form.exitType === 'take_profit' && num(form.takeProfit) === undefined) {
+        toast.error('Take profit is required when exiting at target');
+        wizard.goTo(1);
+        return;
+      }
+      if (
+        form.exitType === 'custom' &&
+        effectiveExitPrice(form.exitType, form.exitPrice, form.stopLoss, form.takeProfit) ===
+          undefined
+      ) {
+        toast.error('Exit price is required for a custom exit');
+        wizard.goTo(1);
+        return;
+      }
+      if (!toIso(form.exitTime)) {
+        toast.error('Exit time is required for closed trades');
+        wizard.goTo(1);
+        return;
+      }
+    }
+
+    const resolvedExitPrice =
+      form.status === 'closed'
+        ? effectiveExitPrice(form.exitType, form.exitPrice, form.stopLoss, form.takeProfit)
+        : undefined;
+
     const payload: CreateTradeInput = {
       accountId: form.accountId,
       symbol: form.symbol.trim().toUpperCase(),
@@ -252,14 +341,15 @@ export function TradeFormDialog({
       entryPrice,
       quantity,
       entryTime,
-      exitPrice: num(form.exitPrice),
+      timezone,
+      exitPrice: form.status === 'closed' ? resolvedExitPrice : null,
+      exitType: form.status === 'closed' ? (form.exitType as ExitType) : undefined,
       stopLoss: num(form.stopLoss),
       takeProfit: num(form.takeProfit),
       fees: num(form.fees),
-      exitTime: toIso(form.exitTime),
+      exitTime: form.status === 'closed' ? toIso(form.exitTime) : null,
       playbookId: form.playbookId || undefined,
       setupId: form.playbookId || undefined,
-      sessionId: form.sessionId || undefined,
       emotion: form.emotion || undefined,
       executionRating: num(form.executionRating),
       notes: form.notes.trim() || undefined,
@@ -365,7 +455,26 @@ export function TradeFormDialog({
 
                 <div className="sm:col-span-2">
                   <Field label="Status">
-                    <Select value={form.status} onValueChange={(v) => set('status', v)}>
+                    <Select
+                      value={form.status}
+                      onValueChange={(v) => {
+                        if (v === 'open') {
+                          setForm((f) => ({
+                            ...f,
+                            status: v,
+                            exitType: '',
+                            exitPrice: '',
+                            exitTime: '',
+                          }));
+                        } else {
+                          setForm((f) => ({
+                            ...f,
+                            status: v,
+                            exitType: f.exitType || 'custom',
+                          }));
+                        }
+                      }}
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
@@ -390,14 +499,63 @@ export function TradeFormDialog({
                     onChange={(e) => set('entryPrice', e.target.value)}
                   />
                 </Field>
-                <Field label="Exit price">
-                  <Input
-                    type="number"
-                    step="any"
-                    value={form.exitPrice}
-                    onChange={(e) => set('exitPrice', e.target.value)}
-                  />
-                </Field>
+
+                {form.status === 'closed' && (
+                  <>
+                    <Field label="Exit type" required>
+                      <Select
+                        value={form.exitType || NONE}
+                        onValueChange={(v) => {
+                          const next = v === NONE ? '' : (v as ExitType);
+                          set('exitType', next);
+                          if (next === 'stop_loss' && form.stopLoss) {
+                            set('exitPrice', form.stopLoss);
+                          } else if (next === 'take_profit' && form.takeProfit) {
+                            set('exitPrice', form.takeProfit);
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="How did you exit?" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(EXIT_TYPE_LABELS) as ExitType[]).map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {EXIT_TYPE_LABELS[type]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+
+                    {form.exitType === 'custom' ? (
+                      <Field label="Exit price" required>
+                        <Input
+                          type="number"
+                          step="any"
+                          value={form.exitPrice}
+                          onChange={(e) => set('exitPrice', e.target.value)}
+                        />
+                      </Field>
+                    ) : form.exitType === 'stop_loss' ? (
+                      <Field label="Exit price">
+                        <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                          {form.stopLoss || '—'}{' '}
+                          <span className="text-muted-foreground">(stop loss)</span>
+                        </p>
+                      </Field>
+                    ) : form.exitType === 'take_profit' ? (
+                      <Field label="Exit price">
+                        <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                          {form.takeProfit || '—'}{' '}
+                          <span className="text-muted-foreground">(take profit)</span>
+                        </p>
+                      </Field>
+                    ) : (
+                      <div />
+                    )}
+                  </>
+                )}
 
                 <Field label="Quantity" required>
                   <Input
@@ -444,14 +602,17 @@ export function TradeFormDialog({
                     value={form.entryTime}
                     onChange={(e) => set('entryTime', e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">Logged in {timezone}</p>
                 </Field>
-                <Field label="Exit time">
-                  <Input
-                    type="datetime-local"
-                    value={form.exitTime}
-                    onChange={(e) => set('exitTime', e.target.value)}
-                  />
-                </Field>
+                {form.status === 'closed' && (
+                  <Field label="Exit time" required>
+                    <Input
+                      type="datetime-local"
+                      value={form.exitTime}
+                      onChange={(e) => set('exitTime', e.target.value)}
+                    />
+                  </Field>
+                )}
 
                 {estimate && (
                   <div className="sm:col-span-2 space-y-1 rounded-md border bg-muted/40 px-3 py-2 text-sm">
@@ -524,24 +685,6 @@ export function TradeFormDialog({
                       {playbooks.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field label="Session">
-                  <Select
-                    value={form.sessionId || NONE}
-                    onValueChange={(v) => set('sessionId', v === NONE ? '' : v)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="None" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NONE}>None</SelectItem>
-                      {sessions.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -638,17 +781,40 @@ export function TradeFormDialog({
                     label="Entry"
                     value={`${form.entryPrice || '—'} × ${form.quantity || '—'}`}
                   />
-                  <ReviewRow label="Exit" value={form.exitPrice || '—'} />
+                  {form.status === 'closed' && (
+                    <>
+                      <ReviewRow
+                        label="Exit type"
+                        value={
+                          form.exitType ? EXIT_TYPE_LABELS[form.exitType as ExitType] : '—'
+                        }
+                      />
+                      <ReviewRow
+                        label="Exit price"
+                        value={
+                          effectiveExitPrice(
+                            form.exitType,
+                            form.exitPrice,
+                            form.stopLoss,
+                            form.takeProfit,
+                          )?.toString() ?? '—'
+                        }
+                      />
+                    </>
+                  )}
                   <ReviewRow
                     label="Stop / target"
                     value={`${form.stopLoss || '—'} / ${form.takeProfit || '—'}`}
                   />
                   <ReviewRow label="Fees" value={form.fees || '—'} />
                   <ReviewRow label="Entry time" value={formatDateTime(toIso(form.entryTime))} />
-                  <ReviewRow
-                    label="Exit time"
-                    value={form.exitTime ? formatDateTime(toIso(form.exitTime)) : '—'}
-                  />
+                  <ReviewRow label="Timezone" value={timezone} />
+                  {form.status === 'closed' && (
+                    <ReviewRow
+                      label="Exit time"
+                      value={form.exitTime ? formatDateTime(toIso(form.exitTime)) : '—'}
+                    />
+                  )}
                   {estimate && (
                     <ReviewRow
                       label="Estimated P&L"
@@ -666,7 +832,7 @@ export function TradeFormDialog({
 
                 <ReviewSection title="Context">
                   <ReviewRow label="Playbook" value={playbookName ?? '—'} />
-                  <ReviewRow label="Session" value={sessionName ?? '—'} />
+                  <ReviewRow label="Session" value={derivedSessionName ?? '—'} />
                   <ReviewRow
                     label="Tags"
                     value={selectedTags.length ? selectedTags.map((t) => t.label).join(', ') : '—'}

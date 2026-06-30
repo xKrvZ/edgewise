@@ -72,4 +72,36 @@ export class PlaybookDao extends KyselyDao<PlaybookDao> {
       .executeTakeFirst();
     return Number(result.numDeletedRows ?? 0) > 0;
   }
+
+  async findClonedTemplateIdsForUser(
+    userId: string,
+    templateIds: string[],
+  ): Promise<Set<string>> {
+    if (templateIds.length === 0) {
+      return new Set();
+    }
+
+    const rows = await this.kysely
+      .selectFrom(PlaybookDao.TABLE)
+      .select('clonedFromCommunityTemplateId')
+      .where('userId', '=', userId)
+      .where('clonedFromCommunityTemplateId', 'in', templateIds)
+      .execute();
+
+    return new Set(
+      rows
+        .map((row) => row.clonedFromCommunityTemplateId)
+        .filter((id): id is string => id !== null),
+    );
+  }
+
+  async hasClonedFromTemplate(userId: string, templateId: string): Promise<boolean> {
+    const row = await this.kysely
+      .selectFrom(PlaybookDao.TABLE)
+      .select('id')
+      .where('userId', '=', userId)
+      .where('clonedFromCommunityTemplateId', '=', templateId)
+      .executeTakeFirst();
+    return row !== undefined;
+  }
 }

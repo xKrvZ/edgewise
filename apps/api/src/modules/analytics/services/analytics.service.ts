@@ -47,6 +47,7 @@ export class AnalyticsService {
   private toFilters(query: AnalyticsTradeFilters): AnalyticsTradeFilters {
     return {
       accountId: query.accountId,
+      accountIds: query.accountIds,
       dateFrom: query.dateFrom,
       dateTo: query.dateTo,
       marketType: query.marketType,
@@ -56,9 +57,13 @@ export class AnalyticsService {
 
   /** Stable cache-key suffix from the endpoint name + normalized filters. */
   private suffix(prefix: string, f: AnalyticsTradeFilters): string {
+    const accountKey =
+      f.accountIds && f.accountIds.length > 0
+        ? f.accountIds.slice().sort().join(',')
+        : (f.accountId ?? '_');
     return [
       prefix,
-      f.accountId ?? '_',
+      accountKey,
       f.dateFrom ?? '_',
       f.dateTo ?? '_',
       f.marketType ?? '_',
@@ -82,20 +87,14 @@ export class AnalyticsService {
       userId,
       this.suffix('dashboard', filters),
       async () => {
-        const [trades, mistakeRows, startingBalance, breakevenRange] =
-          await Promise.all([
+        const [trades, mistakeRows, startingBalance] = await Promise.all([
             this.analyticsDao.findClosedTrades(userId, filters),
             this.analyticsDao.findClosedTradeMistakes(userId, filters),
-            this.analyticsDao.sumStartingBalance(userId, filters.accountId),
-            this.analyticsDao.resolveBreakevenRange(userId, filters.accountId),
+            this.analyticsDao.sumStartingBalance(userId, filters.accountId, filters.accountIds),
           ]);
 
         return {
-          overview: this.computation.computeOverview(
-            trades,
-            mistakeRows,
-            breakevenRange,
-          ),
+          overview: this.computation.computeOverview(trades, mistakeRows),
           equityCurve: this.computation.computeEquityCurve(trades),
           pnlOverTime: this.computation.computePnlOverTime(trades),
           drawdown: this.computation.computeDrawdown(trades),
@@ -121,16 +120,11 @@ export class AnalyticsService {
       userId,
       this.suffix('overview', filters),
       async () => {
-        const [trades, mistakeRows, breakevenRange] = await Promise.all([
+        const [trades, mistakeRows] = await Promise.all([
           this.analyticsDao.findClosedTrades(userId, filters),
           this.analyticsDao.findClosedTradeMistakes(userId, filters),
-          this.analyticsDao.resolveBreakevenRange(userId, filters.accountId),
         ]);
-        return this.computation.computeOverview(
-          trades,
-          mistakeRows,
-          breakevenRange,
-        );
+        return this.computation.computeOverview(trades, mistakeRows);
       },
     );
   }

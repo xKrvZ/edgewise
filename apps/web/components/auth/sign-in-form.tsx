@@ -15,12 +15,15 @@ import {
 } from '@/lib/auth-utils';
 import {
   authCheckboxClassName,
+  authDividerClassName,
+  authErrorClassName,
   authIconChipClassName,
   authIconClassName,
   authInputClassName,
   authInputIconClassName,
   authLinkClassName,
   authLinkSmallClassName,
+  authOutlineButtonClassName,
   authPrimaryButtonClassName,
 } from '@/lib/auth-form-styles';
 import { ChevronRight, Loader2, Lock, Mail } from 'lucide-react';
@@ -105,7 +108,7 @@ export function SignInForm() {
         </span>
       }
       footer={
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           Don&apos;t have an account?{' '}
           <Link
             href={
@@ -124,7 +127,7 @@ export function SignInForm() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <div className="space-y-2">
-          <Label htmlFor="sign-in-email" className="text-sm font-semibold text-slate-800">
+          <Label htmlFor="sign-in-email" className="text-sm font-semibold text-foreground">
             Email
           </Label>
           <div className="relative">
@@ -144,7 +147,7 @@ export function SignInForm() {
 
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <Label htmlFor="sign-in-password" className="text-sm font-semibold text-slate-800">
+            <Label htmlFor="sign-in-password" className="text-sm font-semibold text-foreground">
               Password
             </Label>
             <Link href="/forgot-password" className={authLinkSmallClassName}>
@@ -175,14 +178,14 @@ export function SignInForm() {
           />
           <Label
             htmlFor="sign-in-remember"
-            className="cursor-pointer text-sm font-normal text-slate-600"
+            className="cursor-pointer text-sm font-normal text-muted-foreground"
           >
             Remember me for 30 days
           </Label>
         </div>
 
         {error ? (
-          <p role="alert" className="rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">
+          <p role="alert" className={authErrorClassName}>
             {error}
           </p>
         ) : null}
@@ -205,15 +208,15 @@ export function SignInForm() {
       </form>
 
       <div className="my-6 flex items-center gap-3">
-        <span className="h-px flex-1 bg-slate-200" />
-        <span className="text-xs font-medium tracking-wide text-slate-400">OR</span>
-        <span className="h-px flex-1 bg-slate-200" />
+        <span className={authDividerClassName} />
+        <span className="text-xs font-medium tracking-wide text-muted-foreground">OR</span>
+        <span className={authDividerClassName} />
       </div>
 
       <Button
         type="button"
         variant="outline"
-        className="h-12 w-full rounded-xl border-slate-200 bg-white font-semibold text-slate-900 shadow-none hover:border-slate-300 hover:bg-slate-50"
+        className={authOutlineButtonClassName}
         onClick={handleDiscord}
       >
         <DiscordIcon className="mr-2 h-5 w-5 text-[#5865F2]" />

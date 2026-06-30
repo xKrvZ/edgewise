@@ -16,7 +16,9 @@ import type { Selectable } from 'kysely';
 
 import type { TraderProfile } from '@/database/types/db';
 
-import { PlaybookDao } from '@/modules/playbook/daos/playbook.dao';
+import { AccountDao } from '@/modules/account/daos/account.dao';
+
+import { TradeDao } from '@/modules/trade/daos/trade.dao';
 
 import { StorageService } from '@/modules/storage/storage.service';
 
@@ -28,6 +30,10 @@ import {
 
   MAX_HEADER_BYTES,
 
+  MAX_SHOWCASED_TRADES,
+
+  PROFILE_SHOWCASE_TRADE_VISIBILITY,
+
   PROFILE_IMAGE_TYPES,
 
   SHARE_TOKEN_LENGTH,
@@ -36,9 +42,14 @@ import {
 
 } from '../constants/sharing.constants';
 
+import { TraderProfileHiddenTradeDao } from '../daos/trader-profile-hidden-trade.dao';
 import { TraderProfilePlaybookDao } from '../daos/trader-profile-playbook.dao';
 
+import { TraderProfileTradingAccountDao } from '../daos/trader-profile-trading-account.dao';
+
+import { PlaybookDao } from '@/modules/playbook/daos/playbook.dao';
 import { TraderProfileDao } from '../daos/trader-profile.dao';
+import { TraderProfileTradeDao } from '../daos/trader-profile-trade.dao';
 
 import {
 
@@ -74,7 +85,17 @@ export class TraderProfileService {
 
     private readonly traderProfilePlaybookDao: TraderProfilePlaybookDao,
 
+    private readonly traderProfileTradeDao: TraderProfileTradeDao,
+
+    private readonly traderProfileHiddenTradeDao: TraderProfileHiddenTradeDao,
+
+    private readonly traderProfileTradingAccountDao: TraderProfileTradingAccountDao,
+
     private readonly playbookDao: PlaybookDao,
+
+    private readonly accountDao: AccountDao,
+
+    private readonly tradeDao: TradeDao,
 
     private readonly storage: StorageService,
 
@@ -167,6 +188,16 @@ export class TraderProfileService {
 
 
 
+    const shareTrades =
+
+      dto.shareTrades !== undefined
+
+        ? dto.shareTrades
+
+        : existing.shareTrades;
+
+
+
     if (dto.sharedPlaybookIds !== undefined) {
 
       await this.syncSharedPlaybooks(userId, dto.sharedPlaybookIds);
@@ -180,6 +211,26 @@ export class TraderProfileService {
     ) {
 
       await this.traderProfilePlaybookDao.replaceForUser(userId, []);
+
+    }
+
+
+
+    if (dto.sharedTradeIds !== undefined) {
+
+      await this.syncSharedTrades(userId, dto.sharedTradeIds);
+
+    } else if (dto.shareTrades === false && shareTrades === false) {
+
+      await this.traderProfileTradeDao.replaceForUser(userId, []);
+
+    }
+
+
+
+    if (dto.publicTradingAccountIds !== undefined) {
+
+      await this.syncPublicTradingAccounts(userId, dto.publicTradingAccountIds);
 
     }
 
@@ -211,6 +262,8 @@ export class TraderProfileService {
 
         : {}),
 
+      ...(dto.shareTrades !== undefined ? { shareTrades: dto.shareTrades } : {}),
+
       statsVisibility: nextVisibility as StatsVisibility,
 
       statsShareToken,
@@ -220,6 +273,50 @@ export class TraderProfileService {
 
 
     return this.toDto(row ?? existing, userId);
+
+  }
+
+
+
+  async hideTradeFromProfile(userId: string, tradeId: string): Promise<void> {
+
+    const trade = await this.tradeDao.findByIdForUser(tradeId, userId);
+
+    if (!trade) {
+
+      throw new NotFoundException(`Trade ${tradeId} not found`);
+
+    }
+
+
+
+    if (trade.visibility !== PROFILE_SHOWCASE_TRADE_VISIBILITY || !trade.shareToken) {
+
+      throw new BadRequestException('Only public shared trades can be hidden from your profile');
+
+    }
+
+
+
+    await this.traderProfileHiddenTradeDao.hideTrade(userId, tradeId);
+
+  }
+
+
+
+  async unhideTradeFromProfile(userId: string, tradeId: string): Promise<void> {
+
+    const trade = await this.tradeDao.findByIdForUser(tradeId, userId);
+
+    if (!trade) {
+
+      throw new NotFoundException(`Trade ${tradeId} not found`);
+
+    }
+
+
+
+    await this.traderProfileHiddenTradeDao.unhideTrade(userId, tradeId);
 
   }
 
@@ -346,6 +443,84 @@ export class TraderProfileService {
     }
 
     await this.traderProfilePlaybookDao.replaceForUser(userId, uniqueIds);
+
+  }
+
+
+
+  private async syncSharedTrades(
+
+    userId: string,
+
+    tradeIds: string[],
+
+  ): Promise<void> {
+
+    const uniqueIds = [...new Set(tradeIds)];
+
+    if (uniqueIds.length > MAX_SHOWCASED_TRADES) {
+
+      throw new BadRequestException(
+
+        `At most ${MAX_SHOWCASED_TRADES} showcased trades allowed`,
+
+      );
+
+    }
+
+
+
+    for (const tradeId of uniqueIds) {
+
+      const trade = await this.tradeDao.findByIdForUser(tradeId, userId);
+
+      if (!trade) {
+
+        throw new NotFoundException(`Trade ${tradeId} not found`);
+
+      }
+
+      if (trade.visibility !== 'public' || !trade.shareToken) {
+
+        throw new BadRequestException(
+
+          `Trade ${tradeId} must be public before it can be showcased`,
+
+        );
+
+      }
+
+    }
+
+    await this.traderProfileTradeDao.replaceForUser(userId, uniqueIds);
+
+  }
+
+
+
+  private async syncPublicTradingAccounts(
+
+    userId: string,
+
+    tradingAccountIds: string[],
+
+  ): Promise<void> {
+
+    const uniqueIds = [...new Set(tradingAccountIds)];
+
+    for (const tradingAccountId of uniqueIds) {
+
+      const account = await this.accountDao.findByIdForUser(tradingAccountId, userId);
+
+      if (!account) {
+
+        throw new NotFoundException(`Trading account ${tradingAccountId} not found`);
+
+      }
+
+    }
+
+    await this.traderProfileTradingAccountDao.replaceForUser(userId, uniqueIds);
 
   }
 
@@ -482,6 +657,8 @@ export class TraderProfileService {
 
       sharePlaybooks: false,
 
+      shareTrades: false,
+
       statsVisibility: 'private',
 
       statsShareToken: nanoid(SHARE_TOKEN_LENGTH),
@@ -508,6 +685,8 @@ export class TraderProfileService {
 
         sharePlaybooks: false,
 
+        shareTrades: false,
+
         statsVisibility: 'private',
 
         statsShareToken: nanoid(SHARE_TOKEN_LENGTH),
@@ -532,7 +711,7 @@ export class TraderProfileService {
 
   ): Promise<TraderProfileDto> {
 
-    const [avatarUrl, headerUrl, sharedPlaybookIds] = await Promise.all([
+    const [avatarUrl, headerUrl, sharedPlaybookIds, sharedTradeIds, publicTradingAccountIds] = await Promise.all([
 
       row.avatarStorageKey
 
@@ -547,6 +726,10 @@ export class TraderProfileService {
         : Promise.resolve(null),
 
       this.traderProfilePlaybookDao.findPlaybookIdsByUser(userId),
+
+      this.traderProfileTradeDao.findPublicShowcaseTradeIdsByUser(userId),
+
+      this.traderProfileTradingAccountDao.findTradingAccountIdsByUser(userId),
 
     ]);
 
@@ -567,6 +750,12 @@ export class TraderProfileService {
       sharePlaybooks: row.sharePlaybooks ?? false,
 
       sharedPlaybookIds,
+
+      shareTrades: row.shareTrades ?? false,
+
+      sharedTradeIds,
+
+      publicTradingAccountIds,
 
       statsVisibility: row.statsVisibility as StatsVisibility,
 

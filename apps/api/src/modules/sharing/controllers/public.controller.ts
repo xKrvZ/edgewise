@@ -1,7 +1,8 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
 import { PublicProfileDto } from '../dtos/public-profile.dto';
+import { PublicProfileQueryDto } from '../dtos/public-profile-query.dto';
 import { PublicStatsDto } from '../dtos/public-stats.dto';
 import { PublicTradeDto } from '../dtos/public-trade.dto';
 import { SharingService } from '../services/sharing.service';
@@ -34,7 +35,10 @@ export class PublicController {
   @ApiOperation({ summary: 'Get a public trader profile by opaque share token (no auth)' })
   @ApiOkResponse({ type: PublicProfileDto })
   @ApiNotFoundResponse({ description: 'Profile not found' })
-  getSharedProfile(@Param('shareToken') shareToken: string): Promise<PublicProfileDto> {
-    return this.sharingService.getPublicProfile(shareToken);
+  getSharedProfile(
+    @Param('shareToken') shareToken: string,
+    @Query() query: PublicProfileQueryDto,
+  ): Promise<PublicProfileDto> {
+    return this.sharingService.getPublicProfile(shareToken, query);
   }
 }

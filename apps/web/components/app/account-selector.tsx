@@ -119,7 +119,13 @@ export function AccountSelector({
         <DropdownMenuContent
           align={variant === 'sidebar' ? 'start' : 'end'}
           side="bottom"
-          className={cn(variant === 'sidebar' ? 'w-(--radix-dropdown-menu-trigger-width)' : 'w-56')}
+          className={cn(
+            variant === 'sidebar'
+              ? collapsed
+                ? 'w-56'
+                : 'w-(--radix-dropdown-menu-trigger-width)'
+              : 'w-56',
+          )}
         >
           <DropdownMenuLabel className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
             Journal

@@ -58,7 +58,11 @@ export class PlaybookService {
     if (!row) {
       throw new NotFoundException('Failed to create playbook');
     }
-    return toPlaybookDto(row, []);
+    const checklist = await this.checklistDao.replaceForPlaybook(
+      row.id,
+      this.normalizeChecklistInput(dto.checklist),
+    );
+    return toPlaybookDto(row, checklist);
   }
 
   async update(
@@ -70,7 +74,13 @@ export class PlaybookService {
     if (!row) {
       throw new NotFoundException(`Playbook ${id} not found`);
     }
-    const checklist = await this.checklistDao.findByPlaybook(id);
+    let checklist = await this.checklistDao.findByPlaybook(id);
+    if (dto.checklist !== undefined) {
+      checklist = await this.checklistDao.replaceForPlaybook(
+        id,
+        this.normalizeChecklistInput(dto.checklist),
+      );
+    }
     return toPlaybookDto(row, checklist);
   }
 
@@ -82,6 +92,19 @@ export class PlaybookService {
   }
 
   // ==================== Checklist items ====================
+
+  private normalizeChecklistInput(
+    items?: { text: string; sortOrder?: number }[],
+  ): { text: string; sortOrder: number }[] {
+    if (!items?.length) {
+      return [];
+    }
+
+    return items.map((item, index) => ({
+      text: item.text.trim(),
+      sortOrder: item.sortOrder ?? index,
+    }));
+  }
 
   private async assertOwnedPlaybook(
     playbookId: string,

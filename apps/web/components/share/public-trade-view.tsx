@@ -1,5 +1,7 @@
 import { DetailField } from '@/components/shared/detail-field';
 import { InlineStat } from '@/components/shared/inline-stat';
+import { PublicShareProfileHeader } from '@/components/share/public-share-profile-header';
+import { profileShareUrl } from '@/lib/share';
 import { DirectionBadge } from '@/components/trades/direction-badge';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +17,19 @@ interface PublicTradeViewProps {
 export function PublicTradeView({ trade }: PublicTradeViewProps) {
   return (
     <div className="space-y-8">
-      <header className="space-y-4 border-b border-border/60 pb-6">
+      <PublicShareProfileHeader
+        displayName={trade.trader.displayName}
+        avatarUrl={trade.trader.avatarUrl}
+        headerUrl={trade.trader.headerUrl}
+        handle={trade.trader.handle}
+        profileHref={
+          trade.trader.profilePublic && trade.trader.profileShareToken
+            ? profileShareUrl(trade.trader.profileShareToken)
+            : null
+        }
+      />
+
+      <header className="space-y-4 border-b border-slate-200/80 pb-6">
         <p className="text-[0.6875rem] font-semibold uppercase tracking-widest text-primary">
           Shared trade
         </p>

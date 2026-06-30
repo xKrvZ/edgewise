@@ -37,14 +37,10 @@ export class AnalyticsComputationService {
   computeOverview(
     trades: AnalyticsTrade[],
     mistakeRows: AnalyticsMistakeRow[] = [],
-    breakevenRange = 0,
   ): AnalyticsOverviewDto {
-    const opts = { breakevenRange };
-    const core = aggregate(trades.map(toStat), opts);
-    const isWin = (pnl: number) =>
-      Math.abs(pnl) > breakevenRange && pnl > breakevenRange;
-    const isLoss = (pnl: number) =>
-      Math.abs(pnl) > breakevenRange && pnl < -breakevenRange;
+    const core = aggregate(trades.map(toStat));
+    const isWin = (pnl: number) => pnl > 0;
+    const isLoss = (pnl: number) => pnl < 0;
 
     const winners = trades.filter((t) => isWin(t.pnl)).map((t) => t.pnl);
     const losers = trades.filter((t) => isLoss(t.pnl)).map((t) => t.pnl);

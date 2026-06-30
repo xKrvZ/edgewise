@@ -89,12 +89,22 @@ export interface Comment {
 }
 
 export interface Community {
+  aboutContent: string | null;
   createdAt: Generated<Timestamp>;
   createdBy: string;
   description: string | null;
+  discordUrl: string | null;
+  headerStorageKey: string | null;
   id: Generated<string>;
+  instagramUrl: string | null;
+  joinPolicy: Generated<string>;
+  leaderboardVisibility: Generated<string>;
+  logoStorageKey: string | null;
   name: string;
+  tiktokUrl: string | null;
   updatedAt: Generated<Timestamp>;
+  websiteUrl: string | null;
+  youtubeUrl: string | null;
 }
 
 export interface CommunityInvitation {
@@ -116,6 +126,78 @@ export interface CommunityMember {
   joinedAt: Generated<Timestamp>;
   role: string;
   userId: string;
+}
+
+export interface CommunityMemberTag {
+  communityMemberId: string;
+  tagId: string;
+}
+
+export interface CommunityPlaybookTemplate {
+  communityId: string;
+  createdAt: Generated<Timestamp>;
+  createdByUserId: string;
+  deletedAt: Timestamp | null;
+  description: string | null;
+  entryCriteria: string | null;
+  exitCriteria: string | null;
+  id: Generated<string>;
+  invalidationRules: string | null;
+  marketConditions: string | null;
+  name: string;
+  riskRules: string | null;
+  updatedAt: Generated<Timestamp>;
+  visibility: Generated<string>;
+}
+
+export interface CommunityPlaybookTemplateChecklistItem {
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  sortOrder: Generated<number>;
+  templateId: string;
+  text: string;
+}
+
+export interface CommunityPost {
+  authorUserId: string;
+  commentsEnabled: Generated<boolean>;
+  communityId: string;
+  content: string;
+  createdAt: Generated<Timestamp>;
+  deletedAt: Timestamp | null;
+  headerStorageKey: string | null;
+  id: Generated<string>;
+  publishedAt: Generated<Timestamp>;
+  title: string;
+  updatedAt: Generated<Timestamp>;
+  visibility: Generated<string>;
+}
+
+export interface CommunityPostComment {
+  authorUserId: string;
+  body: string;
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  parentCommentId: string | null;
+  postId: string;
+  updatedAt: Generated<Timestamp>;
+}
+
+export interface CommunityPostCommentReaction {
+  commentId: string;
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  type: string;
+  userId: string;
+}
+
+export interface CommunityTag {
+  color: string | null;
+  communityId: string;
+  createdAt: Generated<Timestamp>;
+  createdBy: string;
+  id: Generated<string>;
+  name: string;
 }
 
 export interface Instrument {
@@ -265,6 +347,7 @@ export interface PlatformEvent {
 }
 
 export interface Playbook {
+  clonedFromCommunityTemplateId: string | null;
   createdAt: Generated<Timestamp>;
   description: string | null;
   entryCriteria: string | null;
@@ -379,14 +462,30 @@ export interface TraderProfile {
   favoriteSymbols: Generated<string[]>;
   headerStorageKey: string | null;
   sharePlaybooks: Generated<boolean>;
+  shareTrades: Generated<boolean>;
   statsShareToken: string | null;
   statsVisibility: Generated<string>;
   updatedAt: Generated<Timestamp>;
   userId: string;
 }
 
+export interface TraderProfileHiddenTrade {
+  tradeId: string;
+  userId: string;
+}
+
 export interface TraderProfilePlaybook {
   playbookId: string;
+  userId: string;
+}
+
+export interface TraderProfileTrade {
+  tradeId: string;
+  userId: string;
+}
+
+export interface TraderProfileTradingAccount {
+  tradingAccountId: string;
   userId: string;
 }
 
@@ -396,7 +495,6 @@ export interface TradeTag {
 }
 
 export interface TradingAccount {
-  breakevenRange: Generated<Numeric>;
   broker: string | null;
   challengeStartedAt: Timestamp | null;
   challengeStatus: string | null;
@@ -477,6 +575,13 @@ export interface DB {
   community: Community;
   community_invitation: CommunityInvitation;
   community_member: CommunityMember;
+  community_member_tag: CommunityMemberTag;
+  community_playbook_template: CommunityPlaybookTemplate;
+  community_playbook_template_checklist_item: CommunityPlaybookTemplateChecklistItem;
+  community_post: CommunityPost;
+  community_post_comment: CommunityPostComment;
+  community_post_comment_reaction: CommunityPostCommentReaction;
+  community_tag: CommunityTag;
   instrument: Instrument;
   journal_entry: JournalEntry;
   journal_entry_trade: JournalEntryTrade;
@@ -499,7 +604,10 @@ export interface DB {
   trade_mistake: TradeMistake;
   trade_tag: TradeTag;
   trader_profile: TraderProfile;
+  trader_profile_hidden_trade: TraderProfileHiddenTrade;
   trader_profile_playbook: TraderProfilePlaybook;
+  trader_profile_trade: TraderProfileTrade;
+  trader_profile_trading_account: TraderProfileTradingAccount;
   trading_account: TradingAccount;
   trading_session: TradingSession;
   user: User;

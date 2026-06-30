@@ -45,6 +45,20 @@ export class ScreenshotDao extends KyselyDao<ScreenshotDao> {
       .execute();
   }
 
+  async findFirstPublicByTradeId(
+    tradeId: string,
+  ): Promise<Selectable<Screenshot> | null> {
+    const row = await this.kysely
+      .selectFrom(ScreenshotDao.TABLE)
+      .selectAll()
+      .where('tradeId', '=', tradeId)
+      .where('visibility', '=', 'public')
+      .orderBy('createdAt', 'asc')
+      .limit(1)
+      .executeTakeFirst();
+    return row ?? null;
+  }
+
   async findByIdForUser(
     id: string,
     userId: string,

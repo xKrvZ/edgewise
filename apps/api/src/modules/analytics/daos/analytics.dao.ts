@@ -8,6 +8,7 @@ import type {
 
 export interface AnalyticsTradeFilters {
   accountId?: string;
+  accountIds?: string[];
   dateFrom?: string;
   dateTo?: string;
   marketType?: string;
@@ -32,7 +33,9 @@ export class AnalyticsDao extends KyselyDao<AnalyticsDao> {
       .where('trade.userId', '=', userId)
       .where('trade.status', '=', 'closed');
 
-    if (filters.accountId) {
+    if (filters.accountIds && filters.accountIds.length > 0) {
+      q = q.where('trade.accountId', 'in', filters.accountIds);
+    } else if (filters.accountId) {
       q = q.where('trade.accountId', '=', filters.accountId);
     }
     if (filters.marketType) {
@@ -110,36 +113,19 @@ export class AnalyticsDao extends KyselyDao<AnalyticsDao> {
    * to a single account. Used as the baseline for the account-balance curve.
    * Returns 0 when no accounts match.
    */
-  /**
-   * Breakeven band for win/loss classification. Uses the scoped account when
-   * filtered; otherwise returns 0 (strict breakeven).
-   */
-  async resolveBreakevenRange(
-    userId: string,
-    accountId?: string,
-  ): Promise<number> {
-    if (!accountId) {
-      return 0;
-    }
-    const row = await this.kysely
-      .selectFrom('trading_account')
-      .select('breakevenRange')
-      .where('userId', '=', userId)
-      .where('id', '=', accountId)
-      .executeTakeFirst();
-    return toNumber(row?.breakevenRange) ?? 0;
-  }
-
   async sumStartingBalance(
     userId: string,
     accountId?: string,
+    accountIds?: string[],
   ): Promise<number> {
     let q = this.kysely
       .selectFrom('trading_account')
       .select((eb) => eb.fn.sum('startingBalance').as('total'))
       .where('userId', '=', userId);
 
-    if (accountId) {
+    if (accountIds && accountIds.length > 0) {
+      q = q.where('id', 'in', accountIds);
+    } else if (accountId) {
       q = q.where('id', '=', accountId);
     }
 

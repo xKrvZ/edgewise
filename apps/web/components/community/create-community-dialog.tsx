@@ -11,9 +11,16 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiError, api } from '@/lib/api-client';
-import type { CommunityDetail } from '@/lib/types';
+import type { CommunityDetail, CommunityJoinPolicy } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -31,12 +38,14 @@ export function CreateCommunityDialog({
 }: CreateCommunityDialogProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [joinPolicy, setJoinPolicy] = useState<CommunityJoinPolicy>('invite_only');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
       setName('');
       setDescription('');
+      setJoinPolicy('invite_only');
     }
   }, [open]);
 
@@ -52,6 +61,7 @@ export function CreateCommunityDialog({
       const community = await api.communities.create({
         name: name.trim(),
         description: description.trim() || undefined,
+        joinPolicy,
       });
       toast.success('Community created');
       onOpenChange(false);
@@ -98,6 +108,21 @@ export function CreateCommunityDialog({
                 rows={3}
                 maxLength={2000}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="community-join-policy">Join policy</Label>
+              <Select
+                value={joinPolicy}
+                onValueChange={(value) => setJoinPolicy(value as CommunityJoinPolicy)}
+              >
+                <SelectTrigger id="community-join-policy" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="invite_only">Invite only — members must be invited</SelectItem>
+                  <SelectItem value="public">Public — anyone can join</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

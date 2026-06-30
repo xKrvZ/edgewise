@@ -302,3 +302,109 @@
     background-color: hsl(var(--muted-foreground) / 0.5);
   }
 }
+
+/* Community blog post rich content (editor + detail view) */
+.community-post-editor-content,
+.community-post-body {
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.community-post-article .community-post-body {
+  font-size: 1.0625rem;
+  line-height: 1.75;
+}
+
+.community-post-editor-content p.is-editor-empty:first-child::before,
+.community-post-body > p:first-child {
+  margin-top: 0;
+}
+
+.community-post-editor-content h2,
+.community-post-body h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.community-post-editor-content h3,
+.community-post-body h3 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.community-post-editor-content p,
+.community-post-body p {
+  margin: 0.75rem 0;
+}
+
+.community-post-editor-content ul,
+.community-post-body ul,
+.community-post-editor-content ol,
+.community-post-body ol {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+.community-post-editor-content li,
+.community-post-body li {
+  margin: 0.25rem 0;
+}
+
+.community-post-editor-content a,
+.community-post-body a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.community-post-editor-content blockquote,
+.community-post-body blockquote {
+  border-left: 3px solid hsl(var(--border));
+  margin: 1rem 0;
+  padding-left: 1rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.community-post-editor-content img,
+.community-post-body img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1rem 0;
+  border-radius: var(--radius);
+}
+
+.community-post-editor-content [data-youtube-video],
+.community-post-body [data-youtube-video],
+.community-post-editor-content [data-vimeo-video],
+.community-post-body [data-vimeo-video] {
+  position: relative;
+  width: 100%;
+  margin: 1.25rem 0;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: hsl(var(--muted));
+}
+
+.community-post-editor-content [data-youtube-video] iframe,
+.community-post-body [data-youtube-video] iframe,
+.community-post-editor-content [data-vimeo-video] iframe,
+.community-post-body [data-vimeo-video] iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.community-post-editor-content p.is-empty:first-child::before {
+  color: hsl(var(--muted-foreground));
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}

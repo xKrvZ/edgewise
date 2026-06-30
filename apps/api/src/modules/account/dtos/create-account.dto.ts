@@ -7,7 +7,6 @@ import {
   IsOptional,
   IsString,
   MaxLength,
-  Min,
 } from 'class-validator';
 import {
   ACCOUNT_CURRENCIES,
@@ -89,14 +88,4 @@ export class CreateAccountDto {
   @IsOptional()
   @IsDateString()
   challengeStartedAt?: string | null;
-
-  @ApiPropertyOptional({
-    example: 5,
-    default: 0,
-    description: 'P&L within ±this amount counts as breakeven',
-  })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  breakevenRange?: number;
 }

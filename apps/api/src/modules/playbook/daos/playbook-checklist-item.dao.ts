@@ -63,4 +63,35 @@ export class PlaybookChecklistItemDao extends KyselyDao<PlaybookChecklistItemDao
       .executeTakeFirst();
     return Number(result.numDeletedRows ?? 0) > 0;
   }
+
+  async deleteByPlaybook(playbookId: string): Promise<void> {
+    await this.kysely
+      .deleteFrom(PlaybookChecklistItemDao.TABLE)
+      .where('playbookId', '=', playbookId)
+      .execute();
+  }
+
+  async replaceForPlaybook(
+    playbookId: string,
+    items: { text: string; sortOrder: number }[],
+  ): Promise<Selectable<PlaybookChecklistItem>[]> {
+    await this.deleteByPlaybook(playbookId);
+    if (items.length === 0) {
+      return [];
+    }
+
+    const rows = await this.kysely
+      .insertInto(PlaybookChecklistItemDao.TABLE)
+      .values(
+        items.map((item) => ({
+          playbookId,
+          text: item.text,
+          sortOrder: item.sortOrder,
+        })),
+      )
+      .returningAll()
+      .execute();
+
+    return rows;
+  }
 }

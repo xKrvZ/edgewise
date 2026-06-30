@@ -5,6 +5,7 @@ import {
   EquityPointDto,
 } from '@/modules/analytics/dtos/analytics.dto';
 import { PublicPlaybookDto } from './public-playbook.dto';
+import { PublicShowcasedTradesPageDto } from './public-showcased-trades-page.dto';
 
 export class PublicProfileDto {
   @Expose()
@@ -37,6 +38,11 @@ export class PublicProfileDto {
   @ApiProperty({ type: PublicPlaybookDto, isArray: true })
   @Type(() => PublicPlaybookDto)
   playbooks: PublicPlaybookDto[];
+
+  @Expose()
+  @ApiProperty({ type: PublicShowcasedTradesPageDto })
+  @Type(() => PublicShowcasedTradesPageDto)
+  showcasedTrades: PublicShowcasedTradesPageDto;
 
   @Expose()
   @ApiProperty({

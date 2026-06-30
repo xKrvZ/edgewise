@@ -86,20 +86,26 @@ export function AdminAccountLimitSection({
             Custom limit override
           </label>
           {useOverride ? (
-            <Input
-              type="number"
-              min={0}
-              max={500}
-              step={1}
-              value={overrideInput}
-              onChange={(event) => setOverrideInput(event.target.value)}
-              className="w-full sm:w-32"
-              aria-label="Max trading accounts override"
-            />
-          ) : null}
-          <Button type="button" size="sm" disabled={saving} onClick={() => void saveLimit()}>
-            {saving ? 'Saving…' : 'Save limit'}
-          </Button>
+            <div className="flex w-full flex-wrap items-center gap-2 sm:justify-end">
+              <Input
+                type="number"
+                min={0}
+                max={500}
+                step={1}
+                value={overrideInput}
+                onChange={(event) => setOverrideInput(event.target.value)}
+                className="w-full sm:w-32"
+                aria-label="Max trading accounts override"
+              />
+              <Button type="button" size="sm" disabled={saving} onClick={() => void saveLimit()}>
+                {saving ? 'Saving…' : 'Save limit'}
+              </Button>
+            </div>
+          ) : (
+            <Button type="button" size="sm" disabled={saving} onClick={() => void saveLimit()}>
+              {saving ? 'Saving…' : 'Save limit'}
+            </Button>
+          )}
         </div>
       }
     />

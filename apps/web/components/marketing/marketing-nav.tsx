@@ -55,7 +55,10 @@ export function MarketingNav() {
               <Menu className="h-5 w-5" />
             </button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full max-w-sm">
+          <SheetContent
+            side="right"
+            className="w-full max-w-sm border-slate-200 bg-white text-slate-950 shadow-lg [&_[data-slot=sheet-close]]:text-slate-500 [&_[data-slot=sheet-close]]:ring-offset-white [&_[data-slot=sheet-close]]:hover:bg-slate-100 [&_[data-slot=sheet-close]]:hover:text-slate-900"
+          >
             <SheetHeader>
               <SheetTitle className="text-left">
                 <Logo variant="light" />

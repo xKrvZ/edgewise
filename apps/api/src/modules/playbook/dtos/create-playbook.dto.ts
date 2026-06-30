@@ -1,5 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsOptional,
+  IsString,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
+import { CreateChecklistItemDto } from './playbook-checklist-item.dto';
 
 export class CreatePlaybookDto {
   @ApiProperty({ example: 'Opening Range Breakout' })
@@ -36,4 +45,12 @@ export class CreatePlaybookDto {
   @IsOptional()
   @IsString()
   invalidationRules?: string;
+
+  @ApiPropertyOptional({ type: CreateChecklistItemDto, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @ValidateNested({ each: true })
+  @Type(() => CreateChecklistItemDto)
+  checklist?: CreateChecklistItemDto[];
 }

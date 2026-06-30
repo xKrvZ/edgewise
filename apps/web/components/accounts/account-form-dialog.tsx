@@ -93,7 +93,6 @@ export function AccountFormDialog({
   const [trailingDrawdown, setTrailingDrawdown] = useState(false);
   const [challengeStatus, setChallengeStatus] = useState<ChallengeStatus>('active');
   const [challengeStartedAt, setChallengeStartedAt] = useState('');
-  const [breakevenRange, setBreakevenRange] = useState('0');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -115,7 +114,6 @@ export function AccountFormDialog({
     setChallengeStartedAt(
       account?.challengeStartedAt?.slice(0, 10) ?? format(new Date(), 'yyyy-MM-dd'),
     );
-    setBreakevenRange(String(account?.breakevenRange ?? 0));
   }, [open, account]);
 
   const nameValid = Boolean(name.trim());
@@ -169,7 +167,6 @@ export function AccountFormDialog({
       challengeStatus: riskLimitsEnabled ? challengeStatus : null,
       challengeStartedAt:
         riskLimitsEnabled && challengeStartedAt ? new Date(challengeStartedAt).toISOString() : null,
-      breakevenRange: Number(breakevenRange) || 0,
     };
 
     setSaving(true);
@@ -271,21 +268,6 @@ export function AccountFormDialog({
                   value={currentBalance}
                   onChange={setCurrentBalance}
                 />
-                <div className="col-span-2 space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Breakeven range</Label>
-                  <Input
-                    type="number"
-                    step="any"
-                    min="0"
-                    value={breakevenRange}
-                    onChange={(e) => setBreakevenRange(e.target.value)}
-                    placeholder="0"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Trades within ±this P&L count as breakeven in analytics (e.g. $5 for
-                    commissions).
-                  </p>
-                </div>
               </div>
             )}
 
@@ -377,10 +359,6 @@ export function AccountFormDialog({
                 <ReviewRow
                   label="Current balance"
                   value={formatCurrency(Number(currentBalance) || 0)}
-                />
-                <ReviewRow
-                  label="Breakeven range"
-                  value={formatCurrency(Number(breakevenRange) || 0)}
                 />
                 <ReviewRow label="Risk limits" value={riskLimitsEnabled ? 'Enabled' : 'None'} />
                 {riskLimitsEnabled && (
