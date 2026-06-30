@@ -13,6 +13,7 @@ import {
   isNetworkFetchError,
   resolvePostAuthRedirect,
 } from '@/lib/auth-utils';
+import { AnalyticsEvents, captureEvent } from '@/lib/posthog';
 import {
   authCheckboxClassName,
   authDividerClassName,
@@ -75,6 +76,8 @@ export function SignInForm() {
         setError(signInError.message ?? 'Something went wrong');
         return;
       }
+
+      captureEvent(AnalyticsEvents.USER_SIGNED_IN, { method: 'email' });
 
       router.push(postAuthRedirect);
       router.refresh();

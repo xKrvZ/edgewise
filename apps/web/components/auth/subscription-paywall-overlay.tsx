@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { storeUpgradeContext } from '@/lib/posthog';
 
 type SubscriptionPaywallOverlayProps = {
   children: ReactNode;
@@ -79,7 +80,12 @@ export function SubscriptionPaywallOverlay({ children }: SubscriptionPaywallOver
                   <Link href="/account">Back to account</Link>
                 </Button>
                 <Button asChild>
-                  <Link href="/account#billing">Get started</Link>
+                  <Link
+                    href="/account?upgrade_trigger=paywall#billing"
+                    onClick={() => storeUpgradeContext('paywall')}
+                  >
+                    Get started
+                  </Link>
                 </Button>
               </div>
             </div>

@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Settings,
   Users,
+  UsersRound,
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
@@ -28,6 +29,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
     label: 'Management',
     items: [
       { label: 'Users', href: '/admin/users', icon: Users },
+      { label: 'Communities', href: '/admin/communities', icon: UsersRound },
       { label: 'Reports', href: '/admin/reports', icon: Wallet },
       { label: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
     ],

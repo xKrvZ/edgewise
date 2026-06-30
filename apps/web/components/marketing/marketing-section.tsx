@@ -20,7 +20,15 @@ export const marketingSectionContentClass = 'mt-12';
 
 /** White card surface used on marketing and hub account pages. */
 export const marketingCardClass =
-  'rounded-2xl border-slate-200 bg-white shadow-sm';
+  'rounded-2xl border border-slate-200 bg-white shadow-sm';
+
+/** Hover lift shared by marketing cards (feature grid, pricing, etc.). */
+export const marketingCardHoverClass =
+  'transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md';
+
+/** Accent ring for featured / recommended marketing cards. */
+export const marketingCardFeaturedClass =
+  'border-primary/30 shadow-lg shadow-primary/10 ring-1 ring-primary/20';
 
 type MarketingSectionProps = ComponentPropsWithoutRef<'section'> & {
   compact?: boolean;

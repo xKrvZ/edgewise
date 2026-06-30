@@ -76,12 +76,12 @@ export function AdminAccountLimitSection({
       }
       actions={
         <div className="flex w-full max-w-md flex-col gap-3 sm:items-end">
-          <label className="flex items-center gap-2 text-sm text-slate-600">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input
               type="checkbox"
               checked={useOverride}
               onChange={(event) => setUseOverride(event.target.checked)}
-              className="rounded border-slate-300"
+              className="rounded border-border"
             />
             Custom limit override
           </label>

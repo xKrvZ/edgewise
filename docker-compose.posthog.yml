@@ -1,0 +1,88 @@
+# Local HTTP overrides merged with .docker/posthog/docker-compose.hobby.yml
+# Usage (from repo root):
+#   docker compose -f .docker/posthog/docker-compose.hobby.yml -f docker-compose.posthog.yml --env-file .docker/posthog/.env up -d
+
+name: platform-posthog
+
+services:
+  proxy:
+    ports: !override
+      - '${POSTHOG_PORT:-8000}:8000'
+    environment:
+      CADDY_TLS_BLOCK: ''
+      CADDY_HOST: 'http://localhost:${POSTHOG_PORT:-8000}'
+
+  temporal-ui:
+    ports: !override
+      - '${POSTHOG_TEMPORAL_UI_PORT:-8088}:8080'
+
+  web:
+    # Use production nginx-unit server; /compose/start dev path needs granian/pnpm missing from image.
+    command: ['/bin/bash', '-c', 'python3 /compose/wait && ./bin/migrate && exec ./bin/docker-server']
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/_health')\"",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 60
+      start_period: 600s
+    environment:
+      SITE_URL: http://localhost:${POSTHOG_PORT:-8000}
+      LIVESTREAM_HOST: 'http://localhost:${POSTHOG_PORT:-8000}/livestream'
+      OBJECT_STORAGE_PUBLIC_ENDPOINT: http://localhost:${POSTHOG_PORT:-8000}
+
+  worker:
+    environment:
+      SITE_URL: http://localhost:${POSTHOG_PORT:-8000}
+      OBJECT_STORAGE_PUBLIC_ENDPOINT: http://localhost:${POSTHOG_PORT:-8000}
+
+  plugins:
+    environment:
+      SITE_URL: http://localhost:${POSTHOG_PORT:-8000}
+      OBJECT_STORAGE_PUBLIC_ENDPOINT: http://localhost:${POSTHOG_PORT:-8000}
+
+  asyncmigrationscheck:
+    environment:
+      SITE_URL: http://localhost:${POSTHOG_PORT:-8000}
+
+  temporal-django-worker:
+    command: ['/bin/bash', '/compose/temporal-django-worker']
+    environment:
+      SITE_URL: http://localhost:${POSTHOG_PORT:-8000}
+
+  posthog-bootstrap:
+    image: ${REGISTRY_URL}:${POSTHOG_APP_TAG}
+    extends:
+      service: web
+    depends_on:
+      web:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    volumes:
+      - ./scripts/bootstrap-instance.py:/scripts/bootstrap-instance.py:ro
+      - ./compose/provision-bootstrap.sh:/compose/provision-bootstrap.sh:ro
+      - ./:/posthog-meta
+    entrypoint: ['/bin/sh', '/compose/provision-bootstrap.sh']
+    restart: 'no'
+
+  posthog-provision:
+    image: node:22-alpine
+    depends_on:
+      posthog-bootstrap:
+        condition: service_completed_successfully
+    volumes:
+      - ../../:/workspace
+      - ./:/posthog-meta
+    working_dir: /posthog-meta
+    environment:
+      POSTHOG_PORT: ${POSTHOG_PORT:-8000}
+      REPO_ROOT: /workspace
+    entrypoint: ['node', 'provision.mjs']
+    command: ['--skip-wait', '--bootstrap-file', '/posthog-meta/.bootstrap-raw.json']
+    restart: 'no'

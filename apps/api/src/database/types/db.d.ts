@@ -93,6 +93,8 @@ export interface Community {
   createdAt: Generated<Timestamp>;
   createdBy: string;
   description: string | null;
+  discoverHiddenAt: Timestamp | null;
+  featured: Generated<boolean>;
   discordUrl: string | null;
   headerStorageKey: string | null;
   id: Generated<string>;
@@ -118,6 +120,15 @@ export interface CommunityInvitation {
   role: string;
   status: Generated<string>;
   token: string;
+}
+
+export interface CommunityBan {
+  bannedAt: Generated<Timestamp>;
+  bannedBy: string;
+  communityId: string;
+  id: Generated<string>;
+  reason: string | null;
+  userId: string;
 }
 
 export interface CommunityMember {
@@ -165,6 +176,7 @@ export interface CommunityPost {
   content: string;
   createdAt: Generated<Timestamp>;
   deletedAt: Timestamp | null;
+  discoverHiddenAt: Timestamp | null;
   headerStorageKey: string | null;
   id: Generated<string>;
   publishedAt: Generated<Timestamp>;
@@ -547,6 +559,7 @@ export interface User {
 }
 
 export interface UserSubscription {
+  adminPlanOverride: Generated<boolean>;
   createdAt: Generated<Timestamp>;
   currentPeriodEnd: Timestamp | null;
   id: Generated<string>;
@@ -573,6 +586,7 @@ export interface DB {
   backtest_trade: BacktestTrade;
   comment: Comment;
   community: Community;
+  community_ban: CommunityBan;
   community_invitation: CommunityInvitation;
   community_member: CommunityMember;
   community_member_tag: CommunityMemberTag;

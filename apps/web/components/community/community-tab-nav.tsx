@@ -73,6 +73,7 @@ export function CommunityTabNav({
   const activeTab = resolveActiveTab(pathname, basePath);
   const isMember = myRole !== null;
   const isOwner = myRole === 'owner';
+  const isModerator = myRole === 'owner' || myRole === 'mentor';
   const canLeave = isMember && !isOwner;
   const showLeaderboard = canViewLeaderboard({ leaderboardVisibility }, myRole);
 
@@ -98,12 +99,12 @@ export function CommunityTabNav({
       items.push({ id: 'members', href: `${basePath}/members`, label: TAB_LABELS.members });
     }
 
-    if (isOwner) {
+    if (isModerator) {
       items.push({ id: 'settings', href: `${basePath}/settings`, label: TAB_LABELS.settings });
     }
 
     return items;
-  }, [basePath, isMember, isOwner, showLeaderboard]);
+  }, [basePath, isMember, isModerator, showLeaderboard]);
 
   const selectValue = tabs.some((tab) => tab.id === activeTab) ? activeTab : 'overview';
 

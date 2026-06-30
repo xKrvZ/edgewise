@@ -1,4 +1,6 @@
 services:
+  # Platform infra (Postgres, Redis, MinIO, …). Optional PostHog analytics stack is separate —
+  # see docker-compose.posthog.yml and .docker/posthog/.env.example (~8 GB RAM).
   postgres:
     image: timescale/timescaledb:latest-pg14
     container_name: platform-postgres

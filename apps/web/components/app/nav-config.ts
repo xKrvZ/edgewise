@@ -34,7 +34,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     label: 'Social',
-    items: [{ label: 'Community', href: '/community', icon: Users }],
+    items: [{ label: 'Communities', href: '/community', icon: Users }],
   },
   {
     label: 'Strategy',

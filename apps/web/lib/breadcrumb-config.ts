@@ -5,7 +5,7 @@ export const BREADCRUMB_LABELS: Record<string, string> = {
   trades: 'Trades',
   journal: 'Notebook',
   analytics: 'Analytics',
-  community: 'Community',
+  community: 'Communities',
   discover: 'Discover',
   invitations: 'Pending invitations',
   playbooks: 'Playbooks',
@@ -15,6 +15,7 @@ export const BREADCRUMB_LABELS: Record<string, string> = {
   'prop-firm': 'Prop Firm',
   'ai-review': 'AI Review',
   users: 'Users',
+  communities: 'Communities',
   reports: 'Finance reports',
   subscriptions: 'Subscriptions',
   settings: 'Settings',
@@ -37,6 +38,7 @@ export const BREADCRUMB_DETAIL_LABELS: Record<string, string> = {
   posts: 'Post',
   backtesting: 'Session',
   users: 'User',
+  communities: 'Community',
 };
 
 export interface BreadcrumbItem {

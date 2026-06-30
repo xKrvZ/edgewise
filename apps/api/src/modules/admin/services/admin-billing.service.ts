@@ -95,27 +95,24 @@ export class AdminBillingService {
 
     const user = await this.requireUser(userId);
     const previousPlan = this.resolvePlanLabel(user);
+    const excludeBilling = body.excludeBilling ?? false;
 
-    if (this.billingService.isMockMode()) {
-      const plan = this.resolveMockPlan(body);
-      if (plan.slug !== 'none' && plan.slug !== 'free') {
-        this.mockCancelAtPeriodEndUserIds.delete(userId);
-      }
-      await this.subscriptionDao.upsertAdminPlan(userId, {
-        status: plan.slug === 'none' || plan.slug === 'free' ? 'inactive' : 'active',
-        productId: plan.productId,
-        currentPeriodEnd:
-          plan.slug === 'none' || plan.slug === 'free'
-            ? null
-            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      });
+    if (this.billingService.isMockMode() || excludeBilling) {
+      const adminPlanOverride = excludeBilling && !this.billingService.isMockMode();
+      const { planName, productId } = await this.applyLocalPlanChange(
+        userId,
+        user,
+        body,
+        adminPlanOverride,
+      );
 
       await this.platformAuditService.recordAdminSubscriptionPlanChanged({
         actorUserId,
         userId,
         previousPlan,
-        newPlan: plan.name,
-        productId: plan.productId,
+        newPlan: planName,
+        productId,
+        excludeBilling,
       });
 
       return this.buildSubscriptionDetail(await this.requireUser(userId));
@@ -130,7 +127,7 @@ export class AdminBillingService {
       subscriptionUpdate: { productId },
     });
 
-    await this.syncPolarSubscription(userId, polarClient);
+    await this.syncPolarSubscription(userId, polarClient, false);
 
     const plans = await this.fetchPolarPlans(polarClient);
     const newPlan =
@@ -142,6 +139,7 @@ export class AdminBillingService {
       previousPlan,
       newPlan,
       productId,
+      excludeBilling: false,
     });
 
     return this.buildSubscriptionDetail(await this.requireUser(userId));
@@ -309,18 +307,19 @@ export class AdminBillingService {
     user: AdminUserRecord,
   ): Promise<AdminSubscriptionDetailDto> {
     const isMock = this.billingService.isMockMode();
+    const hasLocalOverride = !isMock && user.adminPlanOverride === true;
     const userFeatures = await this.billingService.getFeatures(user.id, user.email);
     const plans = isMock ? MOCK_PLANS : await this.fetchPolarPlansSafe();
 
     let status = userFeatures.status;
-    if (isMock && user.subscriptionStatus) {
+    if ((isMock || hasLocalOverride) && user.subscriptionStatus) {
       status = user.subscriptionStatus;
     }
 
     let cancelAtPeriodEnd: boolean | undefined;
     if (isMock) {
       cancelAtPeriodEnd = this.mockCancelAtPeriodEndUserIds.has(user.id);
-    } else if (user.polarSubscriptionId) {
+    } else if (user.polarSubscriptionId && !hasLocalOverride) {
       cancelAtPeriodEnd = await this.fetchCancelAtPeriodEnd(user.polarSubscriptionId);
     }
 
@@ -330,11 +329,14 @@ export class AdminBillingService {
     return {
       provider: isMock ? 'mock' : 'polar',
       status,
-      active: isMock ? status === 'active' : userFeatures.active,
-      productId: userFeatures.productId ?? user.productId,
+      active: isMock || hasLocalOverride ? status === 'active' : userFeatures.active,
+      productId: hasLocalOverride
+        ? user.productId
+        : (userFeatures.productId ?? user.productId),
       planSlug,
-      currentPeriodEnd:
-        userFeatures.currentPeriodEnd ?? user.currentPeriodEnd?.toISOString() ?? null,
+      currentPeriodEnd: hasLocalOverride
+        ? (user.currentPeriodEnd?.toISOString() ?? null)
+        : (userFeatures.currentPeriodEnd ?? user.currentPeriodEnd?.toISOString() ?? null),
       polarCustomerId: userFeatures.polarCustomerId ?? user.polarCustomerId,
       polarSubscriptionId: user.polarSubscriptionId,
       polarDashboardUrl:
@@ -344,6 +346,7 @@ export class AdminBillingService {
       features: userFeatures.features,
       managementEnabled,
       cancelAtPeriodEnd,
+      adminPlanOverride: hasLocalOverride,
       plans,
     };
   }
@@ -385,6 +388,60 @@ export class AdminBillingService {
 
     const matched = plans.find((plan) => plan.productId && plan.productId === user.productId);
     return matched?.slug ?? (user.subscriptionStatus === 'active' ? 'pro' : null);
+  }
+
+  private async applyLocalPlanChange(
+    userId: string,
+    user: AdminUserRecord,
+    body: AdminChangePlanDto,
+    adminPlanOverride: boolean,
+  ): Promise<{ planName: string; productId: string | null }> {
+    const plan = await this.resolveLocalPlanChange(body);
+
+    if (plan.slug !== 'none' && plan.slug !== 'free') {
+      this.mockCancelAtPeriodEndUserIds.delete(userId);
+    }
+
+    const isInactive = plan.slug === 'none' || plan.slug === 'free';
+    await this.subscriptionDao.upsertAdminPlan(userId, {
+      status: isInactive ? 'inactive' : 'active',
+      productId: plan.productId,
+      currentPeriodEnd: isInactive
+        ? null
+        : (user.currentPeriodEnd ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+      adminPlanOverride,
+    });
+
+    return { planName: plan.name, productId: plan.productId };
+  }
+
+  private async resolveLocalPlanChange(body: AdminChangePlanDto): Promise<AdminPlanDto> {
+    if (this.billingService.isMockMode()) {
+      return this.resolveMockPlan(body);
+    }
+
+    if (this.isNonePlanRequest(body)) {
+      return { id: 'none', name: 'No plan', slug: 'none', productId: null };
+    }
+
+    const polarClient = this.requirePolarClient();
+    const productId = await this.resolveTargetProductId(body, polarClient);
+    const plans = await this.fetchPolarPlans(polarClient);
+    const matched = plans.find((plan) => plan.productId === productId);
+
+    return (
+      matched ?? {
+        id: productId,
+        name: productId,
+        slug: body.planSlug ?? null,
+        productId,
+      }
+    );
+  }
+
+  private isNonePlanRequest(body: AdminChangePlanDto): boolean {
+    const value = (body.planSlug ?? body.productId ?? '').toLowerCase();
+    return value === 'none' || value === 'free' || value === 'inactive';
   }
 
   private resolveMockPlan(body: AdminChangePlanDto): AdminPlanDto {
@@ -468,7 +525,11 @@ export class AdminBillingService {
     throw new BadRequestException('No Polar subscription found for this user');
   }
 
-  private async syncPolarSubscription(userId: string, polarClient: Polar): Promise<void> {
+  private async syncPolarSubscription(
+    userId: string,
+    polarClient: Polar,
+    adminPlanOverride = false,
+  ): Promise<void> {
     const state = await polarClient.customers.getStateExternal({ externalId: userId });
     const record = asCustomerStateLike(state);
     const subscription = primarySubscription(record ?? {}) as PolarSubscriptionLike | null;
@@ -490,6 +551,7 @@ export class AdminBillingService {
           : typeof periodEnd === 'string'
             ? new Date(periodEnd)
             : null,
+      adminPlanOverride,
     });
   }
 

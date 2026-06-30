@@ -19,6 +19,14 @@ const AUDIT_LABELS: Record<string, string> = {
   [PLATFORM_EVENT_TYPE.ADMIN_ORDER_REFUNDED]: 'Order refunded by administrator',
   [PLATFORM_EVENT_TYPE.ADMIN_DISCOUNT_GRANTED]: 'Discount granted by administrator',
   [PLATFORM_EVENT_TYPE.ADMIN_ACCOUNT_LIMIT_CHANGED]: 'Account limit changed by administrator',
+  [PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_DISCOVER_HIDDEN]: 'Community hidden from discover',
+  [PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_DISCOVER_SHOWN]: 'Community shown on discover',
+  [PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_FEATURED]: 'Community featured',
+  [PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_UNFEATURED]: 'Community unfeatured',
+  [PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_POST_DELETED]: 'Community post deleted by administrator',
+  [PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_POST_RESTORED]: 'Community post restored by administrator',
+  [PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_POST_DISCOVER_HIDDEN]: 'Community post hidden from discover',
+  [PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_POST_DISCOVER_SHOWN]: 'Community post shown on discover',
 };
 
 export function formatAuditEventLabel(type: PlatformEventType | string): string {
@@ -42,7 +50,8 @@ export function formatAuditEventDetail(
       return null;
     case PLATFORM_EVENT_TYPE.ADMIN_SUBSCRIPTION_PLAN_CHANGED:
       if (typeof payload.previousPlan === 'string' && typeof payload.newPlan === 'string') {
-        return `${payload.previousPlan} → ${payload.newPlan}`;
+        const billingNote = payload.excludeBilling === true ? ' (billing excluded)' : '';
+        return `${payload.previousPlan} → ${payload.newPlan}${billingNote}`;
       }
       return null;
     case PLATFORM_EVENT_TYPE.ADMIN_SUBSCRIPTION_CANCELED:
@@ -87,6 +96,19 @@ export function formatAuditEventDetail(
         return `$${(payload.amount / 100).toFixed(2)}`;
       }
       return null;
+    case PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_DISCOVER_HIDDEN:
+    case PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_DISCOVER_SHOWN:
+    case PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_FEATURED:
+    case PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_UNFEATURED:
+      return typeof payload.communityName === 'string' ? payload.communityName : null;
+    case PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_POST_DELETED:
+    case PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_POST_RESTORED:
+    case PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_POST_DISCOVER_HIDDEN:
+    case PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_POST_DISCOVER_SHOWN:
+      if (typeof payload.postTitle === 'string' && typeof payload.communityName === 'string') {
+        return `${payload.postTitle} · ${payload.communityName}`;
+      }
+      return typeof payload.postTitle === 'string' ? payload.postTitle : null;
     default:
       return null;
   }

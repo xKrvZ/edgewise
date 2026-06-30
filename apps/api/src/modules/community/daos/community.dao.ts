@@ -41,10 +41,13 @@ export class CommunityDao extends KyselyDao<CommunityDao> {
     }));
   }
 
-  async findAllWithMembership(userId: string): Promise<
+  async findAllWithMembership(
+    userId: string,
+    filters?: { featured?: boolean; search?: string },
+  ): Promise<
     (Selectable<Community> & { memberRole: string | null; memberCount: number })[]
   > {
-    const rows = await this.kysely
+    let query = this.kysely
       .selectFrom(CommunityDao.TABLE)
       .leftJoin('community_member', (join) =>
         join
@@ -60,8 +63,28 @@ export class CommunityDao extends KyselyDao<CommunityDao> {
           .whereRef('cm.communityId', '=', 'community.id')
           .as('memberCount'),
       )
-      .orderBy('community.updatedAt', 'desc')
-      .execute();
+      .where((eb) =>
+        eb.or([
+          eb('community_member.role', 'is not', null),
+          eb('community.discoverHiddenAt', 'is', null),
+        ]),
+      );
+
+    if (filters?.featured === true) {
+      query = query.where('community.featured', '=', true);
+    }
+
+    if (filters?.search?.trim()) {
+      const term = `%${filters.search.trim()}%`;
+      query = query.where((eb) =>
+        eb.or([
+          eb('community.name', 'ilike', term),
+          eb('community.description', 'ilike', term),
+        ]),
+      );
+    }
+
+    const rows = await query.orderBy('community.updatedAt', 'desc').execute();
 
     return rows.map((row) => ({
       ...row,
@@ -92,6 +115,13 @@ export class CommunityDao extends KyselyDao<CommunityDao> {
       .returningAll()
       .executeTakeFirst();
     return row ?? null;
+  }
+
+  async setDiscoverHidden(
+    id: string,
+    hiddenAt: Date | null,
+  ): Promise<Selectable<Community> | null> {
+    return this.update(id, { discoverHiddenAt: hiddenAt });
   }
 
   async delete(id: string): Promise<boolean> {

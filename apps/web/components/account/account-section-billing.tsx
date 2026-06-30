@@ -9,9 +9,17 @@ import { authClient } from '@/lib/auth-client';
 import { useSubscription } from '@/lib/hooks/use-subscription';
 import { formatPlanLabel, BILLING_PLAN_LABELS } from '@/lib/billing-plans';
 import { formatFeatureList } from '@/lib/features';
+import {
+  captureCheckoutStarted,
+  readUpgradeContext,
+  storeUpgradeContext,
+  type BillingPlanSlug,
+  type UpgradeTrigger,
+} from '@/lib/posthog';
 import type { InvoiceRow } from '@/lib/types/billing';
 import { CreditCard, ExternalLink, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 
 function isMockBilling(): boolean {
@@ -20,6 +28,7 @@ function isMockBilling(): boolean {
 }
 
 export function AccountSectionBilling() {
+  const searchParams = useSearchParams();
   const { status, isSubscribed, isLoading, refetch, checkoutSlug, features } = useSubscription();
   const [actionLoading, setActionLoading] = useState<'checkout' | 'portal' | null>(null);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
@@ -46,7 +55,15 @@ export function AccountSectionBilling() {
     void loadInvoices();
   }, [loadInvoices]);
 
-  const openPolar = async (mode: 'checkout' | 'portal') => {
+  useEffect(() => {
+    const trigger = searchParams.get('upgrade_trigger') as UpgradeTrigger | null;
+    const feature = searchParams.get('trigger_feature');
+    if (trigger) {
+      storeUpgradeContext(trigger, feature ?? undefined);
+    }
+  }, [searchParams]);
+
+  const openPolar = async (mode: 'checkout' | 'portal', upgradeTrigger?: UpgradeTrigger) => {
     if (isMock) {
       toast.error('Polar billing is not configured for local development.');
       return;
@@ -55,6 +72,13 @@ export function AccountSectionBilling() {
     setActionLoading(mode);
     try {
       if (mode === 'checkout') {
+        const context = readUpgradeContext();
+        captureCheckoutStarted({
+          plan_slug: checkoutSlug,
+          from_plan: (status?.planId as BillingPlanSlug | undefined) ?? 'none',
+          upgrade_trigger: upgradeTrigger ?? context.upgrade_trigger ?? 'manual',
+          trigger_feature: context.trigger_feature,
+        });
         await authClient.checkout({ slug: checkoutSlug });
       } else {
         await authClient.customer.portal();

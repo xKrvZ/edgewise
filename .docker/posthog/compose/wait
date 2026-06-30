@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+
+import socket
+import time
+import sys
+
+def loop():
+    print("Waiting for ClickHouse and Postgres to be up")
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect(('clickhouse', 9000))
+        print("Clickhouse is up")
+    except socket.error as msg:
+        print("Clickhouse is unavailable - sleeping")
+        time.sleep(1)
+        loop()
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect(('db', 5432))
+        print("Postgres is up")
+    except socket.error as msg:
+        print("Postgres is unavailable - sleeping")
+        time.sleep(1)
+        loop()
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect(('kafka', 9092))
+        print("Kafka is up")
+    except socket.error as msg:
+        print("Kafka is unavailable - sleeping")
+        time.sleep(1)
+        loop()
+
+loop()

@@ -23,7 +23,7 @@ export function CommunityListShell({ children }: CommunityListShellProps) {
   return (
     <PageBody>
       <PageHeader
-        title="Community"
+        title="Communities"
         description="Create groups, join public communities, or accept invitations."
         eyebrow="Groups"
         actions={

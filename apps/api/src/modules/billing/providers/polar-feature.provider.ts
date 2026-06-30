@@ -2,10 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { createPolarClient } from '@/auth/polar.plugin';
 import billingConfig from '@/config/billing.config';
 import {
+  featuresForBillingPlan,
   polarSlugsToFeatures,
   type PlatformFeature,
 } from '../constants/features.constants';
 import type { FeatureProvider } from '../interfaces/feature-provider.interface';
+import { SubscriptionDao } from '../daos/subscription.dao';
 import {
   asCustomerStateLike,
   extractEntitlementSlugs,
@@ -17,6 +19,8 @@ export class PolarFeatureProvider implements FeatureProvider {
   readonly kind = 'polar' as const;
 
   private readonly logger = new Logger(PolarFeatureProvider.name);
+
+  constructor(private readonly subscriptionDao: SubscriptionDao) {}
 
   async hasFeature(
     userId: string,
@@ -33,6 +37,11 @@ export class PolarFeatureProvider implements FeatureProvider {
         Object.values(billingConfig.featureToPolarSlug),
         billingConfig.featureToPolarSlug,
       );
+    }
+
+    const stored = await this.subscriptionDao.findByUserId(userId);
+    if (stored?.adminPlanOverride) {
+      return this.featuresFromLocalSubscription(stored);
     }
 
     const state = await this.fetchCustomerState(userId);
@@ -58,6 +67,23 @@ export class PolarFeatureProvider implements FeatureProvider {
     }
 
     return [];
+  }
+
+  private featuresFromLocalSubscription(
+    stored: NonNullable<Awaited<ReturnType<SubscriptionDao['findByUserId']>>>,
+  ): PlatformFeature[] {
+    if (stored.status !== 'active') {
+      return [];
+    }
+
+    if (stored.productId) {
+      const planId = billingConfig.productIdToPlan[stored.productId];
+      if (planId) {
+        return featuresForBillingPlan(planId);
+      }
+    }
+
+    return featuresForBillingPlan('pro');
   }
 
   private async fetchCustomerState(userId: string): Promise<unknown | null> {

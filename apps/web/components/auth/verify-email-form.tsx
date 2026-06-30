@@ -8,6 +8,11 @@ import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth-client';
 import { resolvePostAuthRedirect } from '@/lib/auth-utils';
 import {
+  AnalyticsEvents,
+  captureActivationMilestone,
+  captureEvent,
+} from '@/lib/posthog';
+import {
   authBackLinkClassName,
   authIconClassName,
   authInputClassNameNoIcon,
@@ -81,6 +86,8 @@ export function VerifyEmailForm() {
       return;
     }
 
+    captureEvent(AnalyticsEvents.EMAIL_VERIFIED, {});
+
     setVerified(true);
     router.refresh();
   };
@@ -96,7 +103,12 @@ export function VerifyEmailForm() {
           <Button
             type="button"
             className={`mt-2 ${authPrimaryButtonClassName}`}
-            onClick={() => router.push(postAuthRedirect)}
+            onClick={() => {
+              captureActivationMilestone(AnalyticsEvents.ONBOARDING_COMPLETED, {
+                source: 'email_verification',
+              });
+              router.push(postAuthRedirect);
+            }}
           >
             Go to My Journal
           </Button>

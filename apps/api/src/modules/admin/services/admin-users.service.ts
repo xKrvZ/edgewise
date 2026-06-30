@@ -61,6 +61,9 @@ export class AdminUsersService {
       limit,
       offset,
       search: query.search,
+      subscriptionActive: query.subscriptionActive,
+      plan: query.plan,
+      role: query.role,
     });
 
     return {

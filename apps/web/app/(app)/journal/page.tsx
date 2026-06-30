@@ -1,6 +1,7 @@
 'use client';
 
 import { DateRangeSelector } from '@/components/app/date-range-selector';
+import { FeatureAnalyticsTracker } from '@/components/analytics/feature-analytics-tracker';
 import { PageFilterBar } from '@/components/app/page-filter-bar';
 import { PageHeader } from '@/components/app/page-header';
 import { JournalEntryCard } from '@/components/journal/journal-entry-card';
@@ -69,6 +70,7 @@ export default function JournalPage() {
 
   return (
     <PageBody>
+      <FeatureAnalyticsTracker feature="trade_journal" />
       <PageHeader
         title="Notebook"
         description="Your trading journal — reflect on psychology, process, and lessons day by day."

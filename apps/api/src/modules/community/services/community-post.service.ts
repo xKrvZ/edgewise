@@ -121,6 +121,8 @@ export class CommunityPostService {
 
       limit: query?.limit,
 
+      includeDiscoverHidden: true,
+
     });
 
     return this.toSummaryDtos(rows);

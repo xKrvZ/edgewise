@@ -1,7 +1,9 @@
 'use client';
 
 import { CommunityTagBadge, tagToMultiSelectOption } from '@/components/community/community-tag-manager';
+import { canModerateCommunityMember } from '@/components/community/community-member-moderation.util';
 import { InviteMemberDialog } from '@/components/community/invite-member-dialog';
+import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EmptyState } from '@/components/shared/empty-state';
 import { MultiSelect } from '@/components/shared/multi-select';
 import { UserAvatar } from '@/components/shared/user-avatar';
@@ -11,10 +13,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError, api } from '@/lib/api-client';
+import { useSession } from '@/lib/auth-client';
 import { useQuery } from '@/lib/hooks/use-query';
 import type { CommunityMember, CommunityMemberRole, CommunityTag } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Eye, Loader2, Search, UserPlus, Users } from 'lucide-react';
+import { Eye, Loader2, Search, UserMinus, UserPlus, UserX, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -36,6 +39,8 @@ export function CommunityMemberList({
   tagsLoading = false,
   onMembersChanged,
 }: CommunityMemberListProps) {
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id;
   const isMentorView = MENTOR_ROLES.includes(myRole);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -138,10 +143,16 @@ export function CommunityMemberList({
                 key={member.id}
                 communityId={communityId}
                 member={member}
+                myRole={myRole}
+                currentUserId={currentUserId}
                 isMentorView={isMentorView}
                 tagOptions={tagOptions}
                 hasCommunityTags={tags.length > 0}
                 onTagsSaved={handleTagsSaved}
+                onMembersChanged={() => {
+                  membersQuery.refetch();
+                  onMembersChanged();
+                }}
               />
             ))}
           </div>
@@ -164,23 +175,57 @@ export function CommunityMemberList({
 interface MemberProfileCardProps {
   communityId: string;
   member: CommunityMember;
+  myRole: CommunityMemberRole;
+  currentUserId?: string;
   isMentorView: boolean;
   tagOptions: ReturnType<typeof tagToMultiSelectOption>[];
   hasCommunityTags: boolean;
   onTagsSaved: () => void;
+  onMembersChanged: () => void;
 }
 
 function MemberProfileCard({
   communityId,
   member,
+  myRole,
+  currentUserId,
   isMentorView,
   tagOptions,
   hasCommunityTags,
   onTagsSaved,
+  onMembersChanged,
 }: MemberProfileCardProps) {
   const hasHeader = Boolean(member.headerUrl);
+  const canModerate = canModerateCommunityMember(myRole, currentUserId, member);
+  const [kickOpen, setKickOpen] = useState(false);
+  const [banOpen, setBanOpen] = useState(false);
+
+  async function handleKick() {
+    try {
+      await api.communities.kickMember(communityId, member.userId);
+      toast.success(`${member.displayName} was removed from the community`);
+      onMembersChanged();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Failed to kick member';
+      toast.error(message);
+      throw err;
+    }
+  }
+
+  async function handleBan() {
+    try {
+      await api.communities.banMember(communityId, member.userId);
+      toast.success(`${member.displayName} was banned from the community`);
+      onMembersChanged();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Failed to ban member';
+      toast.error(message);
+      throw err;
+    }
+  }
 
   return (
+    <>
     <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
       <div
         className={cn(
@@ -262,8 +307,51 @@ function MemberProfileCard({
             </div>
           ) : null}
         </div>
+
+        {canModerate ? (
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-border/60 pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={() => setKickOpen(true)}
+            >
+              <UserMinus className="h-3.5 w-3.5" />
+              Kick
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              className="h-8"
+              onClick={() => setBanOpen(true)}
+            >
+              <UserX className="h-3.5 w-3.5" />
+              Ban
+            </Button>
+          </div>
+        ) : null}
       </div>
     </div>
+
+      <ConfirmDialog
+        open={kickOpen}
+        onOpenChange={setKickOpen}
+        title={`Kick ${member.displayName}?`}
+        description="They will be removed from the community but can rejoin later unless you ban them."
+        confirmLabel="Kick member"
+        onConfirm={handleKick}
+      />
+      <ConfirmDialog
+        open={banOpen}
+        onOpenChange={setBanOpen}
+        title={`Ban ${member.displayName}?`}
+        description="They will be removed and blocked from rejoining until you unban them in Settings."
+        confirmLabel="Ban member"
+        onConfirm={handleBan}
+      />
+    </>
   );
 }
 

@@ -63,11 +63,11 @@ export function InvoiceDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[min(90vh,52rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
-        <DialogHeader className="shrink-0 border-b border-slate-100 px-6 py-5 text-left">
+        <DialogHeader className="shrink-0 border-b border-border px-6 py-5 text-left">
           <div className="flex flex-wrap items-start justify-between gap-3 pr-8">
             <div className="space-y-1">
-              <DialogTitle className="text-xl font-semibold text-slate-900">{title}</DialogTitle>
-              <DialogDescription className="text-sm text-slate-500">
+              <DialogTitle className="text-xl font-semibold text-foreground">{title}</DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
                 Issued {formatDate(invoice.createdAt)}
               </DialogDescription>
             </div>
@@ -79,37 +79,37 @@ export function InvoiceDetailDialog({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
           <dl className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
-              <dt className="text-xs font-bold tracking-widest text-slate-500 uppercase">Amount</dt>
-              <dd className="mt-1 text-lg font-semibold text-slate-900">
+            <div className="rounded-xl border border-border bg-muted/40 px-4 py-3">
+              <dt className="text-xs font-bold tracking-widest text-muted-foreground uppercase">Amount</dt>
+              <dd className="mt-1 text-lg font-semibold text-foreground">
                 {formatAmount(invoice.amount, invoice.currency)}
               </dd>
             </div>
-            <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
-              <dt className="text-xs font-bold tracking-widest text-slate-500 uppercase">
+            <div className="rounded-xl border border-border bg-muted/40 px-4 py-3">
+              <dt className="text-xs font-bold tracking-widest text-muted-foreground uppercase">
                 Invoice number
               </dt>
-              <dd className="mt-1 font-mono text-sm text-slate-900">
+              <dd className="mt-1 font-mono text-sm text-foreground">
                 {invoice.invoiceNumber ?? '—'}
               </dd>
             </div>
-            <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
-              <dt className="text-xs font-bold tracking-widest text-slate-500 uppercase">Date</dt>
-              <dd className="mt-1 text-sm text-slate-900">{formatDate(invoice.createdAt)}</dd>
+            <div className="rounded-xl border border-border bg-muted/40 px-4 py-3">
+              <dt className="text-xs font-bold tracking-widest text-muted-foreground uppercase">Date</dt>
+              <dd className="mt-1 text-sm text-foreground">{formatDate(invoice.createdAt)}</dd>
             </div>
-            <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
-              <dt className="text-xs font-bold tracking-widest text-slate-500 uppercase">Status</dt>
-              <dd className="mt-1 capitalize text-sm text-slate-900">
+            <div className="rounded-xl border border-border bg-muted/40 px-4 py-3">
+              <dt className="text-xs font-bold tracking-widest text-muted-foreground uppercase">Status</dt>
+              <dd className="mt-1 capitalize text-sm text-foreground">
                 {formatStatusLabel(invoice.status)}
               </dd>
             </div>
           </dl>
 
           <div className="mt-6 space-y-3">
-            <h4 className="text-xs font-bold tracking-widest text-slate-500 uppercase">Total</h4>
-            <div className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3">
-              <span className="text-sm text-slate-600">Amount due</span>
-              <span className="text-base font-semibold text-slate-900">
+            <h4 className="text-xs font-bold tracking-widest text-muted-foreground uppercase">Total</h4>
+            <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
+              <span className="text-sm text-muted-foreground">Amount due</span>
+              <span className="text-base font-semibold text-foreground">
                 {formatAmount(invoice.amount, invoice.currency)}
               </span>
             </div>
@@ -118,7 +118,7 @@ export function InvoiceDetailDialog({
           {pdfUrl ? (
             <div className="mt-6 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h4 className="text-xs font-bold tracking-widest text-slate-500 uppercase">
+                <h4 className="text-xs font-bold tracking-widest text-muted-foreground uppercase">
                   Invoice PDF
                 </h4>
                 <div className="flex flex-wrap gap-2">
@@ -136,7 +136,7 @@ export function InvoiceDetailDialog({
                   </Button>
                 </div>
               </div>
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <div className="overflow-hidden rounded-xl border border-border bg-card">
                 <iframe
                   title={`Invoice ${invoice.invoiceNumber ?? invoice.id} PDF`}
                   src={pdfUrl}
@@ -145,14 +145,14 @@ export function InvoiceDetailDialog({
               </div>
             </div>
           ) : (
-            <p className="mt-6 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-500">
+            <p className="mt-6 rounded-xl border border-dashed border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
               No PDF is available for this invoice yet. Polar generates a PDF after payment is
               processed.
             </p>
           )}
         </div>
 
-        <DialogFooter className="shrink-0 border-t border-slate-100 px-6 py-4" showCloseButton>
+        <DialogFooter className="shrink-0 border-t border-border px-6 py-4" showCloseButton>
           {onRefund ? (
             <Button type="button" variant="destructive" size="sm" onClick={onRefund}>
               Issue refund

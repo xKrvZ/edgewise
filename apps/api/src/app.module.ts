@@ -54,6 +54,7 @@ import { AdminModule } from "@/modules/admin/admin.module";
 import { PrivacyModule } from "@/modules/privacy/privacy.module";
 import { PlatformMetricsModule } from "@/modules/platform-metrics/platform-metrics.module";
 import billingConfig from "@/config/billing.config";
+import posthogConfig from "@/config/posthog.config";
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import billingConfig from "@/config/billing.config";
         registerAs('s3', () => s3Config),
         registerAs('email', () => require('@/config/email.config').default),
         registerAs('billing', () => billingConfig),
+        registerAs('posthog', () => posthogConfig),
       ],
     }),
     EventEmitterModule.forRoot(),

@@ -2,7 +2,6 @@
 
 import { BreadcrumbProvider } from '@/components/app/breadcrumb-context';
 import { AppTopHeader } from '@/components/app/app-top-header';
-import { cn } from '@/lib/utils';
 import type { ReactNode } from 'react';
 
 export function AppContent({ children }: { children: ReactNode }) {
@@ -12,9 +11,9 @@ export function AppContent({ children }: { children: ReactNode }) {
       <AppTopHeader />
       <div
         data-app-scroll
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
+        className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain"
       >
-        <div className="mx-auto flex min-h-0 w-full max-w-screen-2xl flex-1 flex-col px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mx-auto w-full min-w-0 max-w-screen-2xl px-4 pt-6 pb-10 sm:px-6 sm:pt-8 sm:pb-12 lg:px-8">
           {children}
         </div>
       </div>

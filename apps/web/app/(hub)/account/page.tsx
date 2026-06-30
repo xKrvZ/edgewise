@@ -5,23 +5,43 @@ import { AccountSectionBilling } from '@/components/account/account-section-bill
 import { AccountSectionProfile } from '@/components/account/account-section-profile';
 import { AccountSectionTradingAccounts } from '@/components/account/account-section-trading-accounts';
 import { AccountSettingsLayout } from '@/components/account/account-settings-layout';
+import { api } from '@/lib/api-client';
 import { useAccountSection } from '@/lib/hooks/use-account-section';
 import { useSubscription } from '@/lib/hooks/use-subscription';
+import { captureSubscriptionSuccess, type BillingPlanSlug } from '@/lib/posthog';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
-export default function AccountPage() {
+function AccountPageContent() {
   const { section, setSection, hydrated } = useAccountSection();
   const searchParams = useSearchParams();
   const { refetch } = useSubscription();
   const [headerActions, setHeaderActions] = useState<ReactNode>(null);
+  const checkoutCapturedRef = useRef(false);
 
   useEffect(() => {
-    if (searchParams.get('checkout') === 'success') {
-      toast.success('Checkout complete — refreshing your subscription status.');
-      void refetch();
+    if (searchParams.get('checkout') !== 'success' || checkoutCapturedRef.current) {
+      return;
     }
+
+    checkoutCapturedRef.current = true;
+    const fromPlan = (searchParams.get('from_plan') as BillingPlanSlug | null) ?? 'none';
+
+    void (async () => {
+      try {
+        const features = await api.billing.features();
+        captureSubscriptionSuccess({
+          from_plan: fromPlan,
+          to_plan: (features.planId as BillingPlanSlug | undefined) ?? 'starter',
+        });
+      } catch {
+        captureSubscriptionSuccess({ from_plan: fromPlan, to_plan: 'starter' });
+      }
+
+      toast.success('Checkout complete — refreshing your subscription status.');
+      await refetch();
+    })();
   }, [refetch, searchParams]);
 
   useEffect(() => {
@@ -53,5 +73,13 @@ export default function AccountPage() {
       ) : null}
       {section === 'billing' ? <AccountSectionBilling /> : null}
     </AccountSettingsLayout>
+  );
+}
+
+export default function AccountPage() {
+  return (
+    <Suspense fallback={null}>
+      <AccountPageContent />
+    </Suspense>
   );
 }

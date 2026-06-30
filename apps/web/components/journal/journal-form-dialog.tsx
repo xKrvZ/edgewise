@@ -22,6 +22,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { ApiError, api } from '@/lib/api-client';
 import { JOURNAL_TEMPLATES } from '@/lib/journal-templates';
+import { captureFeatureUsed, setPersonPropertiesOnce } from '@/lib/posthog';
 import type { CreateJournalEntryInput, JournalEntry, UpdateJournalEntryInput } from '@/lib/types';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -97,6 +98,8 @@ export function JournalFormDialog({
           tradeIds: tradeIds.length > 0 ? tradeIds : undefined,
         };
         await api.journal.create(payload);
+        captureFeatureUsed('trade_journal', { action: 'entry_created' });
+        setPersonPropertiesOnce({ first_notebook_entry_at: new Date().toISOString() });
       }
       toast.success(entry ? 'Entry updated' : 'Entry added');
       onSaved?.();

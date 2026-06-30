@@ -27,7 +27,7 @@ import { AdminUsersService } from '../services/admin-users.service';
 import { AdminAuditPageDto, AdminAuditQueryDto } from '../dtos/admin-audit.dto';
 import { InvoicesPageDto } from '@/modules/billing/dtos/invoice.dto';
 import { AdminStatsQueryDto } from '../dtos/admin-stats-query.dto';
-import { AdminStatsDto } from '../dtos/admin-stats.dto';
+import { AdminDashboardStatsDto, AdminStatsDto } from '../dtos/admin-stats.dto';
 import {
   AdminBanUserDto,
   AdminUpdateAccountLimitDto,
@@ -37,6 +37,15 @@ import {
   AdminUsersPageDto,
   AdminUsersQueryDto,
 } from '../dtos/admin-user.dto';
+import { AdminCommunitiesService } from '../services/admin-communities.service';
+import {
+  AdminCommunitiesPageDto,
+  AdminCommunitiesQueryDto,
+  AdminCommunityDetailDto,
+  AdminCommunityPostRowDto,
+  AdminCommunityPostsPageDto,
+  AdminCommunityPostsQueryDto,
+} from '../dtos/admin-community.dto';
 import {
   AdminCancelSubscriptionDto,
   AdminChangePlanDto,
@@ -58,6 +67,7 @@ export class AdminController {
     private readonly adminUsersService: AdminUsersService,
     private readonly adminBillingService: AdminBillingService,
     private readonly adminAuditService: AdminAuditService,
+    private readonly adminCommunitiesService: AdminCommunitiesService,
   ) {}
 
   private resolveActorUserId(req: Request): string {
@@ -73,12 +83,31 @@ export class AdminController {
     return user.id;
   }
 
+  @Get('stats/dashboard')
+  @ApiOperation({ summary: 'Aggregate platform snapshot for the admin dashboard' })
+  @ApiOkResponse({ type: AdminDashboardStatsDto })
+  @ApiForbiddenResponse({ description: 'Administrator access required' })
+  async getDashboardStats(): Promise<AdminDashboardStatsDto> {
+    return this.adminService.getDashboardStats();
+  }
+
+  @Get('stats/analytics')
+  @ApiOperation({ summary: 'Period-based PostHog metrics for admin analytics' })
+  @ApiOkResponse({ type: AdminStatsDto })
+  @ApiForbiddenResponse({ description: 'Administrator access required' })
+  async getAnalyticsStats(@Query() query: AdminStatsQueryDto): Promise<AdminStatsDto> {
+    return this.adminService.getAnalyticsStats(query.period ?? '30d');
+  }
+
   @Get('stats')
-  @ApiOperation({ summary: 'Platform aggregate stats for the admin dashboard' })
+  @ApiOperation({
+    summary: 'Deprecated — use /admin/stats/dashboard or /admin/stats/analytics',
+    deprecated: true,
+  })
   @ApiOkResponse({ type: AdminStatsDto })
   @ApiForbiddenResponse({ description: 'Administrator access required' })
   async getStats(@Query() query: AdminStatsQueryDto): Promise<AdminStatsDto> {
-    return this.adminService.getStats(query.period ?? '30d');
+    return this.adminService.getAnalyticsStats(query.period ?? '30d');
   }
 
   @Get('audit')
@@ -249,5 +278,139 @@ export class AdminController {
   @ApiOkResponse({ type: AdminUserDetailDto })
   async unbanUser(@Param('id') id: string, @Req() req: Request): Promise<AdminUserDetailDto> {
     return this.adminUsersService.unbanUser(id, req.headers, this.resolveActorUserId(req));
+  }
+
+  @Get('communities')
+  @ApiOperation({ summary: 'List communities for admin management' })
+  @ApiOkResponse({ type: AdminCommunitiesPageDto })
+  async listCommunities(
+    @Query() query: AdminCommunitiesQueryDto,
+  ): Promise<AdminCommunitiesPageDto> {
+    return this.adminCommunitiesService.listCommunities(query);
+  }
+
+  @Get('communities/:id')
+  @ApiOperation({ summary: 'Get community details for admin management' })
+  @ApiOkResponse({ type: AdminCommunityDetailDto })
+  @ApiNotFoundResponse({ description: 'Community not found' })
+  async getCommunity(@Param('id') id: string): Promise<AdminCommunityDetailDto> {
+    return this.adminCommunitiesService.getCommunity(id);
+  }
+
+  @Get('communities/:id/posts')
+  @ApiOperation({ summary: 'List posts in a community for admin management' })
+  @ApiOkResponse({ type: AdminCommunityPostsPageDto })
+  @ApiNotFoundResponse({ description: 'Community not found' })
+  async listCommunityPosts(
+    @Param('id') id: string,
+    @Query() query: AdminCommunityPostsQueryDto,
+  ): Promise<AdminCommunityPostsPageDto> {
+    return this.adminCommunitiesService.listPosts(id, query);
+  }
+
+  @Post('communities/:id/hide-from-discover')
+  @ApiOperation({ summary: 'Hide a community from the discover page' })
+  @ApiOkResponse({ type: AdminCommunityDetailDto })
+  async hideCommunityFromDiscover(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ): Promise<AdminCommunityDetailDto> {
+    return this.adminCommunitiesService.hideCommunityFromDiscover(
+      id,
+      this.resolveActorUserId(req),
+    );
+  }
+
+  @Post('communities/:id/show-on-discover')
+  @ApiOperation({ summary: 'Restore a community on the discover page' })
+  @ApiOkResponse({ type: AdminCommunityDetailDto })
+  async showCommunityOnDiscover(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ): Promise<AdminCommunityDetailDto> {
+    return this.adminCommunitiesService.showCommunityOnDiscover(
+      id,
+      this.resolveActorUserId(req),
+    );
+  }
+
+  @Post('communities/:id/feature')
+  @ApiOperation({ summary: 'Feature a community on discover' })
+  @ApiOkResponse({ type: AdminCommunityDetailDto })
+  async featureCommunity(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ): Promise<AdminCommunityDetailDto> {
+    return this.adminCommunitiesService.featureCommunity(id, this.resolveActorUserId(req));
+  }
+
+  @Post('communities/:id/unfeature')
+  @ApiOperation({ summary: 'Remove featured status from a community' })
+  @ApiOkResponse({ type: AdminCommunityDetailDto })
+  async unfeatureCommunity(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ): Promise<AdminCommunityDetailDto> {
+    return this.adminCommunitiesService.unfeatureCommunity(id, this.resolveActorUserId(req));
+  }
+
+  @Post('communities/:communityId/posts/:postId/soft-delete')
+  @ApiOperation({ summary: 'Soft delete a community post (admin)' })
+  @ApiOkResponse({ type: AdminCommunityPostRowDto })
+  async softDeleteCommunityPost(
+    @Param('communityId') communityId: string,
+    @Param('postId') postId: string,
+    @Req() req: Request,
+  ): Promise<AdminCommunityPostRowDto> {
+    return this.adminCommunitiesService.softDeletePost(
+      communityId,
+      postId,
+      this.resolveActorUserId(req),
+    );
+  }
+
+  @Post('communities/:communityId/posts/:postId/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted community post (admin)' })
+  @ApiOkResponse({ type: AdminCommunityPostRowDto })
+  async restoreCommunityPost(
+    @Param('communityId') communityId: string,
+    @Param('postId') postId: string,
+    @Req() req: Request,
+  ): Promise<AdminCommunityPostRowDto> {
+    return this.adminCommunitiesService.restorePost(
+      communityId,
+      postId,
+      this.resolveActorUserId(req),
+    );
+  }
+
+  @Post('communities/:communityId/posts/:postId/hide-from-discover')
+  @ApiOperation({ summary: 'Hide a public post from discover listings' })
+  @ApiOkResponse({ type: AdminCommunityPostRowDto })
+  async hideCommunityPostFromDiscover(
+    @Param('communityId') communityId: string,
+    @Param('postId') postId: string,
+    @Req() req: Request,
+  ): Promise<AdminCommunityPostRowDto> {
+    return this.adminCommunitiesService.hidePostFromDiscover(
+      communityId,
+      postId,
+      this.resolveActorUserId(req),
+    );
+  }
+
+  @Post('communities/:communityId/posts/:postId/show-on-discover')
+  @ApiOperation({ summary: 'Restore a post on discover listings' })
+  @ApiOkResponse({ type: AdminCommunityPostRowDto })
+  async showCommunityPostOnDiscover(
+    @Param('communityId') communityId: string,
+    @Param('postId') postId: string,
+    @Req() req: Request,
+  ): Promise<AdminCommunityPostRowDto> {
+    return this.adminCommunitiesService.showPostOnDiscover(
+      communityId,
+      postId,
+      this.resolveActorUserId(req),
+    );
   }
 }

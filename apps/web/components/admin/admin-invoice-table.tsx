@@ -98,7 +98,7 @@ export function AdminInvoiceTable({
     return (
       <div className={cn(cardTableStatePaddingClass, 'space-y-2 text-sm text-muted-foreground')}>
         <p>{emptyMessage}</p>
-        {mockHint ? <p className="text-slate-500">{mockHint}</p> : null}
+        {mockHint ? <p className="text-muted-foreground">{mockHint}</p> : null}
       </div>
     );
   }

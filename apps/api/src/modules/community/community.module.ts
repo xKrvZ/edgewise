@@ -7,6 +7,7 @@ import { CommunityPublicController } from './controllers/community-public.contro
 import { InvitationController } from './controllers/invitation.controller';
 import { CommunityDao } from './daos/community.dao';
 import { CommunityInvitationDao } from './daos/community-invitation.dao';
+import { CommunityBanDao } from './daos/community-ban.dao';
 import { CommunityMemberDao } from './daos/community-member.dao';
 import { CommunityMemberTagDao } from './daos/community-member-tag.dao';
 import { CommunityStatsDao } from './daos/community-stats.dao';
@@ -34,6 +35,7 @@ import { CommunityTagService } from './services/community-tag.service';
     CommunityPostCommentService,
     CommunityPlaybookTemplateService,
     CommunityDao,
+    CommunityBanDao,
     CommunityMemberDao,
     CommunityMemberTagDao,
     CommunityPostDao,

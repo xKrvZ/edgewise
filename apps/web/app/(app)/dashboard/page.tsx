@@ -1,6 +1,7 @@
 'use client';
 
 import { PeriodAiReviewCard } from '@/components/ai-review/period-ai-review-card';
+import { FeatureAnalyticsTracker } from '@/components/analytics/feature-analytics-tracker';
 import { CreateAccountCta } from '@/components/accounts/create-account-cta';
 import { DateRangeSelector } from '@/components/app/date-range-selector';
 import { PageHeader } from '@/components/app/page-header';
@@ -98,6 +99,9 @@ export default function DashboardPage() {
 
   return (
     <PageBody>
+      <FeatureAnalyticsTracker feature="performance_dashboard" />
+      <FeatureAnalyticsTracker feature="calendar" />
+      <FeatureAnalyticsTracker feature="goals" action="progress_tracker" />
       <PageHeader
         description="Welcome back. Here's your trading overview."
         className="border-none pb-0"

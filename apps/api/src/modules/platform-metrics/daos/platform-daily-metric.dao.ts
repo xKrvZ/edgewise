@@ -86,6 +86,22 @@ export class PlatformDailyMetricDao extends KyselyDao<PlatformDailyMetricDao> {
     return Number(row?.total ?? 0);
   }
 
+  async sumBetween(
+    metric: PlatformDailyMetric,
+    start: Date,
+    end: Date,
+  ): Promise<number> {
+    const row = await this.kysely
+      .selectFrom('platform_daily_metric')
+      .select((eb) => eb.fn.sum<number>('value').as('total'))
+      .where('metric', '=', metric)
+      .where('metricDate', '>=', start)
+      .where('metricDate', '<', end)
+      .executeTakeFirst();
+
+    return Number(row?.total ?? 0);
+  }
+
   async getUserSignupSeriesFromUsers(since: Date): Promise<DailyMetricRow[]> {
     const rows = await this.kysely
       .selectFrom('user')

@@ -4,6 +4,15 @@ import { IsIn, IsInt, IsOptional, IsString, Max, Min, ValidateIf } from 'class-v
 import { ALL_ROLES } from '@/auth/constants/roles.constants';
 import { PLATFORM_FEATURES } from '@/modules/billing/constants/features.constants';
 
+/** Persisted subscription rows with status = active (see AdminUsersQueryDto.subscriptionActive). */
+export const ADMIN_USER_SUBSCRIPTION_ACTIVE_FILTERS = ['active', 'inactive'] as const;
+export type AdminUserSubscriptionActiveFilter =
+  (typeof ADMIN_USER_SUBSCRIPTION_ACTIVE_FILTERS)[number];
+
+/** Billing plan slugs for admin user list filtering (includes users with no mapped plan). */
+export const ADMIN_USER_PLAN_FILTERS = ['starter', 'pro', 'elite', 'none'] as const;
+export type AdminUserPlanFilter = (typeof ADMIN_USER_PLAN_FILTERS)[number];
+
 export class AdminUsersQueryDto {
   @ApiPropertyOptional({ default: 25, minimum: 1, maximum: 100 })
   @IsOptional()
@@ -24,6 +33,32 @@ export class AdminUsersQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @ApiPropertyOptional({
+    enum: ADMIN_USER_SUBSCRIPTION_ACTIVE_FILTERS,
+    description:
+      'Filter by persisted subscription status. Active = user_subscription.status is active. Inactive = no row or any other status (inactive, canceled, etc.).',
+  })
+  @IsOptional()
+  @IsIn(ADMIN_USER_SUBSCRIPTION_ACTIVE_FILTERS)
+  subscriptionActive?: AdminUserSubscriptionActiveFilter;
+
+  @ApiPropertyOptional({
+    enum: ADMIN_USER_PLAN_FILTERS,
+    description:
+      'Filter by billing plan derived from user_subscription.productId (and mock/demo defaults when no product is stored).',
+  })
+  @IsOptional()
+  @IsIn(ADMIN_USER_PLAN_FILTERS)
+  plan?: AdminUserPlanFilter;
+
+  @ApiPropertyOptional({
+    enum: ALL_ROLES,
+    description: 'Filter by platform role (legacy lowercase user and empty roles match User).',
+  })
+  @IsOptional()
+  @IsIn(ALL_ROLES)
+  role?: (typeof ALL_ROLES)[number];
 }
 
 export class AdminUserRowDto {

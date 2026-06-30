@@ -67,3 +67,11 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 /.docker-compose
 .docker-compose/
 docker-compose.override.yml
+.docker/posthog/posthog/
+.docker/posthog/.env
+.docker/posthog/docker-compose.base.yml
+.docker/posthog/docker-compose.hobby.yml
+.docker/posthog/.env.services
+.docker/posthog/share/
+.docker/posthog/.provisioned.json
+.docker/posthog/.bootstrap-raw.json

@@ -750,6 +750,7 @@ export interface CommunitySummary {
   memberCount: number;
   myRole: CommunityMemberRole | null;
   joinPolicy: CommunityJoinPolicy;
+  featured: boolean;
   leaderboardVisibility: CommunityLeaderboardVisibility;
   logoUrl?: string | null;
   headerUrl?: string | null;
@@ -778,6 +779,21 @@ export interface CommunityMember {
   role: CommunityMemberRole;
   joinedAt: string;
   tags?: CommunityTag[];
+}
+
+export interface CommunityBannedMember {
+  id: string;
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bannedBy: string;
+  bannedByDisplayName: string;
+  bannedAt: string;
+  reason: string | null;
+}
+
+export interface BanCommunityMemberInput {
+  reason?: string;
 }
 
 export interface CommunityTag {
@@ -871,6 +887,11 @@ export interface CommunityLeaderboard {
 
 export interface CommunityQuery {
   days?: number;
+}
+
+export interface CommunityListQuery {
+  featured?: boolean;
+  search?: string;
 }
 
 export interface CommunityPostsQuery {

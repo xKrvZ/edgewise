@@ -27,6 +27,8 @@ import { ApiError, api } from '@/lib/api-client';
 import { formatCurrency, formatDateTime, formatR } from '@/lib/format';
 import { useReferenceData } from '@/lib/hooks/use-reference-data';
 import { useWizard } from '@/lib/hooks/use-wizard';
+import { useSession } from '@/lib/auth-client';
+import { captureTradeActivity } from '@/lib/posthog';
 import { type CreateTradeInput, MARKET_TYPES, TRADE_DIRECTIONS, type Trade } from '@/lib/types';
 import { getUserTimezone, resolveTradingSessionId } from '@/lib/trading-session-resolver';
 import { cn } from '@/lib/utils';
@@ -168,6 +170,7 @@ export function TradeFormDialog({
   defaultAccountId,
   onSaved,
 }: TradeFormDialogProps) {
+  const { data: session } = useSession();
   const { accounts, playbooks, sessions, tags, mistakes } = useReferenceData();
   const [form, setForm] = useState<FormState>(() => buildInitialState(trade, defaultAccountId));
   const [tagIds, setTagIds] = useState<string[]>([]);
@@ -363,6 +366,17 @@ export function TradeFormDialog({
       const saved = trade
         ? await api.trades.update(trade.id, payload)
         : await api.trades.create(payload);
+      if (!trade) {
+        const userId = session?.user?.id;
+        if (userId) {
+          captureTradeActivity({
+            userId,
+            tradeId: saved.id,
+            status: saved.status,
+            source: 'manual',
+          });
+        }
+      }
       toast.success(trade ? 'Trade updated' : 'Trade logged');
       onSaved?.(saved);
       onOpenChange(false);

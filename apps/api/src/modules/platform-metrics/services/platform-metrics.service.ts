@@ -223,6 +223,25 @@ export class PlatformMetricsService {
     return Number((cents / 100).toFixed(2));
   }
 
+  async getRevenueTotalBetween(start: Date, end: Date): Promise<number | null> {
+    const hasRollup = await this.platformDailyMetricDao.hasAnySince(
+      PLATFORM_DAILY_METRIC.REVENUE_CENTS,
+      start,
+    );
+
+    if (!hasRollup) {
+      return null;
+    }
+
+    const cents = await this.platformDailyMetricDao.sumBetween(
+      PLATFORM_DAILY_METRIC.REVENUE_CENTS,
+      start,
+      end,
+    );
+
+    return Number((cents / 100).toFixed(2));
+  }
+
   async rebuildDailyRollups(): Promise<void> {
     const since = this.rollupSinceDate();
     this.logger.log(`Rebuilding platform daily metrics since ${since.toISOString().slice(0, 10)}`);

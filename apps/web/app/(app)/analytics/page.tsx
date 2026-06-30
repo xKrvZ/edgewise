@@ -1,6 +1,7 @@
 'use client';
 
 import { ComparePeriodsSection } from '@/components/analytics/compare-periods-section';
+import { FeatureAnalyticsTracker } from '@/components/analytics/feature-analytics-tracker';
 import { GroupStatSection } from '@/components/analytics/group-stat-section';
 import { WinsVsLossesSection } from '@/components/analytics/wins-vs-losses-section';
 import { DateRangeSelector } from '@/components/app/date-range-selector';
@@ -77,6 +78,8 @@ export default function AnalyticsPage() {
 
   return (
     <PageBody>
+      <FeatureAnalyticsTracker feature="reports" />
+      <FeatureAnalyticsTracker feature="heatmaps" />
       <PageHeader
         title="Analytics"
         description="Break down your edge by setup, symbol, session and time."

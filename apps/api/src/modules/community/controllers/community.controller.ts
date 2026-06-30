@@ -80,6 +80,11 @@ import {
 } from '../dtos/create-community-playbook-template.dto';
 import { CloneCommunityPlaybookTemplateDto } from '../dtos/clone-community-playbook-template.dto';
 import { PlaybookDto } from '@/modules/playbook/dtos/playbook.dto';
+import {
+  BanCommunityMemberDto,
+  CommunityBannedMemberDto,
+} from '../dtos/community-ban.dto';
+import { CommunityListQueryDto } from '../dtos/community-list-query.dto';
 
 @ApiTags('Communities')
 @ApiExtraModels(PaginatedDto, TradeDto)
@@ -112,8 +117,11 @@ export class CommunityController {
   @Get()
   @ApiOperation({ summary: 'List all communities with membership status for the current user' })
   @ApiOkResponse({ type: CommunitySummaryDto, isArray: true })
-  async list(@Session() session: UserSession): Promise<CommunitySummaryDto[]> {
-    return this.communityService.list(session.user.id);
+  async list(
+    @Query() query: CommunityListQueryDto,
+    @Session() session: UserSession,
+  ): Promise<CommunitySummaryDto[]> {
+    return this.communityService.list(session.user.id, query);
   }
 
   @Get(':id')
@@ -278,6 +286,57 @@ export class CommunityController {
     @Session() session: UserSession,
   ): Promise<CommunityMemberWithTagsDto[]> {
     return this.communityTagService.listMembers(id, session.user.id, query);
+  }
+
+  @Get(':id/bans')
+  @ApiOperation({ summary: 'List banned users (owner/mentor)' })
+  @ApiOkResponse({ type: CommunityBannedMemberDto, isArray: true })
+  @ApiForbiddenResponse({ description: 'Only mentors and owners can view bans' })
+  async listBannedMembers(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Session() session: UserSession,
+  ): Promise<CommunityBannedMemberDto[]> {
+    return this.communityService.listBannedMembers(id, session.user.id);
+  }
+
+  @Post(':id/members/:userId/kick')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Remove a member from the community (owner/mentor)' })
+  @ApiNoContentResponse()
+  @ApiForbiddenResponse({ description: 'Insufficient permissions or invalid target' })
+  async kickMember(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('userId') memberUserId: string,
+    @Session() session: UserSession,
+  ): Promise<void> {
+    return this.communityService.kickMember(id, session.user.id, memberUserId);
+  }
+
+  @Post(':id/members/:userId/ban')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Ban a member and remove them from the community (owner/mentor)' })
+  @ApiNoContentResponse()
+  @ApiForbiddenResponse({ description: 'Insufficient permissions or invalid target' })
+  async banMember(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('userId') memberUserId: string,
+    @Body() dto: BanCommunityMemberDto,
+    @Session() session: UserSession,
+  ): Promise<void> {
+    return this.communityService.banMember(id, session.user.id, memberUserId, dto);
+  }
+
+  @Post(':id/members/:userId/unban')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Remove a community ban (owner/mentor)' })
+  @ApiNoContentResponse()
+  @ApiForbiddenResponse({ description: 'Only mentors and owners can unban users' })
+  async unbanMember(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('userId') memberUserId: string,
+    @Session() session: UserSession,
+  ): Promise<void> {
+    return this.communityService.unbanMember(id, session.user.id, memberUserId);
   }
 
   @Get(':id/tags')

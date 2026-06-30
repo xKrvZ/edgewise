@@ -1,6 +1,7 @@
 'use client';
 
 import { PageHeader } from '@/components/app/page-header';
+import { FeatureAnalyticsTracker } from '@/components/analytics/feature-analytics-tracker';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { TradesEmptyState } from '@/components/trades/trades-empty-state';
 import { ErrorState } from '@/components/shared/error-state';
@@ -167,6 +168,7 @@ export default function TradesPage() {
 
   return (
     <PageBody>
+      <FeatureAnalyticsTracker feature="tags" action="trades_page" />
       <PageHeader
         title="Trades"
         description="Log, filter and review your executed trades."

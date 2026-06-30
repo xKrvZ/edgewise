@@ -131,7 +131,7 @@ export function AdminUserDetailPanel({ userId }: AdminUserDetailPanelProps) {
   return (
     <div className="space-y-8">
       <AccountSettingsSection title="Profile">
-        <div className="flex items-center gap-4 border-b border-slate-100 px-4 py-5 sm:px-5">
+        <div className="flex items-center gap-4 border-b border-border px-4 py-5 sm:px-5">
           <UserAvatar
             displayName={user.displayName}
             name={user.name}
@@ -141,7 +141,7 @@ export function AdminUserDetailPanel({ userId }: AdminUserDetailPanelProps) {
           />
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="truncate text-lg font-semibold text-slate-900">
+              <p className="truncate text-lg font-semibold text-foreground">
                 {userDisplayName({
                   displayName: user.displayName,
                   name: user.name,
@@ -155,8 +155,8 @@ export function AdminUserDetailPanel({ userId }: AdminUserDetailPanelProps) {
               )}
               {user.banned ? <Badge variant="destructive">Banned</Badge> : null}
             </div>
-            <p className="truncate text-sm text-slate-500">{user.email}</p>
-            <p className="text-xs text-slate-400">Joined {formatDate(user.createdAt)}</p>
+            <p className="truncate text-sm text-muted-foreground">{user.email}</p>
+            <p className="text-xs text-muted-foreground">Joined {formatDate(user.createdAt)}</p>
           </div>
         </div>
         <AccountSettingsRow

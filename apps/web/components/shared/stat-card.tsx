@@ -21,8 +21,8 @@ export function StatCard({
   isLoading,
 }: StatCardProps) {
   return (
-    <Card className="transition-[border-color,box-shadow] duration-150 hover:border-primary/20 hover:shadow-sm">
-      <CardContent className="flex flex-col gap-2">
+    <Card className="h-full transition-[border-color,box-shadow] duration-150 hover:border-primary/20 hover:shadow-sm">
+      <CardContent className="flex h-full flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {label}
@@ -38,7 +38,13 @@ export function StatCard({
             {value}
           </span>
         )}
-        {hint && !isLoading && <span className="text-xs text-muted-foreground">{hint}</span>}
+        {!isLoading && (
+          <span
+            className={cn('mt-auto min-h-4 text-xs text-muted-foreground', !hint && 'invisible')}
+          >
+            {hint ?? '\u00a0'}
+          </span>
+        )}
       </CardContent>
     </Card>
   );

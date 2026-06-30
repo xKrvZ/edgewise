@@ -10,6 +10,7 @@ export interface FindCommunityPostsOptions {
   excludePostId?: string;
   limit?: number;
   includeDeleted?: boolean;
+  includeDiscoverHidden?: boolean;
 }
 
 export interface PostWithAuthorProfile extends Selectable<CommunityPost> {
@@ -17,7 +18,6 @@ export interface PostWithAuthorProfile extends Selectable<CommunityPost> {
   userImage: string | null;
   avatarStorageKey: string | null;
 }
-
 @Injectable()
 export class CommunityPostDao extends KyselyDao<CommunityPostDao> {
   static readonly TABLE = 'community_post' as const;
@@ -43,6 +43,7 @@ export class CommunityPostDao extends KyselyDao<CommunityPostDao> {
         'community_post.createdAt as createdAt',
         'community_post.updatedAt as updatedAt',
         'community_post.deletedAt as deletedAt',
+        'community_post.discoverHiddenAt as discoverHiddenAt',
         'trader_profile.displayName as displayName',
         'user.name as userName',
         'user.email as userEmail',
@@ -59,6 +60,9 @@ export class CommunityPostDao extends KyselyDao<CommunityPostDao> {
     }
     if (!options?.includeDeleted) {
       query = query.where('community_post.deletedAt', 'is', null);
+    }
+    if (!options?.includeDiscoverHidden) {
+      query = query.where('community_post.discoverHiddenAt', 'is', null);
     }
 
     query = query.orderBy('community_post.publishedAt', 'desc');
@@ -82,6 +86,7 @@ export class CommunityPostDao extends KyselyDao<CommunityPostDao> {
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       deletedAt: row.deletedAt,
+      discoverHiddenAt: row.discoverHiddenAt,
       authorDisplayName: resolveUserDisplayLabel({
         displayName: row.displayName,
         name: row.userName,
@@ -113,6 +118,7 @@ export class CommunityPostDao extends KyselyDao<CommunityPostDao> {
         'community_post.createdAt as createdAt',
         'community_post.updatedAt as updatedAt',
         'community_post.deletedAt as deletedAt',
+        'community_post.discoverHiddenAt as discoverHiddenAt',
         'trader_profile.displayName as displayName',
         'user.name as userName',
         'user.email as userEmail',
@@ -140,6 +146,7 @@ export class CommunityPostDao extends KyselyDao<CommunityPostDao> {
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       deletedAt: row.deletedAt,
+      discoverHiddenAt: row.discoverHiddenAt,
       authorDisplayName: resolveUserDisplayLabel({
         displayName: row.displayName,
         name: row.userName,
@@ -181,6 +188,31 @@ export class CommunityPostDao extends KyselyDao<CommunityPostDao> {
       .where('id', '=', id)
       .where('communityId', '=', communityId)
       .where('deletedAt', 'is', null)
+      .executeTakeFirst();
+    return Number(result.numUpdatedRows ?? 0) > 0;
+  }
+
+  async restoreInCommunity(id: string, communityId: string): Promise<boolean> {
+    const result = await this.kysely
+      .updateTable(CommunityPostDao.TABLE)
+      .set({ deletedAt: null, updatedAt: new Date() })
+      .where('id', '=', id)
+      .where('communityId', '=', communityId)
+      .where('deletedAt', 'is not', null)
+      .executeTakeFirst();
+    return Number(result.numUpdatedRows ?? 0) > 0;
+  }
+
+  async setDiscoverHiddenInCommunity(
+    id: string,
+    communityId: string,
+    hiddenAt: Date | null,
+  ): Promise<boolean> {
+    const result = await this.kysely
+      .updateTable(CommunityPostDao.TABLE)
+      .set({ discoverHiddenAt: hiddenAt, updatedAt: new Date() })
+      .where('id', '=', id)
+      .where('communityId', '=', communityId)
       .executeTakeFirst();
     return Number(result.numUpdatedRows ?? 0) > 0;
   }

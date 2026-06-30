@@ -8,6 +8,7 @@ export interface UserSubscriptionRecord {
   polarSubscriptionId: string | null;
   productId: string | null;
   currentPeriodEnd: Date | null;
+  adminPlanOverride: boolean;
 }
 
 @Injectable()
@@ -22,6 +23,7 @@ export class SubscriptionDao extends KyselyDao<SubscriptionDao> {
         'polarSubscriptionId',
         'productId',
         'currentPeriodEnd',
+        'adminPlanOverride',
       ])
       .where('userId', '=', userId)
       .executeTakeFirst();
@@ -37,6 +39,7 @@ export class SubscriptionDao extends KyselyDao<SubscriptionDao> {
       polarSubscriptionId: row.polarSubscriptionId,
       productId: row.productId,
       currentPeriodEnd: row.currentPeriodEnd ? new Date(row.currentPeriodEnd) : null,
+      adminPlanOverride: row.adminPlanOverride,
     };
   }
 
@@ -57,18 +60,28 @@ export class SubscriptionDao extends KyselyDao<SubscriptionDao> {
     polarSubscriptionId: string | null;
     productId: string | null;
     currentPeriodEnd: Date | null;
+    adminPlanOverride?: boolean;
   }): Promise<UserSubscriptionRecord> {
     const existing = await this.findByUserId(params.userId);
+    const preserveLocalPlan = existing?.adminPlanOverride === true;
 
     if (existing) {
       await this.kysely
         .updateTable('user_subscription')
         .set({
-          status: params.status,
+          status: preserveLocalPlan ? existing.status : params.status,
           polarCustomerId: params.polarCustomerId ?? existing.polarCustomerId,
           polarSubscriptionId: params.polarSubscriptionId ?? existing.polarSubscriptionId,
-          productId: params.productId ?? existing.productId,
-          currentPeriodEnd: params.currentPeriodEnd ?? existing.currentPeriodEnd,
+          productId: preserveLocalPlan
+            ? existing.productId
+            : (params.productId ?? existing.productId),
+          currentPeriodEnd: preserveLocalPlan
+            ? existing.currentPeriodEnd
+            : (params.currentPeriodEnd ?? existing.currentPeriodEnd),
+          adminPlanOverride:
+            params.adminPlanOverride !== undefined
+              ? params.adminPlanOverride
+              : existing.adminPlanOverride,
           updatedAt: new Date(),
         })
         .where('userId', '=', params.userId)
@@ -76,11 +89,19 @@ export class SubscriptionDao extends KyselyDao<SubscriptionDao> {
 
       return {
         userId: params.userId,
-        status: params.status,
+        status: preserveLocalPlan ? existing.status : params.status,
         polarCustomerId: params.polarCustomerId ?? existing.polarCustomerId,
         polarSubscriptionId: params.polarSubscriptionId ?? existing.polarSubscriptionId,
-        productId: params.productId ?? existing.productId,
-        currentPeriodEnd: params.currentPeriodEnd ?? existing.currentPeriodEnd,
+        productId: preserveLocalPlan
+          ? existing.productId
+          : (params.productId ?? existing.productId),
+        currentPeriodEnd: preserveLocalPlan
+          ? existing.currentPeriodEnd
+          : (params.currentPeriodEnd ?? existing.currentPeriodEnd),
+        adminPlanOverride:
+          params.adminPlanOverride !== undefined
+            ? params.adminPlanOverride
+            : existing.adminPlanOverride,
       };
     }
 
@@ -93,6 +114,7 @@ export class SubscriptionDao extends KyselyDao<SubscriptionDao> {
         polarSubscriptionId: params.polarSubscriptionId,
         productId: params.productId,
         currentPeriodEnd: params.currentPeriodEnd,
+        adminPlanOverride: params.adminPlanOverride ?? false,
         updatedAt: new Date(),
       })
       .execute();
@@ -104,6 +126,7 @@ export class SubscriptionDao extends KyselyDao<SubscriptionDao> {
       polarSubscriptionId: params.polarSubscriptionId,
       productId: params.productId,
       currentPeriodEnd: params.currentPeriodEnd,
+      adminPlanOverride: params.adminPlanOverride ?? false,
     };
   }
 
@@ -113,6 +136,7 @@ export class SubscriptionDao extends KyselyDao<SubscriptionDao> {
       status: string;
       productId?: string | null;
       currentPeriodEnd?: Date | null;
+      adminPlanOverride?: boolean;
     },
   ): Promise<UserSubscriptionRecord> {
     const existing = await this.findByUserId(userId);
@@ -124,6 +148,10 @@ export class SubscriptionDao extends KyselyDao<SubscriptionDao> {
           status: params.status,
           productId: params.productId ?? existing.productId,
           currentPeriodEnd: params.currentPeriodEnd ?? existing.currentPeriodEnd,
+          adminPlanOverride:
+            params.adminPlanOverride !== undefined
+              ? params.adminPlanOverride
+              : existing.adminPlanOverride,
           updatedAt: new Date(),
         })
         .where('userId', '=', userId)
@@ -134,6 +162,10 @@ export class SubscriptionDao extends KyselyDao<SubscriptionDao> {
         status: params.status,
         productId: params.productId ?? existing.productId,
         currentPeriodEnd: params.currentPeriodEnd ?? existing.currentPeriodEnd,
+        adminPlanOverride:
+          params.adminPlanOverride !== undefined
+            ? params.adminPlanOverride
+            : existing.adminPlanOverride,
       };
     }
 
@@ -145,6 +177,7 @@ export class SubscriptionDao extends KyselyDao<SubscriptionDao> {
         status: params.status,
         productId: params.productId ?? null,
         currentPeriodEnd: periodEnd,
+        adminPlanOverride: params.adminPlanOverride ?? false,
         updatedAt: new Date(),
       })
       .execute();
@@ -156,6 +189,7 @@ export class SubscriptionDao extends KyselyDao<SubscriptionDao> {
       polarSubscriptionId: null,
       productId: params.productId ?? null,
       currentPeriodEnd: periodEnd,
+      adminPlanOverride: params.adminPlanOverride ?? false,
     };
   }
 
@@ -191,6 +225,7 @@ export class SubscriptionDao extends KyselyDao<SubscriptionDao> {
       polarSubscriptionId: null,
       productId: null,
       currentPeriodEnd: null,
+      adminPlanOverride: false,
     };
   }
 }

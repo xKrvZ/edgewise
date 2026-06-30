@@ -23,6 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError, api } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/format';
 import { useSubscription } from '@/lib/hooks/use-subscription';
+import { storeUpgradeContext } from '@/lib/posthog';
 import type { Account, AccountType } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useAccountStore } from '@/stores/account-store';
@@ -89,6 +90,7 @@ export function AccountSectionTradingAccounts({
 
   const openCreate = useCallback(() => {
     if (atAccountLimit) {
+      storeUpgradeContext('journal_limit', 'trade_journal');
       toast.error(
         `Journal limit reached (${accountCount}/${maxAccounts}). Upgrade your plan to add more journals.`,
       );
@@ -359,6 +361,7 @@ export function AccountSectionTradingAccounts({
         open={formOpen}
         onOpenChange={setFormOpen}
         account={editing}
+        existingAccountCount={accounts.filter((account) => !account.isArchived).length}
         onSaved={handleSaved}
       />
 

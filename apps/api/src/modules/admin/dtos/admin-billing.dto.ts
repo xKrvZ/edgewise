@@ -70,6 +70,12 @@ export class AdminSubscriptionDetailDto {
   })
   cancelAtPeriodEnd?: boolean;
 
+  @ApiPropertyOptional({
+    description:
+      'True when platform access was set locally without syncing Polar billing',
+  })
+  adminPlanOverride?: boolean;
+
   @ApiProperty({ type: [AdminPlanDto] })
   plans!: AdminPlanDto[];
 }
@@ -86,6 +92,15 @@ export class AdminChangePlanDto {
   @ValidateIf((body: AdminChangePlanDto) => !body.productId)
   @IsString()
   planSlug?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Update platform access only — skip Polar subscription changes, proration, and invoices',
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  excludeBilling?: boolean = false;
 }
 
 export class AdminCancelSubscriptionDto {

@@ -149,6 +149,7 @@ export class PlatformAuditService {
     previousPlan: string | null;
     newPlan: string;
     productId?: string | null;
+    excludeBilling?: boolean;
   }): Promise<void> {
     await this.platformEventDao.insertAuditEvent({
       source: PLATFORM_EVENT_SOURCE.ADMIN,
@@ -161,6 +162,7 @@ export class PlatformAuditService {
         previousPlan: params.previousPlan,
         newPlan: params.newPlan,
         productId: params.productId ?? null,
+        excludeBilling: params.excludeBilling ?? false,
       },
     });
   }
@@ -231,6 +233,182 @@ export class PlatformAuditService {
         newOverride: params.newOverride,
         previousMaxAccounts: params.previousMaxAccounts,
         newMaxAccounts: params.newMaxAccounts,
+      },
+    });
+  }
+
+  async recordAdminCommunityDiscoverHidden(params: {
+    actorUserId: string;
+    userId: string;
+    communityId: string;
+    communityName: string;
+  }): Promise<void> {
+    await this.platformEventDao.insertAuditEvent({
+      source: PLATFORM_EVENT_SOURCE.ADMIN,
+      type: PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_DISCOVER_HIDDEN,
+      idempotencyKey: `admin:community.discover_hidden:${randomUUID()}`,
+      userId: params.userId,
+      actorUserId: params.actorUserId,
+      occurredAt: new Date(),
+      payload: {
+        communityId: params.communityId,
+        communityName: params.communityName,
+      },
+    });
+  }
+
+  async recordAdminCommunityDiscoverShown(params: {
+    actorUserId: string;
+    userId: string;
+    communityId: string;
+    communityName: string;
+  }): Promise<void> {
+    await this.platformEventDao.insertAuditEvent({
+      source: PLATFORM_EVENT_SOURCE.ADMIN,
+      type: PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_DISCOVER_SHOWN,
+      idempotencyKey: `admin:community.discover_shown:${randomUUID()}`,
+      userId: params.userId,
+      actorUserId: params.actorUserId,
+      occurredAt: new Date(),
+      payload: {
+        communityId: params.communityId,
+        communityName: params.communityName,
+      },
+    });
+  }
+
+  async recordAdminCommunityFeatured(params: {
+    actorUserId: string;
+    userId: string;
+    communityId: string;
+    communityName: string;
+  }): Promise<void> {
+    await this.platformEventDao.insertAuditEvent({
+      source: PLATFORM_EVENT_SOURCE.ADMIN,
+      type: PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_FEATURED,
+      idempotencyKey: `admin:community.featured:${randomUUID()}`,
+      userId: params.userId,
+      actorUserId: params.actorUserId,
+      occurredAt: new Date(),
+      payload: {
+        communityId: params.communityId,
+        communityName: params.communityName,
+      },
+    });
+  }
+
+  async recordAdminCommunityUnfeatured(params: {
+    actorUserId: string;
+    userId: string;
+    communityId: string;
+    communityName: string;
+  }): Promise<void> {
+    await this.platformEventDao.insertAuditEvent({
+      source: PLATFORM_EVENT_SOURCE.ADMIN,
+      type: PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_UNFEATURED,
+      idempotencyKey: `admin:community.unfeatured:${randomUUID()}`,
+      userId: params.userId,
+      actorUserId: params.actorUserId,
+      occurredAt: new Date(),
+      payload: {
+        communityId: params.communityId,
+        communityName: params.communityName,
+      },
+    });
+  }
+
+  async recordAdminCommunityPostDeleted(params: {
+    actorUserId: string;
+    userId: string;
+    communityId: string;
+    communityName: string;
+    postId: string;
+    postTitle: string;
+  }): Promise<void> {
+    await this.platformEventDao.insertAuditEvent({
+      source: PLATFORM_EVENT_SOURCE.ADMIN,
+      type: PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_POST_DELETED,
+      idempotencyKey: `admin:community_post.deleted:${randomUUID()}`,
+      userId: params.userId,
+      actorUserId: params.actorUserId,
+      occurredAt: new Date(),
+      payload: {
+        communityId: params.communityId,
+        communityName: params.communityName,
+        postId: params.postId,
+        postTitle: params.postTitle,
+      },
+    });
+  }
+
+  async recordAdminCommunityPostRestored(params: {
+    actorUserId: string;
+    userId: string;
+    communityId: string;
+    communityName: string;
+    postId: string;
+    postTitle: string;
+  }): Promise<void> {
+    await this.platformEventDao.insertAuditEvent({
+      source: PLATFORM_EVENT_SOURCE.ADMIN,
+      type: PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_POST_RESTORED,
+      idempotencyKey: `admin:community_post.restored:${randomUUID()}`,
+      userId: params.userId,
+      actorUserId: params.actorUserId,
+      occurredAt: new Date(),
+      payload: {
+        communityId: params.communityId,
+        communityName: params.communityName,
+        postId: params.postId,
+        postTitle: params.postTitle,
+      },
+    });
+  }
+
+  async recordAdminCommunityPostDiscoverHidden(params: {
+    actorUserId: string;
+    userId: string;
+    communityId: string;
+    communityName: string;
+    postId: string;
+    postTitle: string;
+  }): Promise<void> {
+    await this.platformEventDao.insertAuditEvent({
+      source: PLATFORM_EVENT_SOURCE.ADMIN,
+      type: PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_POST_DISCOVER_HIDDEN,
+      idempotencyKey: `admin:community_post.discover_hidden:${randomUUID()}`,
+      userId: params.userId,
+      actorUserId: params.actorUserId,
+      occurredAt: new Date(),
+      payload: {
+        communityId: params.communityId,
+        communityName: params.communityName,
+        postId: params.postId,
+        postTitle: params.postTitle,
+      },
+    });
+  }
+
+  async recordAdminCommunityPostDiscoverShown(params: {
+    actorUserId: string;
+    userId: string;
+    communityId: string;
+    communityName: string;
+    postId: string;
+    postTitle: string;
+  }): Promise<void> {
+    await this.platformEventDao.insertAuditEvent({
+      source: PLATFORM_EVENT_SOURCE.ADMIN,
+      type: PLATFORM_EVENT_TYPE.ADMIN_COMMUNITY_POST_DISCOVER_SHOWN,
+      idempotencyKey: `admin:community_post.discover_shown:${randomUUID()}`,
+      userId: params.userId,
+      actorUserId: params.actorUserId,
+      occurredAt: new Date(),
+      payload: {
+        communityId: params.communityId,
+        communityName: params.communityName,
+        postId: params.postId,
+        postTitle: params.postTitle,
       },
     });
   }

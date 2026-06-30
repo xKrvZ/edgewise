@@ -1,6 +1,7 @@
 'use client';
 
 import type { CommunityJoinConsentInfo } from '@/components/community/community-join-consent-dialog';
+import { AnalyticsEvents, captureActivationMilestone } from '@/lib/posthog';
 import { useCallback, useRef, useState } from 'react';
 
 interface OpenConsentOptions {
@@ -37,11 +38,17 @@ export function useCommunityJoinConsent() {
     setConfirming(true);
     try {
       await action();
+      if (target) {
+        captureActivationMilestone(AnalyticsEvents.COMMUNITY_JOINED, {
+          community_id: target.communityId,
+          community_name: target.communityName,
+        });
+      }
       setOpen(false);
     } finally {
       setConfirming(false);
     }
-  }, []);
+  }, [target]);
 
   return {
     open,

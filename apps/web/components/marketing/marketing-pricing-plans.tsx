@@ -1,7 +1,12 @@
 'use client';
 
 import { PRICING_PLANS } from '@/components/marketing/marketing-data';
-import { marketingSectionContentClass } from '@/components/marketing/marketing-section';
+import {
+  marketingCardClass,
+  marketingCardFeaturedClass,
+  marketingCardHoverClass,
+  marketingSectionContentClass,
+} from '@/components/marketing/marketing-section';
 import { cn } from '@/lib/utils';
 import { ArrowRight, Check, Sparkles } from 'lucide-react';
 import Link from 'next/link';
@@ -11,6 +16,21 @@ interface MarketingPricingPlansProps {
   className?: string;
 }
 
+const pricingCardShellClass = cn(
+  marketingCardClass,
+  marketingCardHoverClass,
+  'relative flex h-full flex-col p-6 sm:p-7 lg:p-8',
+);
+
+const pricingBadgeBaseClass =
+  'absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide';
+
+const pricingCtaPrimaryClass =
+  'mt-8 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30';
+
+const pricingCtaSecondaryClass =
+  'mt-8 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-bold text-slate-900 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/20 hover:bg-slate-50 hover:shadow-md';
+
 export function MarketingPricingPlans({ className }: MarketingPricingPlansProps) {
   const [annual, setAnnual] = useState(false);
 
@@ -18,7 +38,7 @@ export function MarketingPricingPlans({ className }: MarketingPricingPlansProps)
     <div className={className}>
       <div className={`flex flex-col items-center gap-4 sm:flex-row sm:justify-center ${marketingSectionContentClass}`}>
         <div
-          className="inline-flex items-center rounded-full border border-slate-200 bg-[#f7f8fc] p-1 shadow-sm"
+          className="inline-flex items-center rounded-full border border-slate-200 bg-white p-1 shadow-sm"
           role="group"
           aria-label="Billing period"
         >
@@ -43,10 +63,10 @@ export function MarketingPricingPlans({ className }: MarketingPricingPlansProps)
             aria-pressed={annual}
           >
             Annual
-            <span className="ml-1.5 text-xs font-bold text-emerald-500">Save 20%</span>
+            <span className="ml-1.5 text-xs font-bold text-emerald-600">Save 20%</span>
           </button>
         </div>
-        <p className="text-xs text-slate-400">Starter from $10/month — Pro and Elite launch soon</p>
+        <p className="text-xs text-slate-500">Starter from $10/month — Pro and Elite launch soon</p>
       </div>
 
       <div className="mx-auto mt-8 grid w-full max-w-7xl gap-6 lg:grid-cols-3 lg:gap-8">
@@ -70,19 +90,16 @@ export function MarketingPricingPlans({ className }: MarketingPricingPlansProps)
             return (
               <div
                 key={name}
-                className={`relative flex h-full flex-col rounded-3xl border p-8 transition-all sm:p-9 ${
-                  highlighted
-                    ? 'z-[1] border-primary/30 bg-white shadow-xl shadow-primary/10 ring-1 ring-primary/20 lg:-mt-2 lg:mb-2 lg:py-10'
-                    : 'border-slate-200 bg-[#f7f8fc] shadow-sm hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md'
-                }`}
+                className={cn(pricingCardShellClass, highlighted && marketingCardFeaturedClass)}
               >
                 {badge && (
                   <span
-                    className={`absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${
+                    className={cn(
+                      pricingBadgeBaseClass,
                       highlighted
                         ? 'bg-primary text-white shadow-md shadow-primary/30'
-                        : 'bg-slate-100 text-slate-500'
-                    }`}
+                        : 'border border-slate-200 bg-white text-slate-600 shadow-sm',
+                    )}
                   >
                     {highlighted && (
                       <Sparkles className="mr-1 inline h-3 w-3" aria-hidden="true" />
@@ -115,18 +132,12 @@ export function MarketingPricingPlans({ className }: MarketingPricingPlansProps)
                 </ul>
 
                 {comingSoon ? (
-                  <Link
-                    href={ctaHref}
-                    className="mt-8 inline-flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-6 py-3.5 text-sm font-bold text-primary transition-all hover:-translate-y-0.5 hover:bg-primary/10"
-                  >
+                  <Link href={ctaHref} className={pricingCtaSecondaryClass}>
                     {cta}
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </Link>
                 ) : (
-                  <Link
-                    href={ctaHref}
-                    className="mt-8 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl"
-                  >
+                  <Link href={ctaHref} className={pricingCtaPrimaryClass}>
                     {cta}
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </Link>

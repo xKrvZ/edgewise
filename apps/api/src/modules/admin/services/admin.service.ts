@@ -3,9 +3,13 @@ import { createPolarClient } from '@/auth/polar.plugin';
 import billingConfig from '@/config/billing.config';
 import { BillingService } from '@/modules/billing/services/billing.service';
 import { PlatformMetricsService } from '@/modules/platform-metrics/services/platform-metrics.service';
+import { POSTHOG_ACTIVATION_FUNNEL_STEPS } from '../constants/posthog-funnel.constants';
 import { AdminDao } from '../daos/admin.dao';
 import type { AdminStatsPeriod } from '../dtos/admin-stats-query.dto';
 import {
+  AdminDashboardStatsDto,
+  AdminStatsActivationFunnelDto,
+  AdminStatsActivationFunnelStepDto,
   AdminStatsDto,
   AdminStatsGrowthDto,
   AdminStatsRevenueDto,
@@ -16,12 +20,17 @@ import {
   computeGrowthPercent,
   fillDailyRevenueSeries,
   fillDailySeries,
+  mergeDailyMetricsSeries,
   parsePeriodDays,
+  startOfCalendarMonth,
   startOfDay,
   subDays,
   sumSeriesAmounts,
+  sumSeriesCounts,
   sumSeriesSliceAmounts,
+  toDateKey,
 } from '../utils/admin-stats.utils';
+import { AdminPostHogService } from './admin-posthog.service';
 
 const MOCK_MONTHLY_PRICE = 29;
 
@@ -33,57 +42,97 @@ export class AdminService {
     private readonly adminDao: AdminDao,
     private readonly billingService: BillingService,
     private readonly platformMetricsService: PlatformMetricsService,
+    private readonly adminPostHogService: AdminPostHogService,
   ) {}
 
-  async getStats(period: AdminStatsPeriod = '30d'): Promise<AdminStatsDto> {
-    const periodDays = parsePeriodDays(period);
-    const since = subDays(startOfDay(new Date()), periodDays - 1);
+  async getDashboardStats(): Promise<AdminDashboardStatsDto> {
+    const monthStart = startOfCalendarMonth(new Date());
 
     const [
       totalUsers,
-      last24h,
-      last7d,
-      last30d,
-      userGrowth,
-      userSeriesRaw,
       activeSubscriptions,
-      canceledSubscriptions,
-      subscriptionGrowth,
+      totalTrades,
+      tradesThisMonth,
+      totalJournals,
+      journalsThisMonth,
+      totalCommunities,
+      communitiesThisMonth,
+      totalPosts,
+      postsThisMonth,
     ] = await Promise.all([
       this.adminDao.countUsers(),
-      this.adminDao.countUsersSince(subDays(new Date(), 1)),
-      this.adminDao.countUsersSince(subDays(new Date(), 7)),
-      this.adminDao.countUsersSince(subDays(new Date(), 30)),
-      this.buildUserGrowth(),
-      this.platformMetricsService.getUserSignupSeries(since),
       this.adminDao.countSubscriptionsByStatus('active'),
-      this.adminDao.countSubscriptionsByStatus('canceled'),
-      this.buildSubscriptionGrowth(),
+      this.adminDao.countTrades(),
+      this.adminDao.countTradesSince(monthStart),
+      this.adminDao.countTradingAccounts(),
+      this.adminDao.countTradingAccountsSince(monthStart),
+      this.adminDao.countCommunities(),
+      this.adminDao.countCommunitiesSince(monthStart),
+      this.adminDao.countCommunityPosts(),
+      this.adminDao.countCommunityPostsSince(monthStart),
     ]);
 
-    const users: AdminStatsUsersDto = {
-      total: totalUsers,
-      last24h,
-      last7d,
-      last30d,
-      growth: userGrowth,
-      series: fillDailySeries(userSeriesRaw, periodDays),
+    return {
+      users: { total: totalUsers },
+      subscriptions: { active: activeSubscriptions },
+      trades: { total: totalTrades, thisMonth: tradesThisMonth },
+      journals: { total: totalJournals, thisMonth: journalsThisMonth },
+      communities: { total: totalCommunities, thisMonth: communitiesThisMonth },
+      posts: { total: totalPosts, thisMonth: postsThisMonth },
     };
+  }
 
-    const { revenue, revenueSource } = await this.buildRevenueMetrics(
-      periodDays,
-      since,
-      users.series,
-      activeSubscriptions,
-    );
+  async getAnalyticsStats(period: AdminStatsPeriod = '30d'): Promise<AdminStatsDto> {
+    return this.adminPostHogService.fetchAnalyticsStats(period);
+  }
 
-    const subscriptions: AdminStatsSubscriptionsDto = {
-      active: activeSubscriptions,
-      canceled: canceledSubscriptions,
-      growth: subscriptionGrowth,
+  private async buildPostHogActivationFunnel(period: AdminStatsPeriod): Promise<{
+    activation: AdminStatsActivationFunnelDto;
+    posthogFunnelError: boolean;
+    posthogFunnelAvailable: boolean;
+  }> {
+    const emptySteps = this.emptyActivationFunnelSteps();
+    const configured = this.adminPostHogService.isConfigured();
+
+    if (!configured) {
+      return {
+        activation: { source: 'posthog', steps: emptySteps, periodSteps: emptySteps },
+        posthogFunnelError: false,
+        posthogFunnelAvailable: false,
+      };
+    }
+
+    const [allTimeSteps, periodSteps] = await Promise.all([
+      this.adminPostHogService.fetchActivationFunnel(period, 'all_time'),
+      this.adminPostHogService.fetchActivationFunnel(period, 'period'),
+    ]);
+
+    const funnelQueryFailed = allTimeSteps === null && periodSteps === null;
+    const resolvedAllTime = allTimeSteps ?? emptySteps;
+    const resolvedPeriod = periodSteps ?? emptySteps;
+    const funnelAvailable =
+      resolvedAllTime.some((step) => step.count > 0) ||
+      resolvedPeriod.some((step) => step.count > 0);
+
+    return {
+      activation: {
+        source: 'posthog',
+        steps: resolvedAllTime,
+        periodSteps: resolvedPeriod,
+      },
+      posthogFunnelError: funnelQueryFailed,
+      posthogFunnelAvailable: funnelAvailable,
     };
+  }
 
-    return { users, revenue, subscriptions, revenueSource };
+  private emptyActivationFunnelSteps(): AdminStatsActivationFunnelStepDto[] {
+    return POSTHOG_ACTIVATION_FUNNEL_STEPS.map((definition) => ({
+      key: definition.key,
+      label: definition.label,
+      shortLabel: definition.shortLabel,
+      event: definition.event,
+      count: 0,
+    }));
   }
 
   private async buildUserGrowth(): Promise<AdminStatsGrowthDto> {
@@ -126,23 +175,11 @@ export class AdminService {
       prior30dActive,
     ] = await Promise.all([
       this.adminDao.countSubscriptionsSince('active', startOfToday),
-      this.adminDao.countSubscriptionsBetween(
-        'active',
-        subDays(startOfToday, 1),
-        startOfToday,
-      ),
+      this.adminDao.countSubscriptionsBetween('active', subDays(startOfToday, 1), startOfToday),
       this.adminDao.countSubscriptionsSince('active', subDays(now, 7)),
-      this.adminDao.countSubscriptionsBetween(
-        'active',
-        subDays(now, 14),
-        subDays(now, 7),
-      ),
+      this.adminDao.countSubscriptionsBetween('active', subDays(now, 14), subDays(now, 7)),
       this.adminDao.countSubscriptionsSince('active', subDays(now, 30)),
-      this.adminDao.countSubscriptionsBetween(
-        'active',
-        subDays(now, 60),
-        subDays(now, 30),
-      ),
+      this.adminDao.countSubscriptionsBetween('active', subDays(now, 60), subDays(now, 30)),
     ]);
 
     return {
@@ -150,6 +187,25 @@ export class AdminService {
       weekly: computeGrowthPercent(last7dActive, prior7dActive),
       monthly: computeGrowthPercent(last30dActive, prior30dActive),
     };
+  }
+
+  private async getPriorPeriodRevenueTotal(
+    periodDays: number,
+    since: Date,
+    activeSubscriptions: number,
+  ): Promise<number> {
+    const priorSince = subDays(since, periodDays);
+    const priorUserSeriesRaw = await this.platformMetricsService.getUserSignupSeries(priorSince);
+    const priorUserSeries = fillDailySeries(priorUserSeriesRaw, periodDays);
+
+    const { revenue } = await this.buildRevenueMetrics(
+      periodDays,
+      priorSince,
+      priorUserSeries,
+      activeSubscriptions,
+    );
+
+    return revenue.total;
   }
 
   private async buildRevenueMetrics(
@@ -213,7 +269,7 @@ export class AdminService {
     }));
     const series = fillDailyRevenueSeries(rawSeries, periodDays);
 
-    return this.finalizeRevenueMetrics(series, activeSubscriptions * MOCK_MONTHLY_PRICE);
+    return this.finalizeRevenueMetrics(series, sumSeriesAmounts(series, periodDays));
   }
 
   private async buildEstimatedRevenue(
@@ -229,7 +285,7 @@ export class AdminService {
     }));
     const series = fillDailyRevenueSeries(rawSeries, periodDays);
 
-    return this.finalizeRevenueMetrics(series, activeSubscriptions * MOCK_MONTHLY_PRICE);
+    return this.finalizeRevenueMetrics(series, sumSeriesAmounts(series, periodDays));
   }
 
   private async fetchPolarRevenue(

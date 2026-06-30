@@ -31,10 +31,13 @@ function MobileAdminSidebar() {
         side="left"
         className="flex h-full w-64 flex-col gap-0 border-sidebar-border p-0"
       >
-        <SheetHeader className="flex h-14 shrink-0 flex-row items-center border-b border-sidebar-border px-4">
+        <SheetHeader className="flex shrink-0 flex-col items-start gap-0 border-b border-sidebar-border px-4 py-3">
           <SheetTitle asChild>
             <Logo variant="dark" />
           </SheetTitle>
+          <p className="mt-2.5 w-fit self-center rounded-md bg-destructive px-2 py-1 text-center text-[0.6875rem] font-semibold text-destructive-foreground">
+            Management Panel
+          </p>
         </SheetHeader>
         <AdminSidebarNav onNavigate={() => setOpen(false)} showSectionLabel={false} />
         <div className="mt-auto shrink-0 border-t border-sidebar-border px-3 py-3">
@@ -63,8 +66,8 @@ export function AdminSidebar() {
         >
           <div
             className={cn(
-              'flex h-14 shrink-0 items-center border-b border-sidebar-border',
-              collapsed ? 'justify-center px-2' : 'px-3',
+              'flex shrink-0 flex-col border-b border-sidebar-border',
+              collapsed ? 'h-14 items-center justify-center px-2' : 'px-3 py-3',
             )}
           >
             <Link
@@ -74,6 +77,11 @@ export function AdminSidebar() {
             >
               <Logo variant="dark" markVariant="light" mark={collapsed} className="min-w-0" />
             </Link>
+            {!collapsed && (
+              <p className="mt-2.5 w-fit self-center rounded-md bg-destructive px-2 py-1 text-center text-[0.6875rem] font-semibold text-destructive-foreground">
+                Management Panel
+              </p>
+            )}
           </div>
 
         <AdminSidebarNav collapsed={collapsed} />

@@ -64,12 +64,15 @@ import type {
   CommunitySummary,
   CommunityDetail,
   CommunityMember,
+  CommunityBannedMember,
+  BanCommunityMemberInput,
   CreateCommunityInput,
   UpdateCommunityInput,
   CommunityInvitation,
   CreateInvitationInput,
   CommunityLeaderboard,
   CommunityQuery,
+  CommunityListQuery,
   CommunityTag,
   CreateCommunityTagInput,
   UpdateCommunityTagInput,
@@ -537,7 +540,7 @@ export const api = {
 
   // -------------------- Community --------------------
   communities: {
-    list: () => request<CommunitySummary[]>('/communities'),
+    list: (query?: CommunityListQuery) => request<CommunitySummary[]>('/communities', { query }),
     get: (id: string) => request<CommunityDetail>(`/communities/${id}`),
     create: (input: CreateCommunityInput) =>
       request<CommunityDetail>('/communities', { method: 'POST', body: input }),
@@ -622,6 +625,17 @@ export const api = {
       request<CommunityLeaderboard>(`/communities/${id}/leaderboard`, { query }),
     listMembers: (id: string, query?: CommunityMembersQuery) =>
       request<CommunityMember[]>(`/communities/${id}/members`, { query }),
+    listBans: (id: string) =>
+      request<CommunityBannedMember[]>(`/communities/${id}/bans`),
+    kickMember: (id: string, userId: string) =>
+      request<void>(`/communities/${id}/members/${userId}/kick`, { method: 'POST' }),
+    banMember: (id: string, userId: string, input?: BanCommunityMemberInput) =>
+      request<void>(`/communities/${id}/members/${userId}/ban`, {
+        method: 'POST',
+        body: input ?? {},
+      }),
+    unbanMember: (id: string, userId: string) =>
+      request<void>(`/communities/${id}/members/${userId}/unban`, { method: 'POST' }),
     listTags: (id: string) => request<CommunityTag[]>(`/communities/${id}/tags`),
     createTag: (id: string, input: CreateCommunityTagInput) =>
       request<CommunityTag>(`/communities/${id}/tags`, { method: 'POST', body: input }),
@@ -799,12 +813,24 @@ export const api = {
 
   // -------------------- Admin --------------------
   admin: {
+    dashboardStats: () =>
+      request<import('@/lib/types/admin').AdminDashboardStats>('/admin/stats/dashboard'),
+    analyticsStats: (period: import('@/lib/types/admin').AdminStatsPeriod = '30d') =>
+      request<import('@/lib/types/admin').AdminStats>(`/admin/stats/analytics?period=${period}`),
+    /** @deprecated Use dashboardStats() or analyticsStats() */
     stats: (period: import('@/lib/types/admin').AdminStatsPeriod = '30d') =>
-      request<import('@/lib/types/admin').AdminStats>(`/admin/stats?period=${period}`),
+      request<import('@/lib/types/admin').AdminStats>(`/admin/stats/analytics?period=${period}`),
     audit: (query?: { limit?: number; offset?: number }) =>
       request<import('@/lib/types/admin').AdminAuditPage>('/admin/audit', { query }),
     users: {
-      list: (query?: { limit?: number; offset?: number; search?: string }) =>
+      list: (query?: {
+        limit?: number;
+        offset?: number;
+        search?: string;
+        subscriptionActive?: 'active' | 'inactive';
+        plan?: 'starter' | 'pro' | 'elite' | 'none';
+        role?: import('@/lib/roles').Role;
+      }) =>
         request<import('@/lib/types/admin').AdminUsersPage>('/admin/users', { query }),
       get: (id: string) =>
         request<import('@/lib/types/admin').AdminUserDetail>(`/admin/users/${id}`),
@@ -845,7 +871,10 @@ export const api = {
         request<import('@/lib/types/admin').AdminSubscriptionDetail>(
           `/admin/users/${id}/subscription`,
         ),
-      changePlan: (id: string, body: { productId?: string; planSlug?: string }) =>
+      changePlan: (
+        id: string,
+        body: { productId?: string; planSlug?: string; excludeBilling?: boolean },
+      ) =>
         request<import('@/lib/types/admin').AdminSubscriptionDetail>(
           `/admin/users/${id}/subscription/plan`,
           { method: 'PATCH', body },
@@ -876,6 +905,68 @@ export const api = {
       }),
     plans: () =>
       request<{ plans: import('@/lib/types/admin').AdminPlan[] }>('/admin/plans'),
+    communities: {
+      list: (query?: {
+        limit?: number;
+        offset?: number;
+        search?: string;
+        discoverHidden?: boolean;
+        featured?: boolean;
+      }) =>
+        request<import('@/lib/types/admin').AdminCommunitiesPage>('/admin/communities', {
+          query,
+        }),
+      get: (id: string) =>
+        request<import('@/lib/types/admin').AdminCommunityRow>(`/admin/communities/${id}`),
+      posts: (
+        id: string,
+        query?: { limit?: number; offset?: number; includeDeleted?: boolean },
+      ) =>
+        request<import('@/lib/types/admin').AdminCommunityPostsPage>(
+          `/admin/communities/${id}/posts`,
+          { query },
+        ),
+      hideFromDiscover: (id: string) =>
+        request<import('@/lib/types/admin').AdminCommunityRow>(
+          `/admin/communities/${id}/hide-from-discover`,
+          { method: 'POST' },
+        ),
+      showOnDiscover: (id: string) =>
+        request<import('@/lib/types/admin').AdminCommunityRow>(
+          `/admin/communities/${id}/show-on-discover`,
+          { method: 'POST' },
+        ),
+      feature: (id: string) =>
+        request<import('@/lib/types/admin').AdminCommunityRow>(
+          `/admin/communities/${id}/feature`,
+          { method: 'POST' },
+        ),
+      unfeature: (id: string) =>
+        request<import('@/lib/types/admin').AdminCommunityRow>(
+          `/admin/communities/${id}/unfeature`,
+          { method: 'POST' },
+        ),
+      softDeletePost: (communityId: string, postId: string) =>
+        request<import('@/lib/types/admin').AdminCommunityPostRow>(
+          `/admin/communities/${communityId}/posts/${postId}/soft-delete`,
+          { method: 'POST' },
+        ),
+      restorePost: (communityId: string, postId: string) =>
+        request<import('@/lib/types/admin').AdminCommunityPostRow>(
+          `/admin/communities/${communityId}/posts/${postId}/restore`,
+          { method: 'POST' },
+        ),
+      hidePostFromDiscover: (communityId: string, postId: string) =>
+        request<import('@/lib/types/admin').AdminCommunityPostRow>(
+          `/admin/communities/${communityId}/posts/${postId}/hide-from-discover`,
+          { method: 'POST' },
+        ),
+      showPostOnDiscover: (communityId: string, postId: string) =>
+        request<import('@/lib/types/admin').AdminCommunityPostRow>(
+          `/admin/communities/${communityId}/posts/${postId}/show-on-discover`,
+          { method: 'POST' },
+        ),
+    },
   },
 
   // -------------------- Socket --------------------

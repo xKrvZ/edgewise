@@ -20,7 +20,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <AuthGuard>
           <SubscriptionGuard>
             <AppShell>
-              <div className="flex h-dvh overflow-hidden bg-background">
+              <div className="flex h-dvh min-w-0 overflow-x-hidden overflow-hidden bg-background">
                 <Sidebar />
                 <AppContent>{children}</AppContent>
               </div>

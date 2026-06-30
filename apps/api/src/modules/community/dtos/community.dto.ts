@@ -50,6 +50,10 @@ export class CommunitySummaryDto {
   joinPolicy: string;
 
   @Expose()
+  @ApiProperty({ description: 'Featured on discover when true' })
+  featured: boolean;
+
+  @Expose()
   @ApiProperty({ enum: COMMUNITY_LEADERBOARD_VISIBILITY })
   leaderboardVisibility: CommunityLeaderboardVisibility;
 
@@ -118,6 +122,7 @@ export function toCommunitySummaryDto(
     memberCount: row.memberCount,
     myRole: row.memberRole,
     joinPolicy: row.joinPolicy,
+    featured: Boolean(row.featured),
     leaderboardVisibility: (row.leaderboardVisibility ??
       'mentors') as CommunityLeaderboardVisibility,
     createdAt: row.createdAt,
@@ -192,6 +197,7 @@ export function toCommunityDetailDto(
     memberCount,
     myRole,
     joinPolicy: row.joinPolicy,
+    featured: Boolean(row.featured),
     leaderboardVisibility: (row.leaderboardVisibility ??
       'mentors') as CommunityLeaderboardVisibility,
     createdAt: row.createdAt,

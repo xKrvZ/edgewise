@@ -16,6 +16,7 @@ import {
   type CommunityLeaderboardVisibility,
 } from '../constants/community.constants';
 import { CommunityDao } from '../daos/community.dao';
+import { CommunityBanDao } from '../daos/community-ban.dao';
 import { CommunityInvitationDao } from '../daos/community-invitation.dao';
 import { CommunityMemberDao } from '../daos/community-member.dao';
 import { CommunityStatsDao } from '../daos/community-stats.dao';
@@ -39,6 +40,11 @@ import {
 import type { CreateCommunityDto } from '../dtos/create-community.dto';
 import type { CreateInvitationDto } from '../dtos/create-invitation.dto';
 import type { UpdateCommunityDto } from '../dtos/update-community.dto';
+import type { CommunityListQueryDto } from '../dtos/community-list-query.dto';
+import {
+  type CommunityBannedMemberDto,
+  type BanCommunityMemberDto,
+} from '../dtos/community-ban.dto';
 import {
   type CommunityHeaderUploadRequestDto,
   type CommunityLogoUploadRequestDto,
@@ -76,6 +82,7 @@ export class CommunityService {
 
   constructor(
     private readonly communityDao: CommunityDao,
+    private readonly banDao: CommunityBanDao,
     private readonly memberDao: CommunityMemberDao,
     private readonly invitationDao: CommunityInvitationDao,
     private readonly statsDao: CommunityStatsDao,
@@ -86,8 +93,11 @@ export class CommunityService {
     private readonly tradeService: TradeService,
   ) {}
 
-  async list(userId: string): Promise<CommunitySummaryDto[]> {
-    const rows = await this.communityDao.findAllWithMembership(userId);
+  async list(userId: string, query?: CommunityListQueryDto): Promise<CommunitySummaryDto[]> {
+    const rows = await this.communityDao.findAllWithMembership(userId, {
+      featured: query?.featured,
+      search: query?.search,
+    });
     const pendingByCommunity = await this.resolvePendingInvitationsByCommunity(userId);
     const summaries = await Promise.all(
       rows.map(async (row) => {
@@ -446,6 +456,8 @@ export class CommunityService {
       throw new BadRequestException('You are already a member of this community');
     }
 
+    await this.assertNotBanned(invitation.communityId, userId);
+
     await this.communityDao.transaction(async (trx) => {
       const memberDao = this.memberDao.transacting(trx);
       const invitationDao = this.invitationDao.transacting(trx);
@@ -481,6 +493,8 @@ export class CommunityService {
       throw new BadRequestException('You are already a member of this community');
     }
 
+    await this.assertNotBanned(communityId, userId);
+
     const member = await this.memberDao.create({
       communityId,
       userId,
@@ -510,6 +524,99 @@ export class CommunityService {
     if (!deleted) {
       throw new NotFoundException('Membership not found');
     }
+  }
+
+  async kickMember(
+    communityId: string,
+    actorUserId: string,
+    targetUserId: string,
+  ): Promise<void> {
+    await this.removeMember(communityId, actorUserId, targetUserId);
+  }
+
+  async banMember(
+    communityId: string,
+    actorUserId: string,
+    targetUserId: string,
+    dto?: BanCommunityMemberDto,
+  ): Promise<void> {
+    const reason = dto?.reason?.trim() || null;
+
+    await this.communityDao.transaction(async (trx) => {
+      const memberDao = this.memberDao.transacting(trx);
+      const banDao = this.banDao.transacting(trx);
+
+      await this.removeMember(communityId, actorUserId, targetUserId, {
+        memberDao,
+      });
+
+      const existingBan = await banDao.findBan(communityId, targetUserId);
+      if (existingBan) {
+        return;
+      }
+
+      const ban = await banDao.create({
+        communityId,
+        userId: targetUserId,
+        bannedBy: actorUserId,
+        reason,
+      });
+      if (!ban) {
+        throw new NotFoundException('Failed to ban member');
+      }
+    });
+  }
+
+  async unbanMember(
+    communityId: string,
+    actorUserId: string,
+    targetUserId: string,
+  ): Promise<void> {
+    await this.requireMentorOrOwner(communityId, actorUserId);
+
+    const deleted = await this.banDao.deleteByCommunityAndUser(communityId, targetUserId);
+    if (!deleted) {
+      throw new NotFoundException('Ban not found');
+    }
+  }
+
+  async listBannedMembers(
+    communityId: string,
+    actorUserId: string,
+  ): Promise<CommunityBannedMemberDto[]> {
+    await this.requireMentorOrOwner(communityId, actorUserId);
+
+    const rows = await this.banDao.findBansWithProfiles(communityId);
+    const deletedUserIds = await this.privacyUserDao.findDeletedUserIds(
+      rows.flatMap((row) => [row.userId, row.bannedBy]),
+    );
+    const avatarUrls = await resolveAvatarUrlsForUsers(
+      this.storage,
+      collectAvatarSources(
+        rows.map((row) => ({
+          userId: row.userId,
+          userImage: row.userImage,
+          avatarStorageKey: row.avatarStorageKey,
+        })),
+      ),
+    );
+
+    return rows.map((row) => ({
+      id: row.id,
+      userId: row.userId,
+      displayName: deletedUserIds.has(row.userId)
+        ? DELETED_USER_DISPLAY_NAME
+        : row.displayName,
+      avatarUrl: deletedUserIds.has(row.userId)
+        ? null
+        : (avatarUrls.get(row.userId) ?? null),
+      bannedBy: row.bannedBy,
+      bannedByDisplayName: deletedUserIds.has(row.bannedBy)
+        ? DELETED_USER_DISPLAY_NAME
+        : row.bannedByDisplayName,
+      bannedAt: row.bannedAt,
+      reason: row.reason,
+    }));
   }
 
   async rejectInvitation(invitationId: string, userId: string): Promise<CommunityInvitationDto> {
@@ -711,6 +818,59 @@ export class CommunityService {
       throw new ForbiddenException('Only mentors and owners can perform this action');
     }
     return membership;
+  }
+
+  private async assertNotBanned(communityId: string, userId: string): Promise<void> {
+    const ban = await this.banDao.findBan(communityId, userId);
+    if (ban) {
+      throw new ForbiddenException('You are banned from this community');
+    }
+  }
+
+  private async removeMember(
+    communityId: string,
+    actorUserId: string,
+    targetUserId: string,
+    options?: { memberDao?: CommunityMemberDao },
+  ): Promise<void> {
+    const actorMembership = await this.requireMentorOrOwner(communityId, actorUserId);
+    const targetMembership = await (options?.memberDao ?? this.memberDao).findMembership(
+      communityId,
+      targetUserId,
+    );
+
+    if (!targetMembership) {
+      throw new NotFoundException('Member not found');
+    }
+
+    this.assertCanModerateTarget(actorMembership.role, targetMembership.role, actorUserId, targetUserId);
+
+    const deleted = await (options?.memberDao ?? this.memberDao).deleteByCommunityAndUser(
+      communityId,
+      targetUserId,
+    );
+    if (!deleted) {
+      throw new NotFoundException('Member not found');
+    }
+  }
+
+  private assertCanModerateTarget(
+    actorRole: string,
+    targetRole: string,
+    actorUserId: string,
+    targetUserId: string,
+  ): void {
+    if (actorUserId === targetUserId) {
+      throw new ForbiddenException('You cannot moderate yourself');
+    }
+
+    if (targetRole === 'owner') {
+      throw new ForbiddenException('The community owner cannot be removed or banned');
+    }
+
+    if (actorRole === 'mentor' && targetRole !== 'member') {
+      throw new ForbiddenException('Mentors can only moderate regular members');
+    }
   }
 
   private async resolvePendingInvitationsByCommunity(

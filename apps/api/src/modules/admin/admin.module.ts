@@ -9,6 +9,9 @@ import { AdminAuditService } from './services/admin-audit.service';
 import { AdminService } from './services/admin.service';
 import { AdminBillingService } from './services/admin-billing.service';
 import { AdminUsersService } from './services/admin-users.service';
+import { AdminCommunitiesService } from './services/admin-communities.service';
+import { AdminCommunityDao } from './daos/admin-community.dao';
+import { AdminPostHogService } from './services/admin-posthog.service';
 
 @Module({
   imports: [AccountModule, BillingModule, PlatformMetricsModule],
@@ -18,7 +21,10 @@ import { AdminUsersService } from './services/admin-users.service';
     AdminUsersService,
     AdminBillingService,
     AdminAuditService,
+    AdminCommunitiesService,
+    AdminPostHogService,
     AdminDao,
+    AdminCommunityDao,
     AdminRoleGuard,
   ],
 })

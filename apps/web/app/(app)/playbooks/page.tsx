@@ -1,6 +1,7 @@
 'use client';
 
 import { DateRangeSelector } from '@/components/app/date-range-selector';
+import { FeatureAnalyticsTracker } from '@/components/analytics/feature-analytics-tracker';
 import { PageFilterBar } from '@/components/app/page-filter-bar';
 import { PageHeader } from '@/components/app/page-header';
 import { PlaybookPerformanceSection } from '@/components/playbooks/playbook-performance-section';
@@ -45,6 +46,7 @@ export default function PlaybooksPage() {
 
   return (
     <PageBody>
+      <FeatureAnalyticsTracker feature="playbook" />
       <PageHeader
         title="Playbooks"
         description="Document your setups and hold yourself to your rules."

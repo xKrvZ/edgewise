@@ -1,3 +1,5 @@
+import type { BillingPlanId } from '@/config/billing.config';
+
 /**
  * Internal Edgewise feature slugs — used for subscription gating across API and web.
  * Polar benefit metadata slugs are mapped to these via billing.config featureToPolarSlug.
@@ -54,4 +56,20 @@ export function polarSlugsToFeatures(
     }
   }
   return [...features];
+}
+
+const PREMIUM_FEATURES: PlatformFeature[] = ['analytics', 'ai_review', 'replay', 'backtest'];
+
+/** Feature set granted for admin local plan overrides (billing excluded). */
+export function featuresForBillingPlan(planId: BillingPlanId | 'none'): PlatformFeature[] {
+  if (planId === 'none') {
+    return [];
+  }
+  if (planId === 'starter') {
+    return ['journal'];
+  }
+  if (planId === 'pro') {
+    return ['journal', ...PREMIUM_FEATURES];
+  }
+  return [...PLATFORM_FEATURES];
 }

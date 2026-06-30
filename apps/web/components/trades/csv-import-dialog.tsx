@@ -22,10 +22,18 @@ import {
 import { Stepper } from '@/components/ui/stepper';
 import { api } from '@/lib/api-client';
 import { type ParsedCsv, parseCsvToRecords } from '@/lib/csv';
+import { useSession } from '@/lib/auth-client';
 import { useReferenceData } from '@/lib/hooks/use-reference-data';
+import {
+  AnalyticsEvents,
+  captureActivationMilestone,
+  captureFeatureUsed,
+  captureTradeActivity,
+  getUserTradeCount,
+} from '@/lib/posthog';
 import type { CreateTradeInput, MarketType, TradeDirection } from '@/lib/types';
 import { FileUp, Upload } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 /** Target fields the importer can map to. */
@@ -109,6 +117,7 @@ export function CsvImportDialog({
   defaultAccountId,
   onImported,
 }: CsvImportDialogProps) {
+  const { data: session } = useSession();
   const { accounts } = useReferenceData();
   const fileRef = useRef<HTMLInputElement>(null);
   const [parsed, setParsed] = useState<ParsedCsv | null>(null);
@@ -117,6 +126,12 @@ export function CsvImportDialog({
   const [marketType, setMarketType] = useState<MarketType>('stocks');
   const [importing, setImporting] = useState(false);
   const [importedCount, setImportedCount] = useState(0);
+
+  useEffect(() => {
+    if (open) {
+      captureFeatureUsed('import_wizard', { action: 'open' });
+    }
+  }, [open]);
 
   const IMPORT_STEPS = [
     { id: 'upload', label: 'Upload file' },
@@ -212,6 +227,25 @@ export function CsvImportDialog({
     }
 
     setImporting(false);
+    if (ok > 0) {
+      const userId = session?.user?.id;
+      if (userId) {
+        const tradesBefore = getUserTradeCount(userId);
+        if (tradesBefore === 0) {
+          captureActivationMilestone(AnalyticsEvents.FIRST_TRADE_IMPORTED, {
+            trade_count: ok,
+            source: 'csv_import',
+          });
+        }
+        captureTradeActivity({
+          userId,
+          tradeId: 'csv_import_batch',
+          status: 'imported',
+          source: 'csv_import',
+          importBatchSize: ok,
+        });
+      }
+    }
     toast.success(
       `Imported ${ok} trade${ok === 1 ? '' : 's'}${failed ? `, ${failed} skipped` : ''}.`,
     );

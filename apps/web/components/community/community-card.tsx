@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { ApiError, api } from '@/lib/api-client';
 import type { CommunitySummary } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { ArrowRight, Loader2, Lock, Users, X } from 'lucide-react';
+import { ArrowRight, Loader2, Lock, Star, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
@@ -124,6 +124,16 @@ export function CommunityCard({ community, onJoined, className }: CommunityCardP
               {JOIN_POLICY_LABELS.invite_only}
             </span>
           )}
+
+          {community.featured ? (
+            <span
+              className="absolute right-3 top-3 inline-flex items-center rounded-full bg-background/90 p-1.5 shadow-sm backdrop-blur-sm"
+              title="Featured community"
+            >
+              <Star className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden="true" />
+              <span className="sr-only">Featured community</span>
+            </span>
+          ) : null}
         </div>
 
         <div className="relative z-20 -mt-6 px-4">

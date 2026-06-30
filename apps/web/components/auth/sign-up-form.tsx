@@ -12,6 +12,7 @@ import {
   isNetworkFetchError,
   resolvePostAuthRedirect,
 } from '@/lib/auth-utils';
+import { AnalyticsEvents, captureEvent, setPersonPropertiesOnce } from '@/lib/posthog';
 import {
   authInputClassNameNoIcon,
   authLinkClassName,
@@ -71,6 +72,9 @@ export function SignUpForm() {
         setError(signUpError.message ?? 'Something went wrong');
         return;
       }
+
+      captureEvent(AnalyticsEvents.USER_SIGNED_UP, { method: 'email' });
+      setPersonPropertiesOnce({ signed_up_at: new Date().toISOString() });
 
       router.push(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch (err) {

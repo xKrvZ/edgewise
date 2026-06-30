@@ -28,7 +28,7 @@ export const FEATURE_LABELS: Record<PlatformFeature, string> = {
   ai_review: 'AI Review',
   replay: 'Replay',
   backtest: 'Backtesting',
-  community: 'Community',
+  community: 'Communities',
 };
 
 export function formatFeatureList(features: PlatformFeature[]): string {

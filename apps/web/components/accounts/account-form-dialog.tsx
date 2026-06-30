@@ -24,6 +24,10 @@ import { Switch } from '@/components/ui/switch';
 import { ApiError, api } from '@/lib/api-client';
 import { formatCurrency } from '@/lib/format';
 import { useWizard } from '@/lib/hooks/use-wizard';
+import {
+  AnalyticsEvents,
+  captureActivationMilestone,
+} from '@/lib/posthog';
 import type {
   Account,
   AccountCurrency,
@@ -41,6 +45,7 @@ interface AccountFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   account?: Account;
+  existingAccountCount?: number;
   onSaved?: (saved: Account) => void;
 }
 
@@ -77,6 +82,7 @@ export function AccountFormDialog({
   open,
   onOpenChange,
   account,
+  existingAccountCount = 0,
   onSaved,
 }: AccountFormDialogProps) {
   const [name, setName] = useState('');
@@ -174,6 +180,24 @@ export function AccountFormDialog({
       const saved = account
         ? await api.accounts.update(account.id, payload)
         : await api.accounts.create(payload);
+      if (!account) {
+        const isFirst = existingAccountCount === 0;
+        captureActivationMilestone(AnalyticsEvents.JOURNAL_CREATED, {
+          journal_id: saved.id,
+          is_first: isFirst,
+        });
+        if (broker.trim()) {
+          captureActivationMilestone(AnalyticsEvents.BROKER_CONNECTED, {
+            journal_id: saved.id,
+            broker: broker.trim(),
+          });
+        }
+      } else if (broker.trim() && !account.broker?.trim()) {
+        captureActivationMilestone(AnalyticsEvents.BROKER_CONNECTED, {
+          journal_id: saved.id,
+          broker: broker.trim(),
+        });
+      }
       toast.success(account ? 'Journal updated' : 'Journal created');
       onSaved?.(saved);
       onOpenChange(false);
